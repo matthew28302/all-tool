@@ -1,0 +1,46 @@
+nohup: ignoring input
+⚡ DNS Checker Tool - Ultra Fast Mode
+📍 Open: http://localhost:5000
+ * Serving Flask app 'app'
+ * Debug mode: on
+[2026-03-13 18:57:52,536] INFO in _internal: [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://172.16.30.50:5000
+[2026-03-13 18:57:52,536] INFO in _internal: [33mPress CTRL+C to quit[0m
+[2026-03-13 18:58:03,123] INFO in _internal: 127.0.0.1 - - [13/Mar/2026 18:58:03] "GET /api/record-types HTTP/1.1" 200 -
+[2026-03-13 18:59:43,860] INFO in _internal: 127.0.0.1 - - [13/Mar/2026 18:59:43] "GET / HTTP/1.1" 200 -
+[2026-03-13 18:59:55,999] INFO in _internal: 127.0.0.1 - - [13/Mar/2026 18:59:55] "POST /api/check-dns HTTP/1.1" 200 -
+[2026-03-13 19:00:19,780] INFO in _internal: 127.0.0.1 - - [13/Mar/2026 19:00:19] "POST /api/check-dns HTTP/1.1" 200 -
+[2026-03-13 19:07:24,869] INFO in _internal: 127.0.0.1 - - [13/Mar/2026 19:07:24] "POST /api/check-dns HTTP/1.1" 200 -
+[2026-03-13 19:07:31,266] INFO in _internal: 127.0.0.1 - - [13/Mar/2026 19:07:31] "POST /api/check-dns HTTP/1.1" 200 -
+[2026-03-13 19:18:14,361] INFO in _internal: 127.0.0.1 - - [13/Mar/2026 19:18:14] "POST /api/check-dns HTTP/1.1" 200 -
+[2026-03-13 19:29:28,972] INFO in _internal: 127.0.0.1 - - [13/Mar/2026 19:29:28] "POST /api/check-dns HTTP/1.1" 200 -
+[2026-03-13 19:49:26,506] INFO in _internal: 127.0.0.1 - - [13/Mar/2026 19:49:26] "POST /api/check-dns HTTP/1.1" 200 -
+[2026-03-13 19:49:31,138] INFO in _internal: 127.0.0.1 - - [13/Mar/2026 19:49:31] "POST /api/check-dns HTTP/1.1" 200 -
+[2026-03-13 19:51:01,115] INFO in _internal: 127.0.0.1 - - [13/Mar/2026 19:51:01] "POST /api/check-dns HTTP/1.1" 200 -
+[2026-03-13 20:00:19,262] DEBUG in connectionpool: Starting new HTTP connection (1): ip-api.com:80
+[2026-03-13 20:00:20,559] DEBUG in connectionpool: http://ip-api.com:80 "GET /json/119.73.102.74?fields=status,country,regionName,city,isp,org,as,reverse HTTP/1.1" 200 243
+[2026-03-13 20:00:20,561] INFO in _internal: 127.0.0.1 - - [13/Mar/2026 20:00:20] "POST /api/check-host HTTP/1.1" 200 -
+[2026-03-13 20:25:30,581] INFO in _internal: 127.0.0.1 - - [13/Mar/2026 20:25:30] "POST /api/check-dns HTTP/1.1" 200 -
+[2026-03-13 20:25:55,528] INFO in _internal: 127.0.0.1 - - [13/Mar/2026 20:25:55] "POST /api/check-dns HTTP/1.1" 200 -
+[2026-03-13 20:28:02,498] INFO in _internal: 127.0.0.1 - - [13/Mar/2026 20:28:02] "POST /api/check-dns HTTP/1.1" 200 -
+[2026-03-13 20:28:09,438] INFO in _internal: 127.0.0.1 - - [13/Mar/2026 20:28:09] "POST /api/check-dns HTTP/1.1" 200 -
+[2026-03-13 20:28:15,646] INFO in _internal: 127.0.0.1 - - [13/Mar/2026 20:28:15] "POST /api/check-dns HTTP/1.1" 200 -
+[2026-03-13 20:28:23,847] INFO in _internal: 127.0.0.1 - - [13/Mar/2026 20:28:23] "POST /api/check-dns HTTP/1.1" 200 -
+[2026-03-13 20:28:29,787] INFO in _internal: 127.0.0.1 - - [13/Mar/2026 20:28:29] "POST /api/check-dns HTTP/1.1" 200 -
+[2026-03-13 20:28:43,325] INFO in _internal: 127.0.0.1 - - [13/Mar/2026 20:28:43] "POST /api/check-dns HTTP/1.1" 200 -
+[2026-03-13 20:28:48,396] INFO in _internal: 127.0.0.1 - - [13/Mar/2026 20:28:48] "POST /api/check-dns HTTP/1.1" 200 -
+[2026-03-13 20:30:08,332] INFO in _internal: 127.0.0.1 - - [13/Mar/2026 20:30:08] "POST /api/check-dns HTTP/1.1" 200 -
+[2026-03-13 20:30:13,972] INFO in _internal: 127.0.0.1 - - [13/Mar/2026 20:30:13] "POST /api/check-dns HTTP/1.1" 200 -
+[2026-03-13 20:30:22,538] INFO in _internal: 127.0.0.1 - - [13/Mar/2026 20:30:22] "POST /api/check-dns HTTP/1.1" 200 -
+[2026-03-13 20:30:29,060] INFO in _internal: 127.0.0.1 - - [13/Mar/2026 20:30:29] "POST /api/check-dns HTTP/1.1" 200 -
+[2026-03-13 20:52:55,221] INFO in _internal: 127.0.0.1 - - [13/Mar/2026 20:52:55] "POST /api/check-dns HTTP/1.1" 200 -
+[2026-03-13 20:52:56,217] INFO in _internal: 127.0.0.1 - - [13/Mar/2026 20:52:56] "POST /api/check-dns HTTP/1.1" 200 -
+[2026-03-13 22:45:12,683] INFO in _internal: 127.0.0.1 - - [13/Mar/2026 22:45:12] "POST /api/check-dns HTTP/1.1" 200 -
+[2026-03-13 22:57:00,667] INFO in _internal: 127.0.0.1 - - [13/Mar/2026 22:57:00] "POST /api/check-dns HTTP/1.1" 200 -
+[2026-03-13 23:12:35,820] INFO in _internal: 127.0.0.1 - - [13/Mar/2026 23:12:35] "POST /api/check-dns HTTP/1.1" 200 -
+[2026-03-13 23:42:52,281] INFO in _internal: 127.0.0.1 - - [13/Mar/2026 23:42:52] "POST /api/check-dns HTTP/1.1" 200 -
+[2026-03-13 23:42:57,222] INFO in _internal: 127.0.0.1 - - [13/Mar/2026 23:42:57] "POST /api/check-dns HTTP/1.1" 200 -
+[2026-03-13 23:47:38,222] INFO in _internal: 127.0.0.1 - - [13/Mar/2026 23:47:38] "POST /api/check-dns HTTP/1.1" 200 -
+[2026-03-13 23:47:40,680] INFO in _internal: 127.0.0.1 - - [13/Mar/2026 23:47:40] "POST /api/check-dns HTTP/1.1" 200 -

@@ -1,0 +1,2362 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Network Tools</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%23000'/><rect x='2' y='2' width='13' height='13' fill='%23fff'/><rect x='17' y='2' width='13' height='13' fill='%23000' stroke='%23fff' stroke-width='2'/><rect x='2' y='17' width='13' height='13' fill='%23000' stroke='%23fff' stroke-width='2'/><rect x='17' y='17' width='13' height='13' fill='%23fff'/></svg>">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f7fa;
+            color: #1e293b;
+            min-height: 100vh;
+        }
+        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+        
+        /* Tab Navigation */
+        .tab-nav {
+            display: flex;
+            background: #ffffff;
+            border-radius: 12px 12px 0 0;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .tab-btn {
+            flex: 1;
+            padding: 18px 24px;
+            border: none;
+            background: #f1f5f9;
+            color: #64748b;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+        .tab-btn:hover { background: #e2e8f0; }
+        .tab-btn.active {
+            background: #0ea5e9;
+            color: white;
+        }
+        .tab-btn .icon { font-size: 1.2rem; }
+        
+        .tab-content {
+            display: none;
+            background: #ffffff;
+            border-radius: 0 0 12px 12px;
+            padding: 24px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .tab-content.active { display: block; }
+        
+        /* DNS Checker Styles */
+        .dns-header { text-align: center; padding: 20px 0 30px; }
+        .dns-header h2 { font-size: 1.8rem; color: #0ea5e9; margin-bottom: 8px; }
+        .dns-header p { color: #64748b; }
+        
+        .search-box {
+            background: #f8fafc;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .search-row { display: flex; gap: 12px; margin-bottom: 16px; }
+        .search-input {
+            flex: 1;
+            padding: 14px 18px;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            background: #fff;
+            color: #1e293b;
+            font-size: 1rem;
+            transition: border-color 0.2s;
+        }
+        .search-input:focus { outline: none; border-color: #0ea5e9; }
+        .search-input::placeholder { color: #94a3b8; }
+        
+        .btn {
+            padding: 14px 24px;
+            border: none;
+            border-radius: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 0.95rem;
+            transition: all 0.2s;
+        }
+        .btn-primary { background: #0ea5e9; color: white; }
+        .btn-primary:hover { background: #0284c7; }
+        .btn-secondary { background: #f1f5f9; color: #64748b; border: 2px solid #e2e8f0; }
+        .btn-secondary:hover { background: #e2e8f0; }
+        .btn-success { background: #10b981; color: white; }
+        .btn-success:hover { background: #059669; }
+        .btn-info { background: #06b6d4; color: white; }
+        .btn-info:hover { background: #0891b2; }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        
+        .record-types { display: flex; flex-wrap: wrap; gap: 10px; }
+        .record-types label {
+            display: flex; align-items: center; gap: 8px;
+            padding: 10px 16px; background: #fff; border-radius: 8px;
+            cursor: pointer; font-size: 0.9rem; font-weight: 500;
+            color: #475569; border: 2px solid #e2e8f0; transition: all 0.2s;
+        }
+        .record-types label:hover { border-color: #0ea5e9; }
+        .record-types label:has(input:checked) { background: #e0f2fe; border-color: #0ea5e9; color: #0ea5e9; }
+        
+        .summary-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 20px; }
+        .summary-card {
+            background: #f8fafc;
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+        }
+        .summary-card .label { font-size: 0.8rem; color: #64748b; text-transform: uppercase; margin-bottom: 8px; }
+        .summary-card .value { font-size: 1.4rem; font-weight: 700; color: #1e293b; }
+        .summary-card.success .value { color: #10b981; }
+        .summary-card.warning .value { color: #f59e0b; }
+        .summary-card.error .value { color: #ef4444; }
+        .summary-card.info .value { color: #0ea5e9; }
+        
+        .dns-results { background: #f8fafc; border-radius: 12px; padding: 20px; margin-bottom: 20px; }
+        .section-title { font-size: 1.1rem; color: #1e293b; margin-bottom: 16px; font-weight: 600; }
+        
+        .record-block { margin-bottom: 16px; }
+        .record-header {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 12px 16px; background: #fff; border-radius: 8px 8px 0 0;
+            border: 1px solid #e2e8f0; border-bottom: none;
+        }
+        .record-header .type { font-weight: 700; color: #0ea5e9; }
+        .record-header .rate { font-size: 0.8rem; padding: 4px 12px; border-radius: 20px; font-weight: 600; }
+        .rate.full { background: #dcfce7; color: #16a34a; }
+        .rate.partial { background: #fef3c7; color: #d97706; }
+        .rate.none { background: #fee2e2; color: #dc2626; }
+        
+        .record-body { background: #fff; border-radius: 0 0 8px 8px; border: 1px solid #e2e8f0; }
+        .record-col-header {
+            display: grid; grid-template-columns: 130px 120px 1fr;
+            padding: 6px 16px; border-bottom: 2px solid #e2e8f0;
+            font-size: 0.72rem; font-weight: 700; color: #94a3b8;
+            text-transform: uppercase; letter-spacing: 0.6px;
+            background: #f8fafc; border-radius: 0;
+        }
+        .server-row {
+            display: grid; grid-template-columns: 130px 120px 1fr;
+            padding: 12px 16px; border-bottom: 1px solid #f1f5f9;
+            font-size: 0.9rem; align-items: center;
+        }
+        .server-row:last-child { border-bottom: none; }
+        .server-name { font-weight: 600; color: #1e293b; }
+        .server-ip { color: #64748b; font-family: monospace; font-size: 0.85rem; }
+        .server-records { display: flex; flex-wrap: wrap; gap: 6px; }
+        .record-value { background: #dcfce7; color: #16a34a; padding: 4px 10px; border-radius: 6px; font-family: monospace; font-size: 0.8rem; }
+        .no-record { background: #fee2e2; color: #dc2626; padding: 4px 10px; border-radius: 6px; font-size: 0.8rem; }
+        
+        .dnssec-card { background: #f8fafc; border-radius: 12px; padding: 20px; }
+        .dnssec-status { display: flex; align-items: center; gap: 16px; padding: 16px; border-radius: 10px; }
+        .dnssec-status.enabled { background: #dcfce7; }
+        .dnssec-status.disabled { background: #fee2e2; }
+        .dnssec-icon { width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.4rem; }
+        .dnssec-status.enabled .dnssec-icon { background: #bbf7d0; }
+        .dnssec-status.disabled .dnssec-icon { background: #fecaca; }
+        .dnssec-text .title { font-weight: 600; font-size: 1rem; }
+        .dnssec-status.enabled .title { color: #16a34a; }
+        .dnssec-status.disabled .title { color: #dc2626; }
+        .dnssec-text .desc { font-size: 0.85rem; color: #64748b; margin-top: 4px; }
+        .dnssec-details { margin-top: 16px; }
+        .dnssec-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #e2e8f0; font-size: 0.9rem; }
+        .dnssec-row:last-child { border-bottom: none; }
+        .dnssec-row .label { color: #64748b; }
+        .dnssec-row .value { font-weight: 500; }
+        .dnssec-row .value.success { color: #16a34a; }
+        .dnssec-row .value.error { color: #dc2626; }
+        
+        .loading { display: none; text-align: center; padding: 60px 20px; }
+        .loading.show { display: block; }
+        .spinner { width: 50px; height: 50px; border: 4px solid #e2e8f0; border-top-color: #0ea5e9; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 20px; }
+        .loading p { color: #64748b; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .results-container { display: none; }
+        .results-container.show { display: block; }
+        
+        /* SSL Tool Styles */
+        .ssl-header { text-align: center; padding: 20px 0 30px; }
+        .ssl-header h2 { font-size: 1.8rem; color: #8b5cf6; margin-bottom: 8px; }
+        .ssl-header p { color: #64748b; }
+        
+        .upload-area {
+            border: 2px dashed #8b5cf6;
+            border-radius: 12px;
+            padding: 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-bottom: 20px;
+            background: #faf5ff;
+        }
+        .upload-area:hover { border-color: #7c3aed; background: #f3e8ff; }
+        .upload-area.dragover { border-color: #7c3aed; background: #ede9fe; }
+        .upload-icon { font-size: 48px; margin-bottom: 10px; }
+        
+        .ssl-result-area { display: none; }
+        .ssl-result-area.show { display: block; }
+        
+        .result-box {
+            background: #f8fafc;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 16px;
+        }
+        .result-box h3 {
+            color: #1e293b;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .result-box textarea {
+            width: 100%;
+            min-height: 150px;
+            padding: 12px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 12px;
+            resize: vertical;
+            background: #fff;
+        }
+        
+        .btn-group { display: flex; gap: 8px; flex-wrap: wrap; }
+        
+        .message { margin-bottom: 16px; }
+        .message-error { background: #fee2e2; border-left: 4px solid #dc2626; color: #991b1b; padding: 12px 16px; border-radius: 8px; }
+        .message-success { background: #dcfce7; border-left: 4px solid #16a34a; color: #166534; padding: 12px 16px; border-radius: 8px; }
+        .message-info { background: #e0f2fe; border-left: 4px solid #0ea5e9; color: #0c4a6e; padding: 12px 16px; border-radius: 8px; }
+        
+        /* SSL Check Styles */
+        .sslcheck-header { text-align: center; padding: 20px 0 30px; }
+        .sslcheck-header h2 { font-size: 1.8rem; color: #10b981; margin-bottom: 8px; }
+        .sslcheck-header p { color: #64748b; }
+        
+        .ssl-info-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-bottom: 20px; }
+        .ssl-info-card { background: #f8fafc; border-radius: 12px; padding: 20px; }
+        .ssl-info-card.full { grid-column: 1 / -1; }
+        .ssl-info-card .card-title { font-size: 0.8rem; color: #64748b; text-transform: uppercase; margin-bottom: 8px; letter-spacing: 0.5px; }
+        .ssl-info-card .card-value { font-size: 1.1rem; font-weight: 600; color: #1e293b; word-break: break-all; }
+        .ssl-info-card .card-value.large { font-size: 1.8rem; }
+        .ssl-info-card .card-value.success { color: #10b981; }
+        .ssl-info-card .card-value.warning { color: #f59e0b; }
+        .ssl-info-card .card-value.error { color: #ef4444; }
+        .ssl-info-card .card-sub { font-size: 0.85rem; color: #64748b; margin-top: 4px; }
+        
+        .ssl-status-badge { display: inline-flex; align-items: center; gap: 8px; padding: 8px 16px; border-radius: 20px; font-weight: 600; font-size: 0.9rem; }
+        .ssl-status-badge.valid { background: #dcfce7; color: #16a34a; }
+        .ssl-status-badge.invalid { background: #fee2e2; color: #dc2626; }
+        
+        .san-list { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+        .san-item { background: #e0f2fe; color: #0369a1; padding: 4px 10px; border-radius: 6px; font-size: 0.85rem; font-family: monospace; }
+        
+        /* Host Check Styles */
+        .hostcheck-header { text-align: center; padding: 20px 0 30px; }
+        .hostcheck-header h2 { font-size: 1.8rem; color: #f59e0b; margin-bottom: 8px; }
+        .hostcheck-header p { color: #64748b; }
+        
+        .host-info-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-bottom: 20px; }
+        .host-info-card { background: #f8fafc; border-radius: 12px; padding: 20px; }
+        .host-info-card.full { grid-column: 1 / -1; }
+        .host-info-card .card-title { font-size: 0.8rem; color: #64748b; text-transform: uppercase; margin-bottom: 8px; letter-spacing: 0.5px; }
+        .host-info-card .card-value { font-size: 1.1rem; font-weight: 600; color: #1e293b; word-break: break-all; }
+        .host-info-card .card-value.highlight { color: #f59e0b; }
+        .host-info-card .card-value.mono { font-family: monospace; font-size: 1rem; }
+        .host-info-card .card-sub { font-size: 0.85rem; color: #64748b; margin-top: 4px; }
+        
+        .location-badge { display: inline-flex; align-items: center; gap: 6px; background: #fef3c7; color: #92400e; padding: 6px 12px; border-radius: 6px; font-size: 0.9rem; }
+        
+        /* SSL Decoder Styles */
+        .ssldecoder-header { text-align: center; padding: 20px 0 30px; }
+        .ssldecoder-header h2 { font-size: 1.8rem; color: #ec4899; margin-bottom: 8px; }
+        .ssldecoder-header p { color: #64748b; }
+        
+        .decoder-section { background: #f8fafc; border-radius: 12px; padding: 20px; margin-bottom: 20px; }
+        .decoder-section h3 { color: #1e293b; margin-bottom: 16px; display: flex; align-items: center; gap: 10px; font-size: 1.1rem; }
+        .decoder-section h3 .badge { font-size: 0.75rem; padding: 4px 10px; border-radius: 20px; font-weight: 600; }
+        .decoder-section h3 .badge-match { background: #fce7f3; color: #be185d; }
+        .decoder-section h3 .badge-decode { background: #e0e7ff; color: #4338ca; }
+        
+        .decoder-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+        .decoder-col { }
+        .decoder-col label { display: block; font-weight: 600; color: #475569; margin-bottom: 8px; font-size: 0.9rem; }
+        .decoder-col textarea { width: 100%; min-height: 150px; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px; font-family: monospace; font-size: 12px; resize: vertical; background: #fff; }
+        .decoder-col textarea:focus { outline: none; border-color: #ec4899; }
+        
+        .match-result { padding: 16px; border-radius: 10px; text-align: center; font-weight: 600; font-size: 1.1rem; margin-top: 16px; }
+        .match-result.match { background: #dcfce7; color: #16a34a; border: 2px solid #86efac; }
+        .match-result.no-match { background: #fee2e2; color: #dc2626; border: 2px solid #fca5a5; }
+        .match-result.pending { background: #f1f5f9; color: #64748b; border: 2px dashed #cbd5e1; }
+        
+        .decode-result { margin-top: 16px; }
+        .decode-info-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+        .decode-info-item { background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; }
+        .decode-info-item.full { grid-column: 1 / -1; }
+        .decode-info-item .label { font-size: 0.75rem; color: #64748b; text-transform: uppercase; margin-bottom: 4px; }
+        .decode-info-item .value { font-weight: 600; color: #1e293b; word-break: break-all; font-size: 0.9rem; }
+        .decode-info-item .value.mono { font-family: monospace; font-size: 0.8rem; }
+        .decode-info-item .value.success { color: #16a34a; }
+        .decode-info-item .value.warning { color: #f59e0b; }
+        .decode-info-item .value.error { color: #ef4444; }
+        
+        @media (max-width: 768px) {
+            .decoder-row { grid-template-columns: 1fr; }
+            .decode-info-grid { grid-template-columns: 1fr; }
+        }
+        
+        @media (max-width: 768px) {
+            .ssl-info-grid { grid-template-columns: 1fr; }
+            .host-info-grid { grid-template-columns: 1fr; }
+            .summary-grid { grid-template-columns: 1fr; }
+            .search-row { flex-direction: column; }
+            .server-row { grid-template-columns: 1fr; gap: 8px; }
+            .tab-btn { padding: 14px 16px; font-size: 0.9rem; }
+        }
+
+        /* ========== Free SSL Tab Styles ========== */
+        .freessl-header { text-align: center; padding: 20px 0 30px; }
+        .freessl-header h2 { font-size: 1.8rem; color: #22c55e; margin-bottom: 8px; }
+        .freessl-header p { color: #64748b; }
+
+        .freessl-steps {
+            display: flex;
+            gap: 0;
+            margin-bottom: 28px;
+            background: #f8fafc;
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid #e2e8f0;
+        }
+        .freessl-step {
+            flex: 1;
+            padding: 12px 8px;
+            text-align: center;
+            font-size: 0.78rem;
+            font-weight: 600;
+            color: #94a3b8;
+            border-right: 1px solid #e2e8f0;
+            transition: all 0.3s;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+        }
+        .freessl-step:last-child { border-right: none; }
+        .freessl-step .step-num {
+            width: 28px; height: 28px; border-radius: 50%;
+            background: #e2e8f0; color: #94a3b8;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 0.85rem; font-weight: 700;
+        }
+        .freessl-step.active { background: #f0fdf4; color: #16a34a; }
+        .freessl-step.active .step-num { background: #22c55e; color: white; }
+        .freessl-step.done { background: #f0fdf4; color: #16a34a; opacity: 0.7; }
+        .freessl-step.done .step-num { background: #86efac; color: #16a34a; }
+
+        .freessl-card {
+            background: #f8fafc;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .freessl-card h3 {
+            font-size: 1rem;
+            color: #1e293b;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .freessl-input-row { display: flex; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
+        .freessl-input {
+            flex: 1;
+            min-width: 200px;
+            padding: 12px 16px;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            background: #fff;
+            color: #1e293b;
+            font-size: 0.95rem;
+            transition: border-color 0.2s;
+        }
+        .freessl-input:focus { outline: none; border-color: #22c55e; }
+        .freessl-input::placeholder { color: #94a3b8; }
+
+        .btn-green { background: #22c55e; color: white; }
+        .btn-green:hover { background: #16a34a; }
+        .btn-orange { background: #f97316; color: white; }
+        .btn-orange:hover { background: #ea580c; }
+
+        .challenge-type-row { display: flex; gap: 12px; margin-bottom: 16px; }
+        .challenge-type-btn {
+            flex: 1; padding: 12px; border: 2px solid #e2e8f0;
+            border-radius: 10px; background: #fff; cursor: pointer;
+            text-align: center; font-weight: 600; color: #64748b;
+            transition: all 0.2s; font-size: 0.9rem;
+        }
+        .challenge-type-btn:hover { border-color: #22c55e; }
+        .challenge-type-btn.selected { border-color: #22c55e; background: #f0fdf4; color: #16a34a; }
+
+        .challenge-info-box {
+            background: #fff;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 16px;
+        }
+        .challenge-info-header {
+            background: #f1f5f9;
+            padding: 10px 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: 600;
+            font-size: 0.9rem;
+            color: #475569;
+        }
+        .challenge-info-body { padding: 14px 16px; }
+        .challenge-field { margin-bottom: 12px; }
+        .challenge-field:last-child { margin-bottom: 0; }
+        .challenge-field label {
+            display: block;
+            font-size: 0.78rem;
+            color: #64748b;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+        }
+        .challenge-value {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            padding: 8px 12px;
+            font-family: monospace;
+            font-size: 0.85rem;
+            word-break: break-all;
+            color: #1e293b;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 8px;
+        }
+        .challenge-value span { flex: 1; }
+        .copy-btn-small {
+            flex-shrink: 0;
+            padding: 3px 10px;
+            border: 1px solid #e2e8f0;
+            border-radius: 5px;
+            background: #fff;
+            font-size: 0.75rem;
+            cursor: pointer;
+            color: #64748b;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+        .copy-btn-small:hover { background: #e0f2fe; border-color: #0ea5e9; color: #0ea5e9; }
+
+        .check-result-row {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            padding: 10px 14px;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            font-size: 0.9rem;
+        }
+        .check-result-row.ok { background: #dcfce7; color: #166534; }
+        .check-result-row.fail { background: #fee2e2; color: #991b1b; }
+        .check-result-row.pending { background: #f1f5f9; color: #475569; }
+
+        .freessl-result-area { display: none; }
+        .freessl-result-area.show { display: block; }
+        .freessl-cert-box {
+            background: #fff;
+            border: 2px solid #22c55e;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 16px;
+        }
+        .freessl-cert-box h4 {
+            color: #16a34a;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .freessl-cert-box textarea {
+            width: 100%;
+            min-height: 130px;
+            padding: 10px 12px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 12px;
+            resize: vertical;
+            background: #f8fafc;
+        }
+
+        .staging-badge {
+            display: inline-flex; align-items: center; gap: 6px;
+            background: #fef3c7; color: #92400e;
+            padding: 4px 10px; border-radius: 20px;
+            font-size: 0.75rem; font-weight: 600;
+        }
+        .freessl-loading { display: none; text-align: center; padding: 30px 20px; }
+        .freessl-loading.show { display: block; }
+        .freessl-loading .spinner { width: 44px; height: 44px; border: 4px solid #e2e8f0; border-top-color: #22c55e; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 14px; }
+
+        .sans-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+        .sans-tag {
+            background: #dcfce7; color: #166534;
+            padding: 3px 10px; border-radius: 20px; font-size: 0.82rem;
+            display: flex; align-items: center; gap: 5px;
+        }
+        .sans-tag button { background: none; border: none; color: #dc2626; cursor: pointer; font-size: 0.9rem; padding: 0; line-height: 1; }
+
+        .freessl-storage-toolbar { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+        .freessl-storage-list { display: grid; gap: 12px; }
+        .freessl-storage-empty {
+            padding: 18px; border: 1px dashed #cbd5e1; border-radius: 10px;
+            color: #64748b; text-align: center; background: #fff;
+        }
+        .freessl-storage-item {
+            background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px;
+            display: flex; justify-content: space-between; gap: 14px; flex-wrap: wrap; align-items: flex-start;
+        }
+        .freessl-storage-domain { font-size: 1rem; font-weight: 700; color: #0f172a; }
+        .freessl-storage-meta { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+        .freessl-storage-badge {
+            background: #f1f5f9; color: #475569; border-radius: 20px; padding: 4px 10px; font-size: 0.78rem; font-weight: 600;
+        }
+        .freessl-storage-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+        .btn-danger { background: #ef4444; color: white; }
+        .btn-danger:hover { background: #dc2626; }
+
+        .freessl-toolbar-row { display:flex; justify-content:flex-end; margin-bottom:14px; }
+        .freessl-hamburger-btn {
+            background:#0f172a; color:#fff; border:none; border-radius:10px;
+            padding:10px 14px; font-size:0.9rem; font-weight:700; cursor:pointer;
+            display:inline-flex; align-items:center; gap:8px;
+        }
+        .freessl-hamburger-btn:hover { background:#1e293b; }
+
+        .freessl-storage-sidebar {
+            position: fixed;
+            top: 0;
+            left: -460px;
+            width: min(440px, 92vw);
+            height: 100vh;
+            background: #f8fafc;
+            border-right: 1px solid #e2e8f0;
+            box-shadow: 6px 0 24px rgba(15, 23, 42, 0.18);
+            z-index: 9999;
+            transition: left 0.25s ease;
+            display: flex;
+            flex-direction: column;
+        }
+        .freessl-storage-sidebar.show { left: 0; }
+        .freessl-storage-sidebar-header {
+            padding: 16px;
+            border-bottom: 1px solid #e2e8f0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #fff;
+        }
+        .freessl-storage-sidebar-header h3 { margin: 0; font-size: 1rem; color: #0f172a; }
+        .freessl-storage-sidebar-body {
+            padding: 16px;
+            overflow: auto;
+            flex: 1;
+        }
+        .freessl-storage-backdrop {
+            position: fixed;
+            inset: 0;
+            background: rgba(2, 6, 23, 0.35);
+            z-index: 9998;
+            display: none;
+        }
+        .freessl-storage-backdrop.show { display: block; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Tab Navigation -->
+        <div class="tab-nav">
+            <button class="tab-btn active" onclick="switchTab('dns')">
+                <span class="icon">🔍</span> DNS
+            </button>
+            <button class="tab-btn" onclick="switchTab('sslcheck')">
+                <span class="icon">🛡️</span> SSL Check
+            </button>
+            <button class="tab-btn" onclick="switchTab('hostcheck')">
+                <span class="icon">🖥️</span> Host Check
+            </button>
+            <button class="tab-btn" onclick="switchTab('ssl')">
+                <span class="icon">🔒</span> SSL Bundle
+            </button>
+            <button class="tab-btn" onclick="switchTab('ssldecoder')">
+                <span class="icon">🔐</span> SSL Decoder
+            </button>
+            <button class="tab-btn" onclick="switchTab('freessl')">
+                <span class="icon">🎁</span> SSL Miễn Phí
+            </button>
+        </div>
+        
+        <!-- DNS Checker Tab -->
+        <div id="tab-dns" class="tab-content active">
+            <div class="dns-header">
+                <h2>🔍 DNS Checker</h2>
+                <p>Kiểm tra DNS Records & DNSSEC cho mọi tên miền</p>
+            </div>
+
+            <div class="search-box">
+                <div class="search-row">
+                    <input type="text" class="search-input" id="domainInput" 
+                           placeholder="Nhập tên miền (vd: google.com)" 
+                           onkeypress="if(event.key==='Enter')checkDNS()">
+                    <button class="btn btn-primary" onclick="checkDNS()">🔍 Kiểm tra</button>
+                    <button class="btn btn-secondary" onclick="clearCache()">🗑️ Clear</button>
+                </div>
+                <div class="record-types" id="recordTypes">
+                    <label><input type="checkbox" value="A" checked><span>A</span></label>
+                    <label><input type="checkbox" value="AAAA"><span>AAAA</span></label>
+                    <label><input type="checkbox" value="MX"><span>MX</span></label>
+                    <label><input type="checkbox" value="NS"><span>NS</span></label>
+                    <label><input type="checkbox" value="TXT"><span>TXT</span></label>
+                    <label><input type="checkbox" value="CNAME"><span>CNAME</span></label>
+                    <label><input type="checkbox" value="SOA"><span>SOA</span></label>
+                    <label><input type="checkbox" value="CAA"><span>CAA</span></label>
+                </div>
+            </div>
+
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <p>Đang kiểm tra DNS...</p>
+            </div>
+
+            <div class="results-container" id="results">
+                <div class="summary-grid">
+                    <div class="summary-card info">
+                        <div class="label">Domain</div>
+                        <div class="value" id="summaryDomain">-</div>
+                    </div>
+                    <div class="summary-card" id="cardPropagation">
+                        <div class="label">Propagation</div>
+                        <div class="value" id="summaryPropagation">-</div>
+                    </div>
+                    <div class="summary-card" id="cardDNSSEC">
+                        <div class="label">DNSSEC</div>
+                        <div class="value" id="summaryDNSSEC">-</div>
+                    </div>
+                </div>
+
+                <div class="dns-results">
+                    <div class="section-title">📋 DNS Records</div>
+                    <div id="dnsRecords"></div>
+                </div>
+
+                <div class="dnssec-card">
+                    <div class="section-title">🔐 DNSSEC Status</div>
+                    <div id="dnssecContent"></div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- SSL Check Tab -->
+        <div id="tab-sslcheck" class="tab-content">
+            <div class="sslcheck-header">
+                <h2>🛡️ SSL Certificate Check</h2>
+                <p>Kiểm tra thông tin chứng chỉ SSL của domain</p>
+            </div>
+
+            <div class="search-box">
+                <div class="search-row">
+                    <input type="text" class="search-input" id="sslDomainInput" 
+                           placeholder="Nhập tên miền (vd: google.com)" 
+                           onkeypress="if(event.key==='Enter')checkSSL()">
+                    <button class="btn btn-primary" style="background: #10b981;" onclick="checkSSL()">🛡️ Kiểm tra SSL</button>
+                </div>
+            </div>
+
+            <div class="loading" id="sslLoading">
+                <div class="spinner" style="border-top-color: #10b981;"></div>
+                <p>Đang kiểm tra SSL...</p>
+            </div>
+
+            <div id="sslCheckMessage" class="message"></div>
+
+            <div class="results-container" id="sslCheckResults">
+                <div class="ssl-info-grid">
+                    <div class="ssl-info-card">
+                        <div class="card-title">Trạng thái</div>
+                        <div id="sslStatus"></div>
+                    </div>
+                    <div class="ssl-info-card">
+                        <div class="card-title">Còn lại</div>
+                        <div class="card-value large" id="sslDaysRemaining">-</div>
+                        <div class="card-sub">ngày</div>
+                    </div>
+                    <div class="ssl-info-card">
+                        <div class="card-title">Ngày bắt đầu</div>
+                        <div class="card-value" id="sslValidFrom">-</div>
+                    </div>
+                    <div class="ssl-info-card">
+                        <div class="card-title">Ngày hết hạn</div>
+                        <div class="card-value" id="sslValidTo">-</div>
+                    </div>
+                    <div class="ssl-info-card full">
+                        <div class="card-title">Nhà cung cấp SSL (Issuer)</div>
+                        <div class="card-value" id="sslIssuer">-</div>
+                        <div class="card-sub" id="sslIssuerOrg">-</div>
+                    </div>
+                    <div class="ssl-info-card full">
+                        <div class="card-title">Domain / Subject</div>
+                        <div class="card-value" id="sslSubject">-</div>
+                        <div class="card-sub" id="sslSubjectOrg">-</div>
+                    </div>
+                    <div class="ssl-info-card full">
+                        <div class="card-title">Subject Alternative Names (SAN)</div>
+                        <div id="sslSAN" class="san-list">-</div>
+                    </div>
+                    <div class="ssl-info-card">
+                        <div class="card-title">Serial Number</div>
+                        <div class="card-value" style="font-size: 0.85rem; font-family: monospace;" id="sslSerial">-</div>
+                    </div>
+                    <div class="ssl-info-card">
+                        <div class="card-title">Version</div>
+                        <div class="card-value" id="sslVersion">-</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Host Check Tab -->
+        <div id="tab-hostcheck" class="tab-content">
+            <div class="hostcheck-header">
+                <h2>🖥️ Host Check</h2>
+                <p>Kiểm tra thông tin hosting từ IP hoặc Domain</p>
+            </div>
+
+            <div class="search-box">
+                <div class="search-row">
+                    <input type="text" class="search-input" id="hostInput" 
+                           placeholder="Nhập IP hoặc Domain (vd: 8.8.8.8 hoặc google.com)" 
+                           onkeypress="if(event.key==='Enter')checkHost()">
+                    <button class="btn btn-primary" style="background: #f59e0b;" onclick="checkHost()">🖥️ Kiểm tra</button>
+                </div>
+            </div>
+
+            <div class="loading" id="hostLoading">
+                <div class="spinner" style="border-top-color: #f59e0b;"></div>
+                <p>Đang kiểm tra host...</p>
+            </div>
+
+            <div id="hostCheckMessage" class="message"></div>
+
+            <div class="results-container" id="hostCheckResults">
+                <div class="host-info-grid">
+                    <div class="host-info-card">
+                        <div class="card-title">IP Address</div>
+                        <div class="card-value mono highlight" id="hostIP">-</div>
+                    </div>
+                    <div class="host-info-card">
+                        <div class="card-title">Hostname</div>
+                        <div class="card-value mono" id="hostHostname">-</div>
+                    </div>
+                    <div class="host-info-card full">
+                        <div class="card-title">Nhà cung cấp Hosting (ISP)</div>
+                        <div class="card-value highlight" id="hostProvider">-</div>
+                        <div class="card-sub" id="hostOrg">-</div>
+                    </div>
+                    <div class="host-info-card full">
+                        <div class="card-title">ASN</div>
+                        <div class="card-value mono" id="hostASN">-</div>
+                    </div>
+                    <div class="host-info-card">
+                        <div class="card-title">Reverse DNS</div>
+                        <div class="card-value mono" style="font-size: 0.9rem;" id="hostReverseDNS">-</div>
+                    </div>
+                    <div class="host-info-card">
+                        <div class="card-title">Vị trí</div>
+                        <div id="hostLocation">-</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- SSL Decoder Tab -->
+        <div id="tab-ssldecoder" class="tab-content">
+            <div class="ssldecoder-header">
+                <h2>🔐 SSL Decoder & Matcher</h2>
+                <p>Kiểm tra Cert/Key có khớp & Decode thông tin Certificate, CSR</p>
+            </div>
+            
+            <!-- Cert + Key Match Checker -->
+            <div class="decoder-section">
+                <h3>🔗 Cert & Key Match Checker <span class="badge badge-match">MATCH CHECK</span></h3>
+                <div class="decoder-row">
+                    <div class="decoder-col">
+                        <label>Certificate (PEM)</label>
+                        <textarea id="matchCertInput" placeholder="-----BEGIN CERTIFICATE-----&#10;...&#10;-----END CERTIFICATE-----"></textarea>
+                    </div>
+                    <div class="decoder-col">
+                        <label>Private Key (PEM)</label>
+                        <textarea id="matchKeyInput" placeholder="-----BEGIN PRIVATE KEY-----&#10;or&#10;-----BEGIN RSA PRIVATE KEY-----&#10;...&#10;-----END PRIVATE KEY-----"></textarea>
+                    </div>
+                </div>
+                <button class="btn btn-primary" onclick="checkCertKeyMatch()" style="background: #ec4899;">🔍 Kiểm tra Match</button>
+                <div id="matchResult" class="match-result pending">Nhập Certificate và Private Key để kiểm tra</div>
+            </div>
+            
+            <!-- Certificate Decoder -->
+            <div class="decoder-section">
+                <h3>📜 Certificate Decoder <span class="badge badge-decode">DECODE</span></h3>
+                <div class="decoder-col" style="margin-bottom: 16px;">
+                    <label>Certificate (PEM)</label>
+                    <textarea id="decodeCertInput" placeholder="-----BEGIN CERTIFICATE-----&#10;...&#10;-----END CERTIFICATE-----"></textarea>
+                </div>
+                <button class="btn btn-primary" onclick="decodeCertificate()" style="background: #4338ca;">🔓 Decode Certificate</button>
+                <div id="certDecodeResult" class="decode-result"></div>
+            </div>
+            
+            <!-- CSR Decoder -->
+            <div class="decoder-section">
+                <h3>📝 CSR Decoder <span class="badge badge-decode">DECODE</span></h3>
+                <div class="decoder-col" style="margin-bottom: 16px;">
+                    <label>CSR (Certificate Signing Request)</label>
+                    <textarea id="decodeCSRInput" placeholder="-----BEGIN CERTIFICATE REQUEST-----&#10;...&#10;-----END CERTIFICATE REQUEST-----"></textarea>
+                </div>
+                <button class="btn btn-primary" onclick="decodeCSR()" style="background: #4338ca;">🔓 Decode CSR</button>
+                <div id="csrDecodeResult" class="decode-result"></div>
+            </div>
+        </div>
+        
+        <!-- SSL Bundle Tool Tab -->
+        <div id="tab-ssl" class="tab-content">
+            <div class="ssl-header">
+                <h2>🔒 SSL Certificate Bundle Tool</h2>
+                <p>Công cụ gộp chứng chỉ SSL tự động</p>
+            </div>
+
+            <div class="upload-area" id="uploadArea">
+                <div class="upload-icon">📁</div>
+                <p><strong>Kéo thả file ZIP vào đây</strong></p>
+                <p style="color: #64748b; margin-top: 10px;">hoặc</p>
+                <button class="btn btn-primary" style="margin-top: 10px;" onclick="document.getElementById('fileInput').click()">
+                    Chọn file ZIP
+                </button>
+                <input type="file" id="fileInput" accept=".zip" style="display:none">
+            </div>
+
+            <div id="sslMessage" class="message"></div>
+
+            <div class="ssl-result-area" id="sslResultArea">
+                <div class="result-box">
+                    <h3>
+                        Certificate Bundle
+                        <div class="btn-group">
+                            <button class="btn btn-success" onclick="copyToClipboard('bundleOutput')">📋 Copy</button>
+                            <button class="btn btn-info" onclick="downloadBundle()">⬇️ Download</button>
+                        </div>
+                    </h3>
+                    <textarea id="bundleOutput" readonly></textarea>
+                </div>
+
+                <div class="result-box">
+                    <h3>🔑 Private Key (Optional)</h3>
+                    <p style="color: #64748b; font-size: 0.9rem; margin-bottom: 10px;">Dán private key để tạo PEM và PFX files</p>
+                    <textarea id="privateKeyInput" placeholder="-----BEGIN PRIVATE KEY-----&#10;...&#10;-----END PRIVATE KEY-----"></textarea>
+                    <div style="margin-top: 12px;">
+                        <button class="btn btn-primary" onclick="generatePemAndPfx()" id="generateBtn" disabled>
+                            🔧 Generate PEM, PFX & ZIP Package
+                        </button>
+                    </div>
+                </div>
+
+                <div id="additionalResults"></div>
+            </div>
+        </div>
+
+        <!-- Free SSL Tab -->
+        <div id="tab-freessl" class="tab-content">
+            <div class="freessl-header">
+                <h2>🎁 Nhận SSL Miễn Phí (ACME)</h2>
+                <p>Tự động tạo CSR/Key & xác thực để cấp chứng chỉ SSL 90 ngày</p>
+            </div>
+
+            <div class="freessl-toolbar-row">
+                <button class="freessl-hamburger-btn" onclick="freeSslToggleStorage(true)">☰ Danh sách SSL đã cấp</button>
+            </div>
+
+            <!-- Progress Steps -->
+            <div class="freessl-steps">
+                <div class="freessl-step active" id="step1">
+                    <div class="step-num">1</div>
+                    <span>Nhập Domain</span>
+                </div>
+                <div class="freessl-step" id="step2">
+                    <div class="step-num">2</div>
+                    <span>Xác thực</span>
+                </div>
+                <div class="freessl-step" id="step3">
+                    <div class="step-num">3</div>
+                    <span>Pre-check</span>
+                </div>
+                <div class="freessl-step" id="step4">
+                    <div class="step-num">4</div>
+                    <span>Nhận Cert</span>
+                </div>
+                <div class="freessl-step" id="step5">
+                    <div class="step-num">5</div>
+                    <span>Hoàn tất</span>
+                </div>
+            </div>
+
+            <!-- Step 1: Input -->
+            <div class="freessl-card" id="freesslInputCard">
+                <h3>⚙️ Bước 1: Cấu hình tên miền</h3>
+
+                <div style="margin-bottom:14px;">
+                    <label style="font-size:0.85rem;font-weight:600;color:#475569;display:block;margin-bottom:6px;">
+                        Tên miền <span style="color:#dc2626;">*</span>
+                    </label>
+                    <input type="text" class="freessl-input" id="freesslDomain"
+                           placeholder="vd: example.com hoặc example.com, *.example.com"
+                           oninput="freeSslUpdateSANsPreview()">
+                    <div style="margin-top:6px;font-size:0.82rem;color:#64748b;">
+                        💡 Để cấp SSL cho wildcard, nhập cả hai: <code style="background:#f1f5f9;padding:1px 6px;border-radius:3px;font-size:0.85em;">example.com, *.example.com</code>
+                    </div>
+                </div>
+
+                <div style="margin-bottom: 12px;">
+                    <label style="font-size:0.85rem;font-weight:600;color:#475569;display:block;margin-bottom:6px;">
+                        Tên miền phụ (SANs) — nhấn Enter để thêm
+                    </label>
+                    <div style="display:flex;gap:8px;margin-bottom:6px;">
+                        <input type="text" class="freessl-input" id="freesslSanInput"
+                               placeholder="vd: www.example.com"
+                               onkeydown="if(event.key==='Enter'){freeSslAddSan();event.preventDefault();}">
+                        <button class="btn btn-secondary" onclick="freeSslAddSan()">+ Thêm</button>
+                    </div>
+                    <div class="sans-tags" id="freesslSansTags"></div>
+                </div>
+
+                <div style="margin-bottom:16px;">
+                    <label style="font-size:0.85rem;font-weight:600;color:#475569;display:block;margin-bottom:8px;">
+                        Nhà cung cấp SSL <span style="color:#dc2626;">*</span>
+                    </label>
+                    <div class="challenge-type-row">
+                        <div class="challenge-type-btn selected" id="btnProvLe" onclick="freeSslSelectProvider('letsencrypt')">
+                            🔒 Let's Encrypt
+                            <div style="font-size:0.75rem;font-weight:400;color:#64748b;margin-top:3px;">Miễn phí, phổ biến nhất</div>
+                        </div>
+                        <div class="challenge-type-btn" id="btnProvZero" onclick="freeSslSelectProvider('zerossl')">
+                            🌐 ZeroSSL
+                            <div style="font-size:0.75rem;font-weight:400;color:#64748b;margin-top:3px;">Miễn phí, có dashboard quản lý</div>
+                        </div>
+                        <div class="challenge-type-btn" id="btnProvSslcom" onclick="freeSslSelectProvider('sslcom')">
+                            🛡️ SSL.com
+                            <div style="font-size:0.75rem;font-weight:400;color:#64748b;margin-top:3px;">Yêu cầu EAB</div>
+                        </div>
+                    </div>
+                    <div id="freesslProviderNote" class="message-info" style="margin-top:8px;font-size:0.85rem;">
+                        🔎 <strong>Let's Encrypt:</strong> hỗ trợ wildcard + multi-domain. Nếu chỉ nhập domain gốc, hệ thống tự thêm <strong>www</strong>.
+                    </div>
+                </div>
+
+                <div style="margin-bottom:16px;">
+                    <label style="font-size:0.85rem;font-weight:600;color:#475569;display:block;margin-bottom:8px;">
+                        Phương thức xác thực
+                    </label>
+                    <div class="challenge-type-row">
+                        <div class="challenge-type-btn selected" id="btnDns01" onclick="freeSslSelectChallenge('dns-01')">
+                            🌐 DNS-01
+                            <div style="font-size:0.75rem;font-weight:400;color:#64748b;margin-top:3px;">Thêm TXT record vào DNS</div>
+                        </div>
+                        <div class="challenge-type-btn" id="btnHttp01" onclick="freeSslSelectChallenge('http-01')">
+                            📁 HTTP-01 (File-based)
+                            <div style="font-size:0.75rem;font-weight:400;color:#64748b;margin-top:3px;">Upload file lên webserver</div>
+                        </div>
+                    </div>
+                </div>
+
+
+                <button class="btn btn-green" id="freesslStartBtn" onclick="freeSslStart()">
+                    🚀 Bắt đầu — Tạo CSR & Gửi Order
+                </button>
+            </div>
+
+            <!-- Loading -->
+            <div class="freessl-loading" id="freesslLoading">
+                <div class="spinner"></div>
+                <p id="freesslLoadingText">Đang xử lý...</p>
+            </div>
+
+            <!-- Message -->
+            <div id="freesslMessage" class="message"></div>
+
+            <div id="freesslStorageBackdrop" class="freessl-storage-backdrop" onclick="freeSslToggleStorage(false)"></div>
+            <aside id="freesslStorageSidebar" class="freessl-storage-sidebar" aria-label="Danh sách SSL đã cấp">
+                <div class="freessl-storage-sidebar-header">
+                    <h3>🗂️ Danh sách SSL đã cấp</h3>
+                    <button class="btn btn-secondary" style="padding:6px 10px;" onclick="freeSslToggleStorage(false)">✕</button>
+                </div>
+                <div class="freessl-storage-sidebar-body">
+                    <div class="freessl-storage-toolbar">
+                        <input type="text" class="freessl-input" id="freesslStoredSearch" placeholder="Tìm domain đã lưu..." onkeydown="if(event.key==='Enter'){freeSslLoadStoredList();}">
+                        <button class="btn btn-secondary" onclick="freeSslLoadStoredList()">🔄 Tải danh sách</button>
+                    </div>
+                    <div id="freesslStoredList" class="freessl-storage-list">
+                        <div class="freessl-storage-empty">Chưa có SSL nào được lưu.</div>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- Step 2: Show Challenges -->
+            <div class="freessl-card" id="freesslChallengeCard" style="display:none;">
+                <h3>📋 Bước 2: Thực hiện xác thực</h3>
+                <div class="message-info" style="margin-bottom:16px;">
+                    ⚠️ Vui lòng thực hiện cấu hình bên dưới trước khi nhấn <strong>Check</strong>.
+                    Hệ thống sẽ kiểm tra trước khi gửi yêu cầu xác thực đến nhà cung cấp ACME.
+                </div>
+                <div id="freesslChallengeList"></div>
+
+                <!-- Step 3: Pre-check -->
+                <div style="margin-top: 16px; display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+                    <button class="btn btn-primary" style="background:#0ea5e9;" onclick="freeSslCheck()">
+                        🔎 Bước 3: Kiểm tra xác thực (Pre-check)
+                    </button>
+                </div>
+                <div id="freesslCheckResults" style="margin-top:14px;"></div>
+            </div>
+
+            <!-- Step 4: Finalize -->
+            <div class="freessl-card" id="freesslFinalizeCard" style="display:none;">
+                <h3>🏁 Bước 4: Nhận chứng chỉ</h3>
+                <div class="message-success" style="margin-bottom:16px;">
+                    ✅ Xác thực đã sẵn sàng! Nhấn nút bên dưới để nhà cung cấp ACME cấp chứng chỉ.
+                    Quá trình có thể mất 10–60 giây.
+                </div>
+                <button class="btn btn-green" onclick="freeSslFinalize()" id="freesslFinalizeBtn">
+                    🎁 Nhận Chứng Chỉ SSL
+                </button>
+            </div>
+
+            <!-- Step 5: Result -->
+            <div class="freessl-result-area" id="freesslResultArea">
+                <div class="freessl-cert-box">
+                    <h4>
+                        🎉 Chứng chỉ đã được cấp thành công!
+                        <button class="btn btn-green" style="font-size:0.85rem;padding:8px 16px;" onclick="freeSslDownloadAll()">
+                            ⬇️ Tải Tất Cả (ZIP)
+                        </button>
+                    </h4>
+                    <div style="display:grid;gap:14px;">
+                        <div>
+                            <label style="font-size:0.78rem;color:#64748b;font-weight:700;text-transform:uppercase;display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+                                Certificate (cert.crt)
+                                <button class="copy-btn-small" onclick="freeSslCopy('freesslCert')">📋 Copy</button>
+                            </label>
+                            <textarea id="freesslCert" readonly></textarea>
+                        </div>
+                        <div>
+                            <label style="font-size:0.78rem;color:#64748b;font-weight:700;text-transform:uppercase;display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+                                Private Key (private.key)
+                                <button class="copy-btn-small" onclick="freeSslCopy('freesslPrivKey')">📋 Copy</button>
+                            </label>
+                            <textarea id="freesslPrivKey" readonly></textarea>
+                        </div>
+                        <div>
+                            <label style="font-size:0.78rem;color:#64748b;font-weight:700;text-transform:uppercase;display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+                                CA Bundle (ca-bundle.crt)
+                                <button class="copy-btn-small" onclick="freeSslCopy('freesslCaBundle')">📋 Copy</button>
+                            </label>
+                            <textarea id="freesslCaBundle" readonly></textarea>
+                        </div>
+                        <div>
+                            <label style="font-size:0.78rem;color:#64748b;font-weight:700;text-transform:uppercase;display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+                                Full Chain (fullchain.pem)
+                                <button class="copy-btn-small" onclick="freeSslCopy('freesslFullChain')">📋 Copy</button>
+                            </label>
+                            <textarea id="freesslFullChain" readonly></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div style="text-align:center;margin-bottom:20px;">
+                    <button class="btn btn-green" onclick="freeSslReset()">🔄 Cấp chứng chỉ mới</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/forge/0.10.0/forge.min.js"></script>
+    <script>
+        // ========== Tab Switching ==========
+        function switchTab(tab) {
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            
+            const tabMap = { 'dns': 1, 'sslcheck': 2, 'hostcheck': 3, 'ssl': 4, 'ssldecoder': 5, 'freessl': 6 };
+            document.querySelector(`.tab-btn:nth-child(${tabMap[tab]})`).classList.add('active');
+            document.getElementById('tab-' + tab).classList.add('active');
+        }
+        
+        // ========== SSL Check ==========
+        async function checkSSL() {
+            const domain = document.getElementById('sslDomainInput').value.trim();
+            if (!domain) { alert('Vui lòng nhập tên miền'); return; }
+
+            document.getElementById('sslLoading').classList.add('show');
+            document.getElementById('sslCheckResults').classList.remove('show');
+            document.getElementById('sslCheckMessage').innerHTML = '';
+
+            try {
+                const response = await fetch('/api/check-ssl', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ domain: domain })
+                });
+                const data = await response.json();
+                
+                if (data.error && !data.valid) {
+                    document.getElementById('sslCheckMessage').innerHTML = '<div class="message-error">❌ ' + data.error + '</div>';
+                    document.getElementById('sslCheckResults').classList.remove('show');
+                } else {
+                    renderSSLResults(data);
+                }
+            } catch (err) {
+                document.getElementById('sslCheckMessage').innerHTML = '<div class="message-error">❌ Lỗi kết nối: ' + err.message + '</div>';
+            } finally {
+                document.getElementById('sslLoading').classList.remove('show');
+            }
+        }
+
+        function renderSSLResults(data) {
+            // Status
+            const statusEl = document.getElementById('sslStatus');
+            if (data.valid) {
+                statusEl.innerHTML = '<span class="ssl-status-badge valid">✓ Hợp lệ</span>';
+            } else {
+                statusEl.innerHTML = '<span class="ssl-status-badge invalid">✗ Không hợp lệ</span>';
+            }
+            
+            // Days remaining with color coding
+            const daysEl = document.getElementById('sslDaysRemaining');
+            const days = data.days_remaining;
+            daysEl.textContent = days !== null ? days : '-';
+            daysEl.className = 'card-value large';
+            if (days !== null) {
+                if (days > 30) daysEl.classList.add('success');
+                else if (days > 7) daysEl.classList.add('warning');
+                else daysEl.classList.add('error');
+            }
+            
+            // Dates
+            document.getElementById('sslValidFrom').textContent = data.valid_from || '-';
+            document.getElementById('sslValidTo').textContent = data.valid_to || '-';
+            
+            // Issuer
+            document.getElementById('sslIssuer').textContent = data.issuer || '-';
+            document.getElementById('sslIssuerOrg').textContent = data.issuer_org ? `Tổ chức: ${data.issuer_org}` : '';
+            
+            // Subject
+            document.getElementById('sslSubject').textContent = data.subject || '-';
+            document.getElementById('sslSubjectOrg').textContent = data.subject_org ? `Tổ chức: ${data.subject_org}` : '';
+            
+            // SAN
+            const sanEl = document.getElementById('sslSAN');
+            if (data.subject_alt_names && data.subject_alt_names.length > 0) {
+                sanEl.innerHTML = data.subject_alt_names.map(san => `<span class="san-item">${san}</span>`).join('');
+            } else {
+                sanEl.innerHTML = '<span style="color: #64748b;">Không có SAN</span>';
+            }
+            
+            // Serial & Version
+            document.getElementById('sslSerial').textContent = data.serial_number || '-';
+            document.getElementById('sslVersion').textContent = data.version ? `v${data.version}` : '-';
+            
+            document.getElementById('sslCheckResults').classList.add('show');
+        }
+        
+        // ========== Host Check ==========
+        async function checkHost() {
+            const host = document.getElementById('hostInput').value.trim();
+            if (!host) { alert('Vui lòng nhập IP hoặc Domain'); return; }
+
+            document.getElementById('hostLoading').classList.add('show');
+            document.getElementById('hostCheckResults').classList.remove('show');
+            document.getElementById('hostCheckMessage').innerHTML = '';
+
+            try {
+                const response = await fetch('/api/check-host', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ host: host })
+                });
+                const data = await response.json();
+                
+                if (data.error && !data.ip) {
+                    document.getElementById('hostCheckMessage').innerHTML = '<div class="message-error">❌ ' + data.error + '</div>';
+                } else {
+                    renderHostResults(data);
+                }
+            } catch (err) {
+                document.getElementById('hostCheckMessage').innerHTML = '<div class="message-error">❌ Lỗi kết nối: ' + err.message + '</div>';
+            } finally {
+                document.getElementById('hostLoading').classList.remove('show');
+            }
+        }
+
+        function renderHostResults(data) {
+            document.getElementById('hostIP').textContent = data.ip || '-';
+            document.getElementById('hostHostname').textContent = data.hostname || '-';
+            document.getElementById('hostProvider').textContent = data.provider || '-';
+            document.getElementById('hostOrg').textContent = data.org ? `Organization: ${data.org}` : '';
+            document.getElementById('hostASN').textContent = data.asn || '-';
+            document.getElementById('hostReverseDNS').textContent = data.reverse_dns || '-';
+            
+            // Location
+            const locEl = document.getElementById('hostLocation');
+            if (data.city || data.country) {
+                const parts = [data.city, data.region, data.country].filter(Boolean);
+                locEl.innerHTML = `<span class="location-badge">📍 ${parts.join(', ')}</span>`;
+            } else {
+                locEl.textContent = '-';
+            }
+            
+            document.getElementById('hostCheckResults').classList.add('show');
+        }
+        
+        // ========== DNS Checker ==========
+        async function checkDNS() {
+            var domain = document.getElementById('domainInput').value.trim();
+            if (!domain) { alert('Vui lòng nhập tên miền'); return; }
+
+            var recordTypes = [];
+            document.querySelectorAll('#recordTypes input:checked').forEach(cb => recordTypes.push(cb.value));
+            if (recordTypes.length === 0) { alert('Vui lòng chọn ít nhất 1 loại record'); return; }
+
+            document.getElementById('loading').classList.add('show');
+            document.getElementById('results').classList.remove('show');
+
+            try {
+                var response = await fetch('/api/check-dns', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ domain: domain, record_types: recordTypes })
+                });
+                var data = await response.json();
+                if (data.error) { alert('Lỗi: ' + data.error); return; }
+                renderResults(data);
+            } catch (err) {
+                alert('Lỗi kết nối: ' + err.message);
+            } finally {
+                document.getElementById('loading').classList.remove('show');
+            }
+        }
+
+        function renderResults(data) {
+            document.getElementById('summaryDomain').textContent = data.domain;
+            
+            var prop = data.summary.propagation;
+            document.getElementById('summaryPropagation').textContent = prop;
+            if (prop !== 'N/A') {
+                var parts = prop.split('/');
+                var success = parseInt(parts[0]), total = parseInt(parts[1]);
+                document.getElementById('cardPropagation').className = 'summary-card ' + (success === total ? 'success' : (success > 0 ? 'warning' : 'error'));
+            }
+
+            var dnssecEnabled = data.summary.dnssec_enabled;
+            document.getElementById('summaryDNSSEC').textContent = dnssecEnabled ? '✓ Enabled' : '✗ Disabled';
+            document.getElementById('cardDNSSEC').className = 'summary-card ' + (dnssecEnabled ? 'success' : 'error');
+
+            var recordsHtml = '';
+            for (var type in data.dns_records) {
+                var typeData = data.dns_records[type];
+                var rateParts = typeData.success_rate.split('/');
+                var successCount = parseInt(rateParts[0]), totalCount = parseInt(rateParts[1]);
+                var rateClass = successCount === totalCount ? 'full' : (successCount > 0 ? 'partial' : 'none');
+                
+                var serversHtml = '<div class="record-col-header"><span>DNS Server</span><span>Resolver IP</span><span>Record Value</span></div>';
+                for (var serverName in typeData.servers) {
+                    var serverData = typeData.servers[serverName];
+                    var recordsStr = '';
+                    if (serverData.records && serverData.records.length > 0) {
+                        serverData.records.forEach(r => recordsStr += '<span class="record-value">' + escapeHtml(r) + '</span>');
+                    } else {
+                        recordsStr = '<span class="no-record">No record</span>';
+                    }
+                    serversHtml += '<div class="server-row"><span class="server-name">' + serverName + '</span><span class="server-ip">' + serverData.ip + '</span><div class="server-records">' + recordsStr + '</div></div>';
+                }
+                recordsHtml += '<div class="record-block"><div class="record-header"><span class="type">' + type + ' Record</span><span class="rate ' + rateClass + '">' + typeData.success_rate + '</span></div><div class="record-body">' + serversHtml + '</div></div>';
+            }
+            document.getElementById('dnsRecords').innerHTML = recordsHtml;
+
+            var dnssec = data.dnssec;
+            var dnssecHtml = '<div class="dnssec-status ' + (dnssec.enabled ? 'enabled' : 'disabled') + '"><div class="dnssec-icon">' + (dnssec.enabled ? '🔒' : '🔓') + '</div><div class="dnssec-text"><div class="title">' + dnssec.status + '</div><div class="desc">' + (dnssec.enabled ? 'Domain được bảo vệ bởi DNSSEC' : 'DNSSEC chưa được cấu hình') + '</div></div></div>';
+            if (dnssec.details) {
+                dnssecHtml += '<div class="dnssec-details"><div class="dnssec-row"><span class="label">DNSKEY Record</span><span class="value ' + (dnssec.details.dnskey ? 'success' : 'error') + '">' + (dnssec.details.dnskey ? '✓ Found' : '✗ Not found') + '</span></div><div class="dnssec-row"><span class="label">DS Record</span><span class="value ' + (dnssec.details.ds ? 'success' : 'error') + '">' + (dnssec.details.ds ? '✓ Found' : '✗ Not found') + '</span></div></div>';
+            }
+            document.getElementById('dnssecContent').innerHTML = dnssecHtml;
+            document.getElementById('results').classList.add('show');
+        }
+
+        function escapeHtml(text) { var div = document.createElement('div'); div.textContent = text; return div.innerHTML; }
+        function clearCache() { fetch('/api/clear-cache', { method: 'POST' }).then(() => alert('✓ Cache đã được xóa')).catch(err => alert('Lỗi: ' + err.message)); }
+
+        // ========== SSL Tool ==========
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const sslResultArea = document.getElementById('sslResultArea');
+        const bundleOutput = document.getElementById('bundleOutput');
+        const sslMessage = document.getElementById('sslMessage');
+        const privateKeyInput = document.getElementById('privateKeyInput');
+        const generateBtn = document.getElementById('generateBtn');
+
+        let currentDomain = '', currentBundle = '', currentZipFilename = '', currentOriginalFiles = {};
+
+        privateKeyInput.addEventListener('input', () => { generateBtn.disabled = !privateKeyInput.value.trim() || !currentBundle; });
+
+        uploadArea.addEventListener('dragover', (e) => { e.preventDefault(); uploadArea.classList.add('dragover'); });
+        uploadArea.addEventListener('dragleave', () => { uploadArea.classList.remove('dragover'); });
+        uploadArea.addEventListener('drop', (e) => { e.preventDefault(); uploadArea.classList.remove('dragover'); if (e.dataTransfer.files.length > 0) handleFile(e.dataTransfer.files[0]); });
+        fileInput.addEventListener('change', (e) => { if (e.target.files.length > 0) handleFile(e.target.files[0]); });
+
+        function showSSLMessage(msg, type) {
+            sslMessage.innerHTML = '<div class="message-' + type + '">' + msg + '</div>';
+            if (type !== 'info') setTimeout(() => sslMessage.innerHTML = '', 5000);
+        }
+
+        async function handleFile(file) {
+            if (!file.name.endsWith('.zip')) { showSSLMessage('Vui lòng chọn file ZIP!', 'error'); return; }
+
+            currentBundle = ''; currentDomain = ''; currentZipFilename = ''; currentOriginalFiles = {};
+            bundleOutput.value = ''; privateKeyInput.value = ''; generateBtn.disabled = true;
+            document.getElementById('additionalResults').innerHTML = '';
+            
+            showSSLMessage('Đang xử lý file...', 'info');
+
+            try {
+                const zip = await JSZip.loadAsync(file);
+                currentDomain = file.name.replace('.zip', '').toLowerCase();
+                currentZipFilename = file.name;
+
+                const files = {};
+                for (const [filename, fileObj] of Object.entries(zip.files)) {
+                    if (!fileObj.dir) {
+                        const content = await fileObj.async('string');
+                        const basename = filename.split('/').pop().toLowerCase();
+                        files[basename] = content;
+                        currentOriginalFiles[basename] = content;
+                    }
+                }
+
+                let bundle = processFullBundle(files);
+                if (bundle) {
+                    currentBundle = bundle;
+                    bundleOutput.value = bundle;
+                    sslResultArea.classList.add('show');
+                    showSSLMessage('✅ Xử lý thành công! Tìm thấy ' + (bundle.match(/BEGIN CERTIFICATE/g) || []).length + ' certificates.', 'success');
+                } else {
+                    showSSLMessage('❌ Không tìm thấy file certificate hợp lệ!', 'error');
+                }
+            } catch (error) {
+                showSSLMessage('❌ Lỗi khi xử lý file: ' + error.message, 'error');
+            }
+        }
+
+        function processFullBundle(files) {
+            // Hỗ trợ mọi định dạng file chứng chỉ phổ biến
+            // Hỗ trợ mọi file text, không cần đuôi, chỉ cần có BEGIN CERTIFICATE
+            let certFiles = Object.entries(files)
+                .filter(([name, content]) => typeof content === 'string' && content.trim().includes('BEGIN CERTIFICATE'));
+            console.log('Tất cả file chứng chỉ:', certFiles.map(([n]) => n));
+
+            // Tách tất cả các đoạn PEM từ mọi file hợp lệ
+            let allCerts = [];
+            const certRegex = /-----BEGIN CERTIFICATE-----[\s\S]*?-----END CERTIFICATE-----/g;
+            for (const [filename, content] of certFiles) {
+                const matches = content.match(certRegex);
+                if (matches) {
+                    matches.forEach(cert => {
+                        allCerts.push({pem: cert.trim(), filename});
+                    });
+                }
+            }
+            console.log('Tổng số đoạn cert tách được:', allCerts.length);
+            allCerts.forEach((c, i) => console.log(`Cert[${i+1}] (${c.filename}):`, c.pem.substring(0, 100)));
+
+            // Xác định domain cert dựa trên nội dung cert (Subject CN), không phụ thuộc filename
+            let domainCert = null;
+            const bundleCerts = [];
+            for (let cert of allCerts) {
+                try {
+                    const parsed = forge.pki.certificateFromPem(cert.pem);
+                    const subjectCN = parsed.subject.getField('CN')?.value || '';
+                    const subjectDN = parsed.subject.attributes.map(a => `${a.shortName}=${a.value}`).join(',');
+                    const issuerDN = parsed.issuer.attributes.map(a => `${a.shortName}=${a.value}`).join(',');
+                    const isSelfSigned = subjectDN === issuerDN;
+
+                    // Check nếu là CA cert (có BasicConstraints CA:TRUE)
+                    let isCA = false;
+                    const basicConstraints = parsed.extensions.find(ext => ext.name === 'basicConstraints');
+                    if (basicConstraints && basicConstraints.cA === true) {
+                        isCA = true;
+                    }
+
+                    // Domain cert: không self-signed, KHÔNG phải CA cert, và CN không chứa keywords CA
+                    if (!isSelfSigned && !isCA && !/authority|certification|root|ca cert|intermediate|sectigo|usertrust|digicert|comodo|globalsign|godaddy|entrust|rapidssl/i.test(subjectCN) && !domainCert) {
+                        domainCert = cert;
+                        console.log('Domain cert found:', subjectCN);
+                    } else {
+                        bundleCerts.push(cert);
+                        console.log('Bundle cert:', subjectCN, '(isCA:', isCA, ', isSelfSigned:', isSelfSigned + ')');
+                    }
+                } catch (e) {
+                    bundleCerts.push(cert);
+                }
+            }
+
+            // Nếu không tìm được domain cert, lấy cert đầu tiên
+            if (!domainCert && allCerts.length > 0) {
+                domainCert = allCerts[0];
+                bundleCerts.splice(0, bundleCerts.length);
+                bundleCerts.push(...allCerts.slice(1));
+            }
+
+            // Loại trùng bundleCerts (chỉ loại đoạn giống hệt nhau)
+            let seen = new Set();
+            let uniqueBundle = [];
+            for (let c of bundleCerts) {
+                let norm = c.pem.replace(/\r/g, '').replace(/\n+/g, '\n').trim();
+                if (!seen.has(norm)) {
+                    seen.add(norm);
+                    uniqueBundle.push(c.pem);
+                }
+            }
+
+            // Gộp: cert (domain) + bundle (2-3 đoạn còn lại)
+            let bundle = '';
+            if (domainCert) {
+                bundle = domainCert.pem + '\n' + uniqueBundle.join('\n');
+            } else {
+                bundle = uniqueBundle.join('\n');
+            }
+            console.log('Domain cert selected:', domainCert ? domainCert.filename : 'none');
+            console.log('Bundle có', (domainCert ? 1 : 0) + uniqueBundle.length, 'đoạn cert');
+            return bundle.trim();
+        }
+
+        function removeDuplicateCerts(bundle) {
+            const certRegex = /(-----BEGIN CERTIFICATE-----[\s\S]*?-----END CERTIFICATE-----)/g;
+            const certificates = bundle.match(certRegex) || [];
+            const parsedCerts = [];
+            
+            certificates.forEach(cert => {
+                try {
+                    const parsed = forge.pki.certificateFromPem(cert);
+                    parsedCerts.push({ pem: cert.trim(), cert: parsed, subject: parsed.subject.getField('CN')?.value || 'Unknown', issuer: parsed.issuer.getField('CN')?.value || 'Unknown' });
+                } catch (e) {}
+            });
+            
+            const uniqueCerts = [];
+            const seen = new Set();
+            parsedCerts.forEach(item => { if (!seen.has(item.pem)) { seen.add(item.pem); uniqueCerts.push(item); } });
+            
+            return sortCertificateChain(uniqueCerts).map(item => item.pem).join('\n');
+        }
+
+        function sortCertificateChain(certObjects) {
+            if (certObjects.length <= 1) return certObjects;
+            
+            let leafCert = null;
+            const remaining = [];
+            
+            for (const certObj of certObjects) {
+                const subjectDN = certObj.cert.subject.attributes.map(a => `${a.shortName}=${a.value}`).join(',');
+                const issuerDN = certObj.cert.issuer.attributes.map(a => `${a.shortName}=${a.value}`).join(',');
+                const isSelfSigned = subjectDN === issuerDN;
+                
+                if (!isSelfSigned && !leafCert) {
+                    const isLeaf = !certObjects.some(other => {
+                        const otherIssuerDN = other.cert.issuer.attributes.map(a => `${a.shortName}=${a.value}`).join(',');
+                        return otherIssuerDN === subjectDN;
+                    });
+                    if (isLeaf) leafCert = certObj; else remaining.push(certObj);
+                } else {
+                    remaining.push(certObj);
+                }
+            }
+            
+            if (!leafCert && certObjects.length > 0) {
+                leafCert = certObjects.find(c => { const s = c.cert.subject.attributes.map(a => `${a.shortName}=${a.value}`).join(','); const i = c.cert.issuer.attributes.map(a => `${a.shortName}=${a.value}`).join(','); return s !== i; }) || certObjects[0];
+                const leafIndex = certObjects.indexOf(leafCert);
+                remaining.push(...certObjects.filter((_, idx) => idx !== leafIndex));
+            }
+            
+            const chain = [leafCert];
+            let current = leafCert;
+            
+            while (remaining.length > 0 && current) {
+                const currentIssuerDN = current.cert.issuer.attributes.map(a => `${a.shortName}=${a.value}`).join(',');
+                const issuerIndex = remaining.findIndex(certObj => certObj.cert.subject.attributes.map(a => `${a.shortName}=${a.value}`).join(',') === currentIssuerDN);
+                if (issuerIndex !== -1) { const issuerCert = remaining.splice(issuerIndex, 1)[0]; chain.push(issuerCert); current = issuerCert; } else break;
+            }
+            if (remaining.length > 0) chain.push(...remaining);
+            return chain;
+        }
+
+        function copyToClipboard(elementId) {
+            const el = document.getElementById(elementId);
+            el.select();
+            document.execCommand('copy');
+            showSSLMessage('✅ Đã copy vào clipboard!', 'success');
+        }
+
+        function downloadBundle() {
+            const blob = new Blob([currentBundle], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url; a.download = currentDomain + '_bundle.crt';
+            document.body.appendChild(a); a.click(); document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        async function verifyKeyAndCert(privateKeyPem, certBundle) {
+            try {
+                const privateKey = forge.pki.privateKeyFromPem(privateKeyPem);
+                const certMatches = certBundle.match(/-----BEGIN CERTIFICATE-----[\s\S]+?-----END CERTIFICATE-----/g);
+                if (!certMatches || certMatches.length === 0) throw new Error('No certificate found');
+                
+                let domainCert = null;
+                for (const certPem of certMatches) {
+                    const cert = forge.pki.certificateFromPem(certPem);
+                    const subjectDN = cert.subject.attributes.map(a => `${a.shortName}=${a.value}`).join(',');
+                    const issuerDN = cert.issuer.attributes.map(a => `${a.shortName}=${a.value}`).join(',');
+                    if (subjectDN !== issuerDN) {
+                        const isLeaf = !certMatches.some(otherPem => {
+                            if (otherPem === certPem) return false;
+                            try { return forge.pki.certificateFromPem(otherPem).issuer.attributes.map(a => `${a.shortName}=${a.value}`).join(',') === subjectDN; } catch (e) { return false; }
+                        });
+                        if (isLeaf) { domainCert = cert; break; }
+                    }
+                }
+                if (!domainCert) domainCert = forge.pki.certificateFromPem(certMatches[0]);
+                
+                const certPublicKeyPem = forge.pki.publicKeyToPem(domainCert.publicKey);
+                const privateKeyPublicKeyPem = forge.pki.publicKeyToPem(forge.pki.setRsaPublicKey(privateKey.n, privateKey.e));
+                return certPublicKeyPem === privateKeyPublicKeyPem;
+            } catch (error) {
+                showSSLMessage('❌ Lỗi khi kiểm tra key: ' + error.message, 'error');
+                return false;
+            }
+        }
+
+        async function generatePemAndPfx() {
+            const privateKey = privateKeyInput.value.trim();
+            if (!privateKey || !currentBundle) { showSSLMessage('❌ Vui lòng nhập private key!', 'error'); return; }
+            if (typeof forge === 'undefined') { showSSLMessage('❌ Đang tải thư viện...', 'error'); return; }
+
+            showSSLMessage('🔧 Đang kiểm tra private key...', 'info');
+            generateBtn.disabled = true;
+
+            try {
+                const isMatch = await verifyKeyAndCert(privateKey, currentBundle);
+                if (!isMatch) { showSSLMessage('❌ Private key KHÔNG KHỚP với certificate!', 'error'); generateBtn.disabled = false; return; }
+                
+                showSSLMessage('✅ Key khớp! Đang tạo files...', 'success');
+                await new Promise(r => setTimeout(r, 300));
+
+                const pemContent = currentBundle + '\n' + privateKey;
+                const pfxBuffer = await createPFX(privateKey, currentBundle, '123456');
+                
+                const zip = new JSZip();
+                const domainName = currentDomain.replace(/\.zip$/i, '');
+                const originalFolder = zip.folder('original');
+                for (const [filename, content] of Object.entries(currentOriginalFiles)) originalFolder.file(filename, content);
+                
+                zip.file('private.key', privateKey);
+                zip.file(domainName + '.pem', pemContent);
+                zip.file(domainName + '.crt', currentBundle);
+                zip.file(domainName + '.pfx', pfxBuffer);
+                
+                const zipBlob = await zip.generateAsync({type: 'blob'});
+                displayResults(pemContent, pfxBuffer, zipBlob, domainName + '-package.zip');
+                showSSLMessage('✅ Hoàn thành! Đã tạo PEM, PFX và ZIP.', 'success');
+            } catch (error) {
+                showSSLMessage('❌ Lỗi: ' + error.message, 'error');
+            } finally {
+                generateBtn.disabled = false;
+            }
+        }
+
+        async function createPFX(privateKey, certBundle, password) {
+            const privateKeyPem = forge.pki.privateKeyFromPem(privateKey);
+            const certs = [];
+            const certMatches = certBundle.match(/-----BEGIN CERTIFICATE-----[\s\S]+?-----END CERTIFICATE-----/g);
+            certMatches.forEach(certPem => { try { certs.push(forge.pki.certificateFromPem(certPem)); } catch (e) {} });
+            
+            const p12Asn1 = forge.pkcs12.toPkcs12Asn1(privateKeyPem, certs, password, {algorithm: '3des'});
+            const p12Der = forge.asn1.toDer(p12Asn1).getBytes();
+            const uint8Array = new Uint8Array(p12Der.length);
+            for (let i = 0; i < p12Der.length; i++) uint8Array[i] = p12Der.charCodeAt(i);
+            return uint8Array;
+        }
+
+        function displayResults(pemContent, pfxBuffer, zipBlob, zipFilename) {
+            const certMatches = currentBundle.match(/-----BEGIN CERTIFICATE-----[\s\S]*?-----END CERTIFICATE-----/g) || [];
+            const domainCert = certMatches[0] || '';
+            const caBundle = certMatches.slice(1).join('\n') || '';
+            const privateKeyText = privateKeyInput.value.trim();
+            
+            const copyFormat = `SSL xác thực thành công. Kỹ thuật xin phép gửi Quý khách thông tin Cert:\nPrivate key:\n\n${privateKeyText}\n\nCert:\n\n${domainCert}\n\nCA bundle:\n\n${caBundle}`;
+            
+            document.getElementById('additionalResults').innerHTML = `
+                <div class="result-box" style="background: #fef3c7;">
+                    <h3>📋 Thông tin Cert (Copy)<div class="btn-group"><button class="btn btn-success" onclick="navigator.clipboard.writeText(decodeURIComponent('${encodeURIComponent(copyFormat)}')).then(()=>showSSLMessage('✅ Copied!','success'))">📋 Copy</button></div></h3>
+                    <textarea readonly style="min-height: 180px;">${copyFormat}</textarea>
+                </div>
+                <div class="result-box">
+                    <h3>📄 PEM File<div class="btn-group"><button class="btn btn-info" onclick="downloadFile('pem')">⬇️ Download</button></div></h3>
+                    <textarea readonly style="min-height: 100px;">${pemContent.substring(0, 400)}...</textarea>
+                </div>
+                <div class="result-box">
+                    <h3>🔐 PFX File (Password: 123456)<div class="btn-group"><button class="btn btn-info" onclick="downloadFile('pfx')">⬇️ Download</button></div></h3>
+                    <p style="color: #64748b;">File PFX đã tạo với password: <strong>123456</strong></p>
+                </div>
+                <div class="result-box" style="background: #dcfce7;">
+                    <h3>📦 Complete Package<div class="btn-group"><button class="btn btn-success" onclick="downloadFile('zip')">⬇️ Download ZIP</button></div></h3>
+                    <p style="color: #64748b;">Chứa: private.key, .pem, .crt, .pfx</p>
+                </div>`;
+            
+            window.sslFiles = { pem: pemContent, pfx: pfxBuffer, zip: zipBlob, zipName: zipFilename };
+        }
+
+        function downloadFile(type) {
+            if (!window.sslFiles) return;
+            const domainName = currentDomain.replace(/\.zip$/i, '');
+            let blob, filename;
+            
+            if (type === 'pem') { blob = new Blob([window.sslFiles.pem], {type: 'text/plain'}); filename = domainName + '.pem'; }
+            else if (type === 'pfx') { blob = new Blob([window.sslFiles.pfx], {type: 'application/x-pkcs12'}); filename = domainName + '.pfx'; }
+            else if (type === 'zip') { blob = window.sslFiles.zip; filename = window.sslFiles.zipName; }
+            
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url; a.download = filename;
+            document.body.appendChild(a); a.click(); document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+        
+        // ========== SSL Decoder Functions ==========
+        function checkCertKeyMatch() {
+            const certPem = document.getElementById('matchCertInput').value.trim();
+            const keyPem = document.getElementById('matchKeyInput').value.trim();
+            const resultDiv = document.getElementById('matchResult');
+            
+            if (!certPem || !keyPem) {
+                resultDiv.className = 'match-result pending';
+                resultDiv.innerHTML = '⚠️ Vui lòng nhập cả Certificate và Private Key';
+                return;
+            }
+            
+            try {
+                // Parse certificate
+                const cert = forge.pki.certificateFromPem(certPem);
+                const certPublicKey = cert.publicKey;
+                
+                // Parse private key (support both RSA PRIVATE KEY and PRIVATE KEY)
+                let privateKey;
+                try {
+                    privateKey = forge.pki.privateKeyFromPem(keyPem);
+                } catch (e) {
+                    resultDiv.className = 'match-result no-match';
+                    resultDiv.innerHTML = '❌ Không thể parse Private Key. Kiểm tra định dạng PEM.';
+                    return;
+                }
+                
+                // Get public key from private key
+                const privateKeyPublicKey = forge.pki.setRsaPublicKey(privateKey.n, privateKey.e);
+                
+                // Compare modulus (n)
+                const certModulus = certPublicKey.n.toString(16);
+                const keyModulus = privateKeyPublicKey.n.toString(16);
+                
+                if (certModulus === keyModulus) {
+                    resultDiv.className = 'match-result match';
+                    resultDiv.innerHTML = '✅ MATCH! Certificate và Private Key KHỚP nhau.';
+                } else {
+                    resultDiv.className = 'match-result no-match';
+                    resultDiv.innerHTML = '❌ KHÔNG KHỚP! Certificate và Private Key không cùng cặp.';
+                }
+            } catch (e) {
+                resultDiv.className = 'match-result no-match';
+                resultDiv.innerHTML = '❌ Lỗi: ' + e.message;
+            }
+        }
+        
+        function decodeCertificate() {
+            const certPem = document.getElementById('decodeCertInput').value.trim();
+            const resultDiv = document.getElementById('certDecodeResult');
+            
+            if (!certPem) {
+                resultDiv.innerHTML = '<div class="message message-error">Vui lòng nhập Certificate PEM</div>';
+                return;
+            }
+            
+            try {
+                const cert = forge.pki.certificateFromPem(certPem);
+                
+                // Extract subject info
+                const subject = cert.subject.attributes.reduce((obj, attr) => {
+                    obj[attr.shortName || attr.name] = attr.value;
+                    return obj;
+                }, {});
+                
+                // Extract issuer info  
+                const issuer = cert.issuer.attributes.reduce((obj, attr) => {
+                    obj[attr.shortName || attr.name] = attr.value;
+                    return obj;
+                }, {});
+                
+                // Get SAN (Subject Alternative Names)
+                let sans = [];
+                const sanExt = cert.extensions.find(ext => ext.name === 'subjectAltName');
+                if (sanExt && sanExt.altNames) {
+                    sans = sanExt.altNames.filter(n => n.type === 2).map(n => n.value);
+                }
+                
+                // Calculate days remaining
+                const now = new Date();
+                const notAfter = cert.validity.notAfter;
+                const daysRemaining = Math.floor((notAfter - now) / (1000 * 60 * 60 * 24));
+                let daysClass = 'success';
+                if (daysRemaining < 0) daysClass = 'error';
+                else if (daysRemaining < 30) daysClass = 'warning';
+                
+                // Serial number
+                const serialNumber = cert.serialNumber.match(/.{2}/g).join(':').toUpperCase();
+                
+                // Signature algorithm
+                const sigAlg = cert.signatureOid;
+                const sigAlgName = {
+                    '1.2.840.113549.1.1.11': 'SHA256withRSA',
+                    '1.2.840.113549.1.1.12': 'SHA384withRSA',
+                    '1.2.840.113549.1.1.13': 'SHA512withRSA',
+                    '1.2.840.113549.1.1.5': 'SHA1withRSA',
+                    '1.2.840.10045.4.3.2': 'ECDSA-SHA256',
+                    '1.2.840.10045.4.3.3': 'ECDSA-SHA384'
+                }[sigAlg] || sigAlg;
+                
+                // Key info
+                let keyInfo = 'Unknown';
+                if (cert.publicKey.n) {
+                    const keyBits = cert.publicKey.n.bitLength();
+                    keyInfo = `RSA ${keyBits} bits`;
+                } else if (cert.publicKey.curve) {
+                    keyInfo = `ECDSA ${cert.publicKey.curve}`;
+                }
+                
+                resultDiv.innerHTML = `
+                    <div class="decode-info-grid">
+                        <div class="decode-info-item full">
+                            <div class="label">Common Name (CN)</div>
+                            <div class="value">${subject.CN || 'N/A'}</div>
+                        </div>
+                        <div class="decode-info-item">
+                            <div class="label">Organization (O)</div>
+                            <div class="value">${subject.O || 'N/A'}</div>
+                        </div>
+                        <div class="decode-info-item">
+                            <div class="label">Country (C)</div>
+                            <div class="value">${subject.C || 'N/A'}</div>
+                        </div>
+                        <div class="decode-info-item">
+                            <div class="label">Valid From</div>
+                            <div class="value">${cert.validity.notBefore.toISOString().split('T')[0]}</div>
+                        </div>
+                        <div class="decode-info-item">
+                            <div class="label">Valid To</div>
+                            <div class="value">${cert.validity.notAfter.toISOString().split('T')[0]}</div>
+                        </div>
+                        <div class="decode-info-item">
+                            <div class="label">Days Remaining</div>
+                            <div class="value ${daysClass}">${daysRemaining} days ${daysRemaining < 0 ? '(EXPIRED!)' : ''}</div>
+                        </div>
+                        <div class="decode-info-item">
+                            <div class="label">Key Type</div>
+                            <div class="value">${keyInfo}</div>
+                        </div>
+                        <div class="decode-info-item full">
+                            <div class="label">Issuer</div>
+                            <div class="value">${issuer.CN || ''} ${issuer.O ? '(' + issuer.O + ')' : ''}</div>
+                        </div>
+                        <div class="decode-info-item full">
+                            <div class="label">Subject Alternative Names (SAN)</div>
+                            <div class="value mono">${sans.length > 0 ? sans.join(', ') : 'N/A'}</div>
+                        </div>
+                        <div class="decode-info-item full">
+                            <div class="label">Serial Number</div>
+                            <div class="value mono">${serialNumber}</div>
+                        </div>
+                        <div class="decode-info-item">
+                            <div class="label">Signature Algorithm</div>
+                            <div class="value">${sigAlgName}</div>
+                        </div>
+                        <div class="decode-info-item">
+                            <div class="label">Version</div>
+                            <div class="value">V${cert.version + 1}</div>
+                        </div>
+                    </div>
+                `;
+            } catch (e) {
+                resultDiv.innerHTML = `<div class="message message-error">❌ Lỗi parse Certificate: ${e.message}</div>`;
+            }
+        }
+        
+        function decodeCSR() {
+            const csrPem = document.getElementById('decodeCSRInput').value.trim();
+            const resultDiv = document.getElementById('csrDecodeResult');
+            
+            if (!csrPem) {
+                resultDiv.innerHTML = '<div class="message message-error">Vui lòng nhập CSR PEM</div>';
+                return;
+            }
+            
+            try {
+                const csr = forge.pki.certificationRequestFromPem(csrPem);
+                
+                // Extract subject info
+                const subject = csr.subject.attributes.reduce((obj, attr) => {
+                    obj[attr.shortName || attr.name] = attr.value;
+                    return obj;
+                }, {});
+                
+                // Key info
+                let keyInfo = 'Unknown';
+                if (csr.publicKey.n) {
+                    const keyBits = csr.publicKey.n.bitLength();
+                    keyInfo = `RSA ${keyBits} bits`;
+                } else if (csr.publicKey.curve) {
+                    keyInfo = `ECDSA ${csr.publicKey.curve}`;
+                }
+                
+                // Get SAN from extensions (if present)
+                let sans = [];
+                if (csr.attributes) {
+                    const extReq = csr.attributes.find(attr => attr.name === 'extensionRequest');
+                    if (extReq && extReq.extensions) {
+                        const sanExt = extReq.extensions.find(ext => ext.name === 'subjectAltName');
+                        if (sanExt && sanExt.altNames) {
+                            sans = sanExt.altNames.filter(n => n.type === 2).map(n => n.value);
+                        }
+                    }
+                }
+                
+                // Signature algorithm
+                const sigAlg = csr.signatureOid || csr.siginfo?.algorithmOid || 'Unknown';
+                const sigAlgName = {
+                    '1.2.840.113549.1.1.11': 'SHA256withRSA',
+                    '1.2.840.113549.1.1.12': 'SHA384withRSA',
+                    '1.2.840.113549.1.1.13': 'SHA512withRSA',
+                    '1.2.840.113549.1.1.5': 'SHA1withRSA',
+                    '1.2.840.10045.4.3.2': 'ECDSA-SHA256'
+                }[sigAlg] || sigAlg;
+                
+                resultDiv.innerHTML = `
+                    <div class="decode-info-grid">
+                        <div class="decode-info-item full">
+                            <div class="label">Common Name (CN)</div>
+                            <div class="value">${subject.CN || 'N/A'}</div>
+                        </div>
+                        <div class="decode-info-item">
+                            <div class="label">Organization (O)</div>
+                            <div class="value">${subject.O || 'N/A'}</div>
+                        </div>
+                        <div class="decode-info-item">
+                            <div class="label">Organizational Unit (OU)</div>
+                            <div class="value">${subject.OU || 'N/A'}</div>
+                        </div>
+                        <div class="decode-info-item">
+                            <div class="label">Country (C)</div>
+                            <div class="value">${subject.C || 'N/A'}</div>
+                        </div>
+                        <div class="decode-info-item">
+                            <div class="label">State/Province (ST)</div>
+                            <div class="value">${subject.ST || 'N/A'}</div>
+                        </div>
+                        <div class="decode-info-item">
+                            <div class="label">Locality (L)</div>
+                            <div class="value">${subject.L || 'N/A'}</div>
+                        </div>
+                        <div class="decode-info-item">
+                            <div class="label">Email</div>
+                            <div class="value">${subject.E || subject.emailAddress || 'N/A'}</div>
+                        </div>
+                        <div class="decode-info-item">
+                            <div class="label">Key Type</div>
+                            <div class="value">${keyInfo}</div>
+                        </div>
+                        <div class="decode-info-item">
+                            <div class="label">Signature Algorithm</div>
+                            <div class="value">${sigAlgName}</div>
+                        </div>
+                        <div class="decode-info-item full">
+                            <div class="label">Subject Alternative Names (SAN)</div>
+                            <div class="value mono">${sans.length > 0 ? sans.join(', ') : 'N/A (không có trong CSR)'}</div>
+                        </div>
+                    </div>
+                `;
+            } catch (e) {
+                resultDiv.innerHTML = `<div class="message message-error">❌ Lỗi parse CSR: ${e.message}</div>`;
+            }
+        }
+
+        // ========== Free SSL (ACME Providers) ==========
+        // ========== Free SSL (ACME Providers) ==========
+
+        // Safe fetch helper — trả về {ok, data, errorText}
+        async function freeSslFetch(url, body = null, method = 'POST') {
+            let resp;
+            try {
+                const options = { method, headers: {} };
+                if (body !== null && method !== 'GET') {
+                    options.headers['Content-Type'] = 'application/json';
+                    options.body = JSON.stringify(body);
+                }
+                resp = await fetch(url, options);
+            } catch (networkErr) {
+                return { ok: false, data: null, errorText: 'Không kết nối được tới server. Hãy đảm bảo server đang chạy. (' + networkErr.message + ')' };
+            }
+            const text = await resp.text();
+            if (!text || !text.trim().startsWith('{')) {
+                // Server trả về HTML thay vì JSON — thường do server chưa restart
+                const hint = !resp.ok
+                    ? `Server trả về HTTP ${resp.status}. Hãy restart server Flask rồi thử lại.`
+                    : 'Server trả về nội dung không hợp lệ. Hãy restart server Flask.';
+                return { ok: false, data: null, errorText: hint };
+            }
+            let data;
+            try { data = JSON.parse(text); } catch (e) {
+                return { ok: false, data: null, errorText: 'JSON parse error: ' + e.message };
+            }
+            if (!resp.ok || data.error) {
+                return { ok: false, data, errorText: data.error || `HTTP ${resp.status}` };
+            }
+            return { ok: true, data, errorText: null };
+        }
+
+        let freeSslSessionId = null;
+        let freeSslSans = [];
+        let freeSslChallengeType = 'dns-01';
+        let freeSslProvider = 'letsencrypt';
+        let freeSslResultData = null;
+
+        function freeSslToggleStorage(show) {
+            document.getElementById('freesslStorageSidebar').classList.toggle('show', !!show);
+            document.getElementById('freesslStorageBackdrop').classList.toggle('show', !!show);
+        }
+
+        function freeSslUpdateProviderNote() {
+            const el = document.getElementById('freesslProviderNote');
+            if (!el) return;
+            if (freeSslProvider === 'sslcom') {
+                el.innerHTML = '🔎 <strong>SSL.com:</strong> chỉ hỗ trợ <strong>1 domain</strong> (không wildcard, không multi-domain/SAN).';
+            } else if (freeSslProvider === 'zerossl') {
+                el.innerHTML = '🔎 <strong>ZeroSSL:</strong> hỗ trợ multi-domain, <strong>không hỗ trợ wildcard</strong>. Nếu chỉ nhập domain gốc, hệ thống tự thêm <strong>www</strong>.';
+            } else {
+                el.innerHTML = '🔎 <strong>Let\'s Encrypt:</strong> hỗ trợ wildcard + multi-domain. Nếu chỉ nhập domain gốc, hệ thống tự thêm <strong>www</strong>.';
+            }
+        }
+
+        function freeSslSelectProvider(p) {
+            freeSslProvider = p;
+            const map = { letsencrypt: 'btnProvLe', zerossl: 'btnProvZero', sslcom: 'btnProvSslcom' };
+            Object.entries(map).forEach(([k, id]) => {
+                document.getElementById(id).classList.toggle('selected', k === p);
+            });
+            freeSslUpdateProviderNote();
+        }
+
+        function freeSslApplyStoredItem(data) {
+            freeSslResultData = data;
+            document.getElementById('freesslDomain').value = data.domain || '';
+            document.getElementById('freesslCert').value = data.certificate || '';
+            document.getElementById('freesslPrivKey').value = data.private_key || '';
+            document.getElementById('freesslCaBundle').value = data.ca_bundle || '';
+            document.getElementById('freesslFullChain').value = data.full_chain || '';
+            document.getElementById('freesslResultArea').classList.add('show');
+            document.getElementById('freesslChallengeCard').style.display = 'none';
+            document.getElementById('freesslFinalizeCard').style.display = 'none';
+            freeSslSetStep(5);
+        }
+
+        async function freeSslLoadStoredList() {
+            const keyword = document.getElementById('freesslStoredSearch').value.trim();
+            const query = keyword ? `?q=${encodeURIComponent(keyword)}` : '';
+            const listEl = document.getElementById('freesslStoredList');
+            listEl.innerHTML = '<div class="freessl-storage-empty">Đang tải danh sách...</div>';
+            const { ok, data, errorText } = await freeSslFetch('/api/ssl-free/list' + query, null, 'GET');
+            if (!ok) {
+                listEl.innerHTML = `<div class="freessl-storage-empty">❌ ${errorText}</div>`;
+                return;
+            }
+            if (!data.items || data.items.length === 0) {
+                listEl.innerHTML = '<div class="freessl-storage-empty">Chưa có SSL nào được lưu.</div>';
+                return;
+            }
+            listEl.innerHTML = data.items.map(item => `
+                <div class="freessl-storage-item">
+                    <div>
+                        <div class="freessl-storage-domain">${item.domain}</div>
+                        <div class="freessl-storage-meta">
+                            <span class="freessl-storage-badge">📅 Cấp: ${item.issued_at || '-'}</span>
+                            <span class="freessl-storage-badge">⏳ Hết hạn: ${item.valid_to || '-'}</span>
+                            <span class="freessl-storage-badge">🧩 ${item.challenge_type || '-'}</span>
+                            <span class="freessl-storage-badge" style="background:#e0f2fe;color:#0369a1;">🏪 ${item.provider || 'letsencrypt'}</span>
+                        </div>
+                    </div>
+                    <div class="freessl-storage-actions">
+                        <button class="btn btn-secondary" onclick="freeSslViewStoredItem('${item.id}')">👁️ Xem lại</button>
+                        <button class="btn btn-danger" onclick="freeSslDeleteStoredItem('${item.id}')">🗑️ Xóa</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        async function freeSslViewStoredItem(itemId) {
+            const { ok, data, errorText } = await freeSslFetch('/api/ssl-free/item/' + encodeURIComponent(itemId), null, 'GET');
+            if (!ok) { freeSslShowMessage('❌ ' + errorText, 'error'); return; }
+            freeSslApplyStoredItem(data);
+            freeSslShowMessage('✅ Đã tải SSL đã lưu cho domain ' + (data.domain || ''), 'success');
+        }
+
+        async function freeSslDeleteStoredItem(itemId) {
+            if (!confirm('Xóa SSL đã lưu này?')) return;
+            const { ok, errorText } = await freeSslFetch('/api/ssl-free/item/' + encodeURIComponent(itemId), null, 'DELETE');
+            if (!ok) { freeSslShowMessage('❌ ' + errorText, 'error'); return; }
+            freeSslShowMessage('✅ Đã xóa SSL đã lưu.', 'success');
+            await freeSslLoadStoredList();
+        }
+
+        function freeSslSelectChallenge(type) {
+            freeSslChallengeType = type;
+            document.getElementById('btnDns01').classList.toggle('selected', type === 'dns-01');
+            document.getElementById('btnHttp01').classList.toggle('selected', type === 'http-01');
+        }
+
+        function freeSslAddSan() {
+            const input = document.getElementById('freesslSanInput');
+            const val = input.value.trim().toLowerCase();
+            if (!val) return;
+            if (!freeSslSans.includes(val)) {
+                freeSslSans.push(val);
+                freeSslRenderSans();
+            }
+            input.value = '';
+            input.focus();
+        }
+
+        function freeSslRemoveSan(san) {
+            freeSslSans = freeSslSans.filter(s => s !== san);
+            freeSslRenderSans();
+        }
+
+        function freeSslRenderSans() {
+            const container = document.getElementById('freesslSansTags');
+            container.innerHTML = freeSslSans.map(s =>
+                `<div class="sans-tag"><span>${s}</span><button onclick="freeSslRemoveSan('${s}')" title="Xóa">✕</button></div>`
+            ).join('');
+        }
+
+        function freeSslUpdateSANsPreview() {
+            // email is derived automatically on submit
+        }
+
+        function freeSslShowMessage(msg, type) {
+            const el = document.getElementById('freesslMessage');
+            el.innerHTML = `<div class="message-${type}">${msg}</div>`;
+        }
+
+        function freeSslSetLoading(show, text) {
+            document.getElementById('freesslLoading').classList.toggle('show', show);
+            if (text) document.getElementById('freesslLoadingText').textContent = text;
+        }
+
+        function freeSslSetStep(activeStep) {
+            for (let i = 1; i <= 5; i++) {
+                const el = document.getElementById('step' + i);
+                el.classList.remove('active', 'done');
+                if (i < activeStep) el.classList.add('done');
+                else if (i === activeStep) el.classList.add('active');
+            }
+        }
+
+        async function freeSslStart() {
+            const domain = document.getElementById('freesslDomain').value.trim().toLowerCase();
+            const _firstToken = (domain.split(/[\s,;]+/).find(Boolean) || '').replace(/^\*\./, '');
+            const email = _firstToken ? `admin@${_firstToken.replace(/^www\./, '')}` : '';
+
+            if (!domain) { alert('Vui lòng nhập tên miền'); return; }
+
+            const domainTokens = domain.split(/[\s,;]+/).filter(Boolean);
+            const hasWildcard = [...domainTokens, ...freeSslSans].some(x => (x || '').trim().startsWith('*.'));
+            const hasMultiDomain = (domainTokens.length + freeSslSans.length) > 1;
+            if (freeSslProvider === 'sslcom') {
+                if (hasWildcard) {
+                    freeSslShowMessage('❌ SSL.com không hỗ trợ wildcard domain.', 'error');
+                    return;
+                }
+                if (hasMultiDomain) {
+                    freeSslShowMessage('❌ SSL.com chỉ hỗ trợ 1 domain (không multi-domain/SAN).', 'error');
+                    return;
+                }
+            }
+            if (freeSslProvider === 'zerossl' && hasWildcard) {
+                freeSslShowMessage('❌ ZeroSSL không hỗ trợ wildcard domain.', 'error');
+                return;
+            }
+
+            freeSslShowMessage('', '');
+            freeSslSetLoading(true, '⏳ Đang tạo RSA Key + CSR và gửi ACME Order...');
+            document.getElementById('freesslStartBtn').disabled = true;
+            document.getElementById('freesslChallengeCard').style.display = 'none';
+            document.getElementById('freesslFinalizeCard').style.display = 'none';
+            document.getElementById('freesslResultArea').classList.remove('show');
+
+            try {
+                const { ok, data, errorText } = await freeSslFetch('/api/ssl-free/start', {
+                    domain, sans: freeSslSans, challenge_type: freeSslChallengeType, email, provider: freeSslProvider
+                });
+                if (!ok) { freeSslShowMessage('❌ ' + errorText, 'error'); return; }
+
+                freeSslSessionId = data.session_id;
+                freeSslRenderChallenges(data.challenges, freeSslChallengeType, freeSslProvider);
+                document.getElementById('freesslChallengeCard').style.display = 'block';
+                document.getElementById('freesslCheckResults').innerHTML = '';
+                document.getElementById('freesslFinalizeCard').style.display = 'none';
+                freeSslSetStep(2);
+                freeSslShowMessage('✅ Order đã tạo! Hãy thực hiện cấu hình xác thực bên dưới.', 'success');
+            } catch (err) {
+                freeSslShowMessage('❌ ' + err.message, 'error');
+            } finally {
+                freeSslSetLoading(false);
+                document.getElementById('freesslStartBtn').disabled = false;
+            }
+        }
+
+        function freeSslRenderChallenges(challenges, type, provider) {
+            const container = document.getElementById('freesslChallengeList');
+            const providerNames = { letsencrypt: "Let's Encrypt", zerossl: 'ZeroSSL', sslcom: 'SSL.com' };
+            const provName = providerNames[provider] || provider;
+            let html = '';
+            challenges.forEach((ch, idx) => {
+                html += `<div class="challenge-info-box" style="margin-bottom:12px;">
+                    <div class="challenge-info-header">
+                        <span>${type === 'dns-01' ? '🌐 DNS Challenge' : '📁 HTTP Challenge'} — <strong>${ch.domain}</strong></span>
+                        <span class="freessl-storage-badge" style="background:#e0f2fe;color:#0369a1;">🏪 ${provName}</span>
+                    </div>
+                    <div class="challenge-info-body">`;
+
+                if (type === 'dns-01') {
+                    html += `
+                        <div class="challenge-field">
+                            <label>Loại bản ghi DNS</label>
+                            <div class="challenge-value"><span>TXT</span></div>
+                        </div>
+                        <div class="challenge-field">
+                            <label>Tên bản ghi (Host/Name)</label>
+                            <div class="challenge-value">
+                                <span id="dns_name_${idx}">${ch.dns_name}</span>
+                                <button class="copy-btn-small" onclick="freeSslCopyText('dns_name_${idx}')">📋 Copy</button>
+                            </div>
+                        </div>
+                        <div class="challenge-field">
+                            <label>Giá trị TXT (Value)</label>
+                            <div class="challenge-value">
+                                <span id="dns_val_${idx}">${ch.dns_value}</span>
+                                <button class="copy-btn-small" onclick="freeSslCopyText('dns_val_${idx}')">📋 Copy</button>
+                            </div>
+                        </div>
+                        <div class="message-info" style="margin-top:10px;font-size:0.85rem;">
+                            📌 Vào nhà cung cấp DNS, thêm bản ghi TXT với tên <code>${ch.dns_name}</code> và giá trị trên.
+                            DNS có thể mất 1–5 phút để lan truyền.
+                        </div>`;
+                } else {
+                    html += `
+                        <div class="challenge-field">
+                            <label>Đường dẫn file cần tạo (trên webserver)</label>
+                            <div class="challenge-value">
+                                <span id="file_path_${idx}">http://${ch.domain}${ch.file_path}</span>
+                                <button class="copy-btn-small" onclick="freeSslCopyText('file_path_${idx}')">📋 Copy</button>
+                            </div>
+                        </div>
+                        <div class="challenge-field">
+                            <label>Nội dung file</label>
+                            <div class="challenge-value">
+                                <span id="file_content_${idx}">${ch.file_content}</span>
+                                <button class="copy-btn-small" onclick="freeSslCopyText('file_content_${idx}')">📋 Copy</button>
+                            </div>
+                        </div>
+                        <div class="message-info" style="margin-top:10px;font-size:0.85rem;">
+                            📌 Tạo file tại đường dẫn trên webserver với đúng nội dung. File phải truy cập được từ internet (HTTP, không redirect sang HTTPS).
+                        </div>`;
+                }
+
+                html += `</div></div>`;
+            });
+            container.innerHTML = html;
+        }
+
+        async function freeSslCheck() {
+            if (!freeSslSessionId) { alert('Chưa có session! Hãy bắt đầu lại.'); return; }
+            freeSslSetLoading(true, '🔎 Đang kiểm tra xác thực...');
+            freeSslSetStep(3);
+
+            try {
+                const { ok, data, errorText } = await freeSslFetch('/api/ssl-free/check-challenge', { session_id: freeSslSessionId });
+                if (!ok) { freeSslShowMessage('❌ ' + errorText, 'error'); return; }
+
+                let html = '';
+                data.results.forEach(r => {
+                    html += `<div class="check-result-row ${r.ok ? 'ok' : 'fail'}">
+                        <span style="font-size:1.2rem;">${r.ok ? '✅' : '❌'}</span>
+                        <div><strong>${r.domain}</strong><br><span style="font-size:0.88rem;">${r.detail}</span></div>
+                    </div>`;
+                });
+                document.getElementById('freesslCheckResults').innerHTML = html;
+
+                if (data.all_ok) {
+                    document.getElementById('freesslFinalizeCard').style.display = 'block';
+                    freeSslSetStep(4);
+                    freeSslShowMessage('✅ Tất cả xác thực đã sẵn sàng! Nhấn nút Nhận Chứng Chỉ.', 'success');
+                } else {
+                    freeSslShowMessage('⚠️ Một số xác thực chưa đúng. Kiểm tra lại và thử lại sau vài phút.', 'info');
+                }
+            } catch (err) {
+                freeSslShowMessage('❌ ' + err.message, 'error');
+            } finally {
+                freeSslSetLoading(false);
+            }
+        }
+
+        async function freeSslFinalize() {
+            if (!freeSslSessionId) { alert('Chưa có session!'); return; }
+            freeSslSetLoading(true, '🔐 Đang yêu cầu Let\'s Encrypt xác thực & cấp chứng chỉ...');
+            document.getElementById('freesslFinalizeBtn').disabled = true;
+            freeSslSetStep(4);
+
+            try {
+                const { ok, data, errorText } = await freeSslFetch('/api/ssl-free/finalize', { session_id: freeSslSessionId });
+                if (!ok) {
+                    freeSslShowMessage('❌ ' + errorText, 'error');
+                    document.getElementById('freesslFinalizeBtn').disabled = false;
+                    return;
+                }
+
+                freeSslResultData = data;
+                document.getElementById('freesslCert').value = data.certificate || '';
+                document.getElementById('freesslPrivKey').value = data.private_key || '';
+                document.getElementById('freesslCaBundle').value = data.ca_bundle || '';
+                document.getElementById('freesslFullChain').value = data.full_chain || '';
+
+                document.getElementById('freesslResultArea').classList.add('show');
+                document.getElementById('freesslChallengeCard').style.display = 'none';
+                document.getElementById('freesslFinalizeCard').style.display = 'none';
+                freeSslSetStep(5);
+                freeSslShowMessage('🎉 Chứng chỉ SSL đã được cấp thành công! Có hiệu lực 90 ngày.', 'success');
+                await freeSslLoadStoredList();
+            } catch (err) {
+                freeSslShowMessage('❌ ' + err.message, 'error');
+                document.getElementById('freesslFinalizeBtn').disabled = false;
+            } finally {
+                freeSslSetLoading(false);
+            }
+        }
+
+        function freeSslCopy(elementId) {
+            const el = document.getElementById(elementId);
+            el.select();
+            document.execCommand('copy');
+            freeSslShowMessage('✅ Đã copy vào clipboard!', 'success');
+        }
+
+        function freeSslCopyText(elementId) {
+            const el = document.getElementById(elementId);
+            const text = el.textContent || el.innerText;
+            navigator.clipboard.writeText(text).then(() => {
+                freeSslShowMessage('✅ Đã copy!', 'success');
+            }).catch(() => {
+                const tmp = document.createElement('textarea');
+                tmp.value = text;
+                document.body.appendChild(tmp);
+                tmp.select();
+                document.execCommand('copy');
+                document.body.removeChild(tmp);
+                freeSslShowMessage('✅ Đã copy!', 'success');
+            });
+        }
+
+        async function freeSslDownloadAll() {
+            if (!freeSslResultData) return;
+            const domain = document.getElementById('freesslDomain').value.trim() || 'domain';
+            const zip = new JSZip();
+            zip.file('cert.crt', freeSslResultData.certificate || '');
+            zip.file('private.key', freeSslResultData.private_key || '');
+            zip.file('ca-bundle.crt', freeSslResultData.ca_bundle || '');
+            zip.file('fullchain.pem', freeSslResultData.full_chain || '');
+            const blob = await zip.generateAsync({ type: 'blob' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = domain + '-ssl.zip';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        function freeSslReset() {
+            freeSslSessionId = null;
+            freeSslSans = [];
+            freeSslChallengeType = 'dns-01';
+            freeSslProvider = 'letsencrypt';
+            freeSslResultData = null;
+            document.getElementById('freesslDomain').value = '';
+            document.getElementById('freesslSansTags').innerHTML = '';
+            document.getElementById('freesslChallengeCard').style.display = 'none';
+            document.getElementById('freesslFinalizeCard').style.display = 'none';
+            document.getElementById('freesslResultArea').classList.remove('show');
+            document.getElementById('freesslCheckResults').innerHTML = '';
+            document.getElementById('freesslMessage').innerHTML = '';
+            freeSslSelectChallenge('dns-01');
+            freeSslSelectProvider('letsencrypt');
+            freeSslSetStep(1);
+            freeSslLoadStoredList();
+        }
+
+        freeSslLoadStoredList();
+        freeSslUpdateProviderNote();
+    </script>
+</body>
+</html>

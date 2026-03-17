@@ -3,7 +3,7 @@ services:
     name: tool-update-app
     runtime: python
     buildCommand: pip install -r requirements.txt
-    startCommand: ./run_server.sh
+    startCommand: bash run_server.sh
     envVars:
       - key: PYTHON_VERSION
-        value: 3.10.0 # Thay đổi theo phiên bản bạn dùng
+        value: 3.11.9

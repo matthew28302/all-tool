@@ -1,0 +1,1322 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Network Tools</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%23000'/><rect x='2' y='2' width='13' height='13' fill='%23fff'/><rect x='17' y='2' width='13' height='13' fill='%23000' stroke='%23fff' stroke-width='2'/><rect x='2' y='17' width='13' height='13' fill='%23000' stroke='%23fff' stroke-width='2'/><rect x='17' y='17' width='13' height='13' fill='%23fff'/></svg>">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f7fa;
+            color: #1e293b;
+            min-height: 100vh;
+        }
+        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+        
+        /* Tab Navigation */
+        .tab-nav {
+            display: flex;
+            background: #ffffff;
+            border-radius: 12px 12px 0 0;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .tab-btn {
+            flex: 1;
+            padding: 18px 24px;
+            border: none;
+            background: #f1f5f9;
+            color: #64748b;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+        .tab-btn:hover { background: #e2e8f0; }
+        .tab-btn.active {
+            background: #0ea5e9;
+            color: white;
+        }
+        .tab-btn .icon { font-size: 1.2rem; }
+        
+        .tab-content {
+            display: none;
+            background: #ffffff;
+            border-radius: 0 0 12px 12px;
+            padding: 24px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .tab-content.active { display: block; }
+        
+        /* DNS Checker Styles */
+        .dns-header { text-align: center; padding: 20px 0 30px; }
+        .dns-header h2 { font-size: 1.8rem; color: #0ea5e9; margin-bottom: 8px; }
+        .dns-header p { color: #64748b; }
+        
+        .search-box {
+            background: #f8fafc;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .search-row { display: flex; gap: 12px; margin-bottom: 16px; }
+        .search-input {
+            flex: 1;
+            padding: 14px 18px;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            background: #fff;
+            color: #1e293b;
+            font-size: 1rem;
+            transition: border-color 0.2s;
+        }
+        .search-input:focus { outline: none; border-color: #0ea5e9; }
+        .search-input::placeholder { color: #94a3b8; }
+        
+        .btn {
+            padding: 14px 24px;
+            border: none;
+            border-radius: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 0.95rem;
+            transition: all 0.2s;
+        }
+        .btn-primary { background: #0ea5e9; color: white; }
+        .btn-primary:hover { background: #0284c7; }
+        .btn-secondary { background: #f1f5f9; color: #64748b; border: 2px solid #e2e8f0; }
+        .btn-secondary:hover { background: #e2e8f0; }
+        .btn-success { background: #10b981; color: white; }
+        .btn-success:hover { background: #059669; }
+        .btn-info { background: #06b6d4; color: white; }
+        .btn-info:hover { background: #0891b2; }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        
+        .record-types { display: flex; flex-wrap: wrap; gap: 10px; }
+        .record-types label {
+            display: flex; align-items: center; gap: 8px;
+            padding: 10px 16px; background: #fff; border-radius: 8px;
+            cursor: pointer; font-size: 0.9rem; font-weight: 500;
+            color: #475569; border: 2px solid #e2e8f0; transition: all 0.2s;
+        }
+        .record-types label:hover { border-color: #0ea5e9; }
+        .record-types label:has(input:checked) { background: #e0f2fe; border-color: #0ea5e9; color: #0ea5e9; }
+        
+        .summary-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 20px; }
+        .summary-card {
+            background: #f8fafc;
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+        }
+        .summary-card .label { font-size: 0.8rem; color: #64748b; text-transform: uppercase; margin-bottom: 8px; }
+        .summary-card .value { font-size: 1.4rem; font-weight: 700; color: #1e293b; }
+        .summary-card.success .value { color: #10b981; }
+        .summary-card.warning .value { color: #f59e0b; }
+        .summary-card.error .value { color: #ef4444; }
+        .summary-card.info .value { color: #0ea5e9; }
+        
+        .dns-results { background: #f8fafc; border-radius: 12px; padding: 20px; margin-bottom: 20px; }
+        .section-title { font-size: 1.1rem; color: #1e293b; margin-bottom: 16px; font-weight: 600; }
+        
+        .record-block { margin-bottom: 16px; }
+        .record-header {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 12px 16px; background: #fff; border-radius: 8px 8px 0 0;
+            border: 1px solid #e2e8f0; border-bottom: none;
+        }
+        .record-header .type { font-weight: 700; color: #0ea5e9; }
+        .record-header .rate { font-size: 0.8rem; padding: 4px 12px; border-radius: 20px; font-weight: 600; }
+        .rate.full { background: #dcfce7; color: #16a34a; }
+        .rate.partial { background: #fef3c7; color: #d97706; }
+        .rate.none { background: #fee2e2; color: #dc2626; }
+        
+        .record-body { background: #fff; border-radius: 0 0 8px 8px; border: 1px solid #e2e8f0; }
+        .server-row {
+            display: grid; grid-template-columns: 130px 120px 1fr;
+            padding: 12px 16px; border-bottom: 1px solid #f1f5f9;
+            font-size: 0.9rem; align-items: center;
+        }
+        .server-row:last-child { border-bottom: none; }
+        .server-name { font-weight: 600; color: #1e293b; }
+        .server-ip { color: #64748b; font-family: monospace; font-size: 0.85rem; }
+        .server-records { display: flex; flex-wrap: wrap; gap: 6px; }
+        .record-value { background: #dcfce7; color: #16a34a; padding: 4px 10px; border-radius: 6px; font-family: monospace; font-size: 0.8rem; }
+        .no-record { background: #fee2e2; color: #dc2626; padding: 4px 10px; border-radius: 6px; font-size: 0.8rem; }
+        
+        .dnssec-card { background: #f8fafc; border-radius: 12px; padding: 20px; }
+        .dnssec-status { display: flex; align-items: center; gap: 16px; padding: 16px; border-radius: 10px; }
+        .dnssec-status.enabled { background: #dcfce7; }
+        .dnssec-status.disabled { background: #fee2e2; }
+        .dnssec-icon { width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.4rem; }
+        .dnssec-status.enabled .dnssec-icon { background: #bbf7d0; }
+        .dnssec-status.disabled .dnssec-icon { background: #fecaca; }
+        .dnssec-text .title { font-weight: 600; font-size: 1rem; }
+        .dnssec-status.enabled .title { color: #16a34a; }
+        .dnssec-status.disabled .title { color: #dc2626; }
+        .dnssec-text .desc { font-size: 0.85rem; color: #64748b; margin-top: 4px; }
+        .dnssec-details { margin-top: 16px; }
+        .dnssec-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #e2e8f0; font-size: 0.9rem; }
+        .dnssec-row:last-child { border-bottom: none; }
+        .dnssec-row .label { color: #64748b; }
+        .dnssec-row .value { font-weight: 500; }
+        .dnssec-row .value.success { color: #16a34a; }
+        .dnssec-row .value.error { color: #dc2626; }
+        
+        .loading { display: none; text-align: center; padding: 60px 20px; }
+        .loading.show { display: block; }
+        .spinner { width: 50px; height: 50px; border: 4px solid #e2e8f0; border-top-color: #0ea5e9; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 20px; }
+        .loading p { color: #64748b; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .results-container { display: none; }
+        .results-container.show { display: block; }
+        
+        /* SSL Tool Styles */
+        .ssl-header { text-align: center; padding: 20px 0 30px; }
+        .ssl-header h2 { font-size: 1.8rem; color: #8b5cf6; margin-bottom: 8px; }
+        .ssl-header p { color: #64748b; }
+        
+        .upload-area {
+            border: 2px dashed #8b5cf6;
+            border-radius: 12px;
+            padding: 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-bottom: 20px;
+            background: #faf5ff;
+        }
+        .upload-area:hover { border-color: #7c3aed; background: #f3e8ff; }
+        .upload-area.dragover { border-color: #7c3aed; background: #ede9fe; }
+        .upload-icon { font-size: 48px; margin-bottom: 10px; }
+        
+        .ssl-result-area { display: none; }
+        .ssl-result-area.show { display: block; }
+        
+        .result-box {
+            background: #f8fafc;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 16px;
+        }
+        .result-box h3 {
+            color: #1e293b;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .result-box textarea {
+            width: 100%;
+            min-height: 150px;
+            padding: 12px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 12px;
+            resize: vertical;
+            background: #fff;
+        }
+        
+        .btn-group { display: flex; gap: 8px; flex-wrap: wrap; }
+        
+        .message { margin-bottom: 16px; }
+        .message-error { background: #fee2e2; border-left: 4px solid #dc2626; color: #991b1b; padding: 12px 16px; border-radius: 8px; }
+        .message-success { background: #dcfce7; border-left: 4px solid #16a34a; color: #166534; padding: 12px 16px; border-radius: 8px; }
+        .message-info { background: #e0f2fe; border-left: 4px solid #0ea5e9; color: #0c4a6e; padding: 12px 16px; border-radius: 8px; }
+        
+        /* SSL Check Styles */
+        .sslcheck-header { text-align: center; padding: 20px 0 30px; }
+        .sslcheck-header h2 { font-size: 1.8rem; color: #10b981; margin-bottom: 8px; }
+        .sslcheck-header p { color: #64748b; }
+        
+        .ssl-info-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-bottom: 20px; }
+        .ssl-info-card { background: #f8fafc; border-radius: 12px; padding: 20px; }
+        .ssl-info-card.full { grid-column: 1 / -1; }
+        .ssl-info-card .card-title { font-size: 0.8rem; color: #64748b; text-transform: uppercase; margin-bottom: 8px; letter-spacing: 0.5px; }
+        .ssl-info-card .card-value { font-size: 1.1rem; font-weight: 600; color: #1e293b; word-break: break-all; }
+        .ssl-info-card .card-value.large { font-size: 1.8rem; }
+        .ssl-info-card .card-value.success { color: #10b981; }
+        .ssl-info-card .card-value.warning { color: #f59e0b; }
+        .ssl-info-card .card-value.error { color: #ef4444; }
+        .ssl-info-card .card-sub { font-size: 0.85rem; color: #64748b; margin-top: 4px; }
+        
+        .ssl-status-badge { display: inline-flex; align-items: center; gap: 8px; padding: 8px 16px; border-radius: 20px; font-weight: 600; font-size: 0.9rem; }
+        .ssl-status-badge.valid { background: #dcfce7; color: #16a34a; }
+        .ssl-status-badge.invalid { background: #fee2e2; color: #dc2626; }
+        
+        .san-list { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+        .san-item { background: #e0f2fe; color: #0369a1; padding: 4px 10px; border-radius: 6px; font-size: 0.85rem; font-family: monospace; }
+        
+        /* Host Check Styles */
+        .hostcheck-header { text-align: center; padding: 20px 0 30px; }
+        .hostcheck-header h2 { font-size: 1.8rem; color: #f59e0b; margin-bottom: 8px; }
+        .hostcheck-header p { color: #64748b; }
+        
+        .host-info-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-bottom: 20px; }
+        .host-info-card { background: #f8fafc; border-radius: 12px; padding: 20px; }
+        .host-info-card.full { grid-column: 1 / -1; }
+        .host-info-card .card-title { font-size: 0.8rem; color: #64748b; text-transform: uppercase; margin-bottom: 8px; letter-spacing: 0.5px; }
+        .host-info-card .card-value { font-size: 1.1rem; font-weight: 600; color: #1e293b; word-break: break-all; }
+        .host-info-card .card-value.highlight { color: #f59e0b; }
+        .host-info-card .card-value.mono { font-family: monospace; font-size: 1rem; }
+        .host-info-card .card-sub { font-size: 0.85rem; color: #64748b; margin-top: 4px; }
+        
+        .location-badge { display: inline-flex; align-items: center; gap: 6px; background: #fef3c7; color: #92400e; padding: 6px 12px; border-radius: 6px; font-size: 0.9rem; }
+        
+        /* SSL Decoder Styles */
+        .ssldecoder-header { text-align: center; padding: 20px 0 30px; }
+        .ssldecoder-header h2 { font-size: 1.8rem; color: #ec4899; margin-bottom: 8px; }
+        .ssldecoder-header p { color: #64748b; }
+        
+        .decoder-section { background: #f8fafc; border-radius: 12px; padding: 20px; margin-bottom: 20px; }
+        .decoder-section h3 { color: #1e293b; margin-bottom: 16px; display: flex; align-items: center; gap: 10px; font-size: 1.1rem; }
+        .decoder-section h3 .badge { font-size: 0.75rem; padding: 4px 10px; border-radius: 20px; font-weight: 600; }
+        .decoder-section h3 .badge-match { background: #fce7f3; color: #be185d; }
+        .decoder-section h3 .badge-decode { background: #e0e7ff; color: #4338ca; }
+        
+        .decoder-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+        .decoder-col { }
+        .decoder-col label { display: block; font-weight: 600; color: #475569; margin-bottom: 8px; font-size: 0.9rem; }
+        .decoder-col textarea { width: 100%; min-height: 150px; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px; font-family: monospace; font-size: 12px; resize: vertical; background: #fff; }
+        .decoder-col textarea:focus { outline: none; border-color: #ec4899; }
+        
+        .match-result { padding: 16px; border-radius: 10px; text-align: center; font-weight: 600; font-size: 1.1rem; margin-top: 16px; }
+        .match-result.match { background: #dcfce7; color: #16a34a; border: 2px solid #86efac; }
+        .match-result.no-match { background: #fee2e2; color: #dc2626; border: 2px solid #fca5a5; }
+        .match-result.pending { background: #f1f5f9; color: #64748b; border: 2px dashed #cbd5e1; }
+        
+        .decode-result { margin-top: 16px; }
+        .decode-info-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+        .decode-info-item { background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; }
+        .decode-info-item.full { grid-column: 1 / -1; }
+        .decode-info-item .label { font-size: 0.75rem; color: #64748b; text-transform: uppercase; margin-bottom: 4px; }
+        .decode-info-item .value { font-weight: 600; color: #1e293b; word-break: break-all; font-size: 0.9rem; }
+        .decode-info-item .value.mono { font-family: monospace; font-size: 0.8rem; }
+        .decode-info-item .value.success { color: #16a34a; }
+        .decode-info-item .value.warning { color: #f59e0b; }
+        .decode-info-item .value.error { color: #ef4444; }
+        
+        /* Free SSL Styles */
+        .freessl-header { text-align: center; padding: 20px 0 30px; }
+        .freessl-header h2 { font-size: 1.8rem; color: #a855f7; margin-bottom: 8px; }
+        .freessl-header p { color: #64748b; }
+        
+        .freessl-step { background: #f8fafc; border-radius: 12px; padding: 20px; margin-bottom: 20px; border-left: 4px solid #a855f7; }
+        .freessl-step h3 { color: #1e293b; margin-bottom: 16px; display: flex; align-items: center; gap: 10px; }
+        .freessl-step-num { width: 32px; height: 32px; background: #a855f7; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; }
+        
+        .auth-method-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 16px; }
+        .auth-method-btn { padding: 16px; border: 2px solid #e2e8f0; border-radius: 10px; cursor: pointer; text-align: center; transition: all 0.2s; background: #fff; }
+        .auth-method-btn:hover { border-color: #a855f7; background: #faf5ff; }
+        .auth-method-btn.active { border-color: #a855f7; background: #f3e8ff; }
+        .auth-method-btn .method-icon { font-size: 2rem; margin-bottom: 8px; }
+        .auth-method-btn .method-name { font-weight: 600; color: #1e293b; }
+        
+        .challenge-box { background: #fff; border: 2px dashed #a855f7; border-radius: 10px; padding: 16px; margin-top: 16px; }
+        .challenge-title { font-weight: 600; color: #1e293b; margin-bottom: 12px; }
+        .challenge-content { background: #f1f5f9; border-radius: 8px; padding: 12px; font-family: monospace; font-size: 0.85rem; word-break: break-all; }
+        .challenge-copy-btn { margin-top: 8px; }
+        
+        .ssl-download-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-top: 16px; }
+        .ssl-download-card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 16px; text-align: center; }
+        .ssl-download-card .icon { font-size: 2rem; margin-bottom: 8px; }
+        .ssl-download-card .name { font-weight: 600; color: #1e293b; margin-bottom: 8px; }
+        .ssl-download-card .btn { width: 100%; }
+        
+        /* SSL History Styles */
+        .history-table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 10px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .history-table thead { background: #f8fafc; }
+        .history-table th { padding: 14px; text-align: left; font-weight: 600; color: #1e293b; border-bottom: 2px solid #e2e8f0; }
+        .history-table td { padding: 14px; border-bottom: 1px solid #e2e8f0; }
+        .history-table tbody tr:hover { background: #f8fafc; }
+        .history-table tbody tr:last-child td { border-bottom: none; }
+        
+        .history-domain { font-weight: 600; color: #1e293b; font-family: monospace; }
+        .history-status { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 6px; font-size: 0.8rem; }
+        .history-status.active { background: #dcfce7; color: #16a34a; }
+        .history-status.expired { background: #fee2e2; color: #dc2626; }
+        .history-days { font-weight: 600; }
+        .history-days.warning { color: #f59e0b; }
+        .history-days.critical { color: #ef4444; }
+        
+        .history-actions { display: flex; gap: 8px; }
+        .history-btn { padding: 6px 12px; border: 1px solid #e2e8f0; background: #fff; border-radius: 6px; cursor: pointer; font-size: 0.85rem; transition: all 0.2s; }
+        .history-btn:hover { background: #f1f5f9; border-color: #a855f7; }
+        .history-btn.delete:hover { background: #fee2e2; border-color: #dc2626; }
+        
+        .history-empty { text-align: center; padding: 40px 20px; color: #64748b; }
+        .history-empty .icon { font-size: 3rem; margin-bottom: 12px; }
+        
+        @media (max-width: 768px) {
+            .decoder-row { grid-template-columns: 1fr; }
+            .decode-info-grid { grid-template-columns: 1fr; }
+            .auth-method-grid { grid-template-columns: 1fr; }
+            .ssl-download-grid { grid-template-columns: 1fr; }
+        }
+        
+        @media (max-width: 768px) {
+            .ssl-info-grid { grid-template-columns: 1fr; }
+            .host-info-grid { grid-template-columns: 1fr; }
+            .summary-grid { grid-template-columns: 1fr; }
+            .search-row { flex-direction: column; }
+            .server-row { grid-template-columns: 1fr; gap: 8px; }
+            .tab-btn { padding: 14px 16px; font-size: 0.9rem; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Tab Navigation -->
+        <div class="tab-nav">
+            <button class="tab-btn active" onclick="switchTab('dns')">
+                <span class="icon">🔍</span> DNS
+            </button>
+            <button class="tab-btn" onclick="switchTab('sslcheck')">
+                <span class="icon">🛡️</span> SSL Check
+            </button>
+            <button class="tab-btn" onclick="switchTab('hostcheck')">
+                <span class="icon">🖥️</span> Host Check
+            </button>
+            <button class="tab-btn" onclick="switchTab('ssl')">
+                <span class="icon">🔒</span> SSL Bundle
+            </button>
+            <button class="tab-btn" onclick="switchTab('ssldecoder')">
+                <span class="icon">🔐</span> SSL Decoder
+            </button>
+        </div>
+        
+        <!-- DNS Checker Tab -->
+        <div id="tab-dns" class="tab-content active">
+            <div class="dns-header">
+                <h2>🔍 DNS Checker</h2>
+                <p>Kiểm tra DNS Records & DNSSEC cho mọi tên miền</p>
+            </div>
+
+            <div class="search-box">
+                <div class="search-row">
+                    <input type="text" class="search-input" id="domainInput" 
+                           placeholder="Nhập tên miền (vd: google.com)" 
+                           onkeypress="if(event.key==='Enter')checkDNS()">
+                    <button class="btn btn-primary" onclick="checkDNS()">🔍 Kiểm tra</button>
+                    <button class="btn btn-secondary" onclick="clearCache()">🗑️ Clear</button>
+                </div>
+                <div class="record-types" id="recordTypes">
+                    <label><input type="checkbox" value="A" checked><span>A</span></label>
+                    <label><input type="checkbox" value="AAAA"><span>AAAA</span></label>
+                    <label><input type="checkbox" value="MX"><span>MX</span></label>
+                    <label><input type="checkbox" value="NS"><span>NS</span></label>
+                    <label><input type="checkbox" value="TXT"><span>TXT</span></label>
+                    <label><input type="checkbox" value="CNAME"><span>CNAME</span></label>
+                    <label><input type="checkbox" value="SOA"><span>SOA</span></label>
+                </div>
+            </div>
+
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <p>Đang kiểm tra DNS...</p>
+            </div>
+
+            <div class="results-container" id="results">
+                <div class="summary-grid">
+                    <div class="summary-card info">
+                        <div class="label">Domain</div>
+                        <div class="value" id="summaryDomain">-</div>
+                    </div>
+                    <div class="summary-card" id="cardPropagation">
+                        <div class="label">Propagation</div>
+                        <div class="value" id="summaryPropagation">-</div>
+                    </div>
+                    <div class="summary-card" id="cardDNSSEC">
+                        <div class="label">DNSSEC</div>
+                        <div class="value" id="summaryDNSSEC">-</div>
+                    </div>
+                </div>
+
+                <div class="dns-results">
+                    <div class="section-title">📋 DNS Records</div>
+                    <div id="dnsRecords"></div>
+                </div>
+
+                <div class="dnssec-card">
+                    <div class="section-title">🔐 DNSSEC Status</div>
+                    <div id="dnssecContent"></div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- SSL Check Tab -->
+        <div id="tab-sslcheck" class="tab-content">
+            <div class="sslcheck-header">
+                <h2>🛡️ SSL Certificate Check</h2>
+                <p>Kiểm tra thông tin chứng chỉ SSL của domain</p>
+            </div>
+
+            <div class="search-box">
+                <div class="search-row">
+                    <input type="text" class="search-input" id="sslDomainInput" 
+                           placeholder="Nhập tên miền (vd: google.com)" 
+                           onkeypress="if(event.key==='Enter')checkSSL()">
+                    <button class="btn btn-primary" style="background: #10b981;" onclick="checkSSL()">🛡️ Kiểm tra SSL</button>
+                </div>
+            </div>
+
+            <div class="loading" id="sslLoading">
+                <div class="spinner" style="border-top-color: #10b981;"></div>
+                <p>Đang kiểm tra SSL...</p>
+            </div>
+
+            <div id="sslCheckMessage" class="message"></div>
+
+            <div class="results-container" id="sslCheckResults">
+                <div class="ssl-info-grid">
+                    <div class="ssl-info-card">
+                        <div class="card-title">Trạng thái</div>
+                        <div id="sslStatus"></div>
+                    </div>
+                    <div class="ssl-info-card">
+                        <div class="card-title">Còn lại</div>
+                        <div class="card-value large" id="sslDaysRemaining">-</div>
+                        <div class="card-sub">ngày</div>
+                    </div>
+                    <div class="ssl-info-card">
+                        <div class="card-title">Ngày bắt đầu</div>
+                        <div class="card-value" id="sslValidFrom">-</div>
+                    </div>
+                    <div class="ssl-info-card">
+                        <div class="card-title">Ngày hết hạn</div>
+                        <div class="card-value" id="sslValidTo">-</div>
+                    </div>
+                    <div class="ssl-info-card full">
+                        <div class="card-title">Nhà cung cấp SSL (Issuer)</div>
+                        <div class="card-value" id="sslIssuer">-</div>
+                        <div class="card-sub" id="sslIssuerOrg">-</div>
+                    </div>
+                    <div class="ssl-info-card full">
+                        <div class="card-title">Domain / Subject</div>
+                        <div class="card-value" id="sslSubject">-</div>
+                        <div class="card-sub" id="sslSubjectOrg">-</div>
+                    </div>
+                    <div class="ssl-info-card full">
+                        <div class="card-title">Subject Alternative Names (SAN)</div>
+                        <div id="sslSAN" class="san-list">-</div>
+                    </div>
+                    <div class="ssl-info-card">
+                        <div class="card-title">Serial Number</div>
+                        <div class="card-value" style="font-size: 0.85rem; font-family: monospace;" id="sslSerial">-</div>
+                    </div>
+                    <div class="ssl-info-card">
+                        <div class="card-title">Version</div>
+                        <div class="card-value" id="sslVersion">-</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Host Check Tab -->
+        <div id="tab-hostcheck" class="tab-content">
+            <div class="hostcheck-header">
+                <h2>🖥️ Host Check</h2>
+                <p>Kiểm tra thông tin hosting từ IP hoặc Domain</p>
+            </div>
+
+            <div class="search-box">
+                <div class="search-row">
+                    <input type="text" class="search-input" id="hostInput" 
+                           placeholder="Nhập IP hoặc Domain (vd: 8.8.8.8 hoặc google.com)" 
+                           onkeypress="if(event.key==='Enter')checkHost()">
+                    <button class="btn btn-primary" style="background: #f59e0b;" onclick="checkHost()">🖥️ Kiểm tra</button>
+                </div>
+            </div>
+
+            <div class="loading" id="hostLoading">
+                <div class="spinner" style="border-top-color: #f59e0b;"></div>
+                <p>Đang kiểm tra host...</p>
+            </div>
+
+            <div id="hostCheckMessage" class="message"></div>
+
+            <div class="results-container" id="hostCheckResults">
+                <div class="host-info-grid">
+                    <div class="host-info-card">
+                        <div class="card-title">IP Address</div>
+                        <div class="card-value mono highlight" id="hostIP">-</div>
+                    </div>
+                    <div class="host-info-card">
+                        <div class="card-title">Hostname</div>
+                        <div class="card-value mono" id="hostHostname">-</div>
+                    </div>
+                    <div class="host-info-card full">
+                        <div class="card-title">Nhà cung cấp Hosting (ISP)</div>
+                        <div class="card-value highlight" id="hostProvider">-</div>
+                        <div class="card-sub" id="hostOrg">-</div>
+                    </div>
+                    <div class="host-info-card full">
+                        <div class="card-title">ASN</div>
+                        <div class="card-value mono" id="hostASN">-</div>
+                    </div>
+                    <div class="host-info-card">
+                        <div class="card-title">Reverse DNS</div>
+                        <div class="card-value mono" style="font-size: 0.9rem;" id="hostReverseDNS">-</div>
+                    </div>
+                    <div class="host-info-card">
+                        <div class="card-title">Vị trí</div>
+                        <div id="hostLocation">-</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- SSL Decoder Tab -->
+        <div id="tab-ssldecoder" class="tab-content">
+            <div class="ssldecoder-header">
+                <h2>🔐 SSL Certificate Decoder</h2>
+                <p>Giải mã và phân tích chứng chỉ SSL</p>
+            </div>
+            
+            <div class="search-box">
+                <h3 style="margin-bottom: 16px; color: #1e293b;">📄 Certificate PEM</h3>
+                <textarea id="decodeCertInput" placeholder="-----BEGIN CERTIFICATE-----&#10;MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA...&#10;-----END CERTIFICATE-----" style="width: 100%; height: 200px; margin-bottom: 16px;"></textarea>
+                <button class="btn btn-primary" onclick="decodeCertificate()">🔍 Decode Certificate</button>
+            </div>
+            
+            <div id="certDecodeResult"></div>
+            
+            <div class="search-box" style="margin-top: 30px;">
+                <h3 style="margin-bottom: 16px; color: #1e293b;">📋 CSR (Certificate Signing Request)</h3>
+                <textarea id="decodeCsrInput" placeholder="-----BEGIN CERTIFICATE REQUEST-----&#10;MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA...&#10;-----END CERTIFICATE REQUEST-----" style="width: 100%; height: 150px; margin-bottom: 16px;"></textarea>
+                <button class="btn btn-primary" onclick="decodeCSR()">🔍 Decode CSR</button>
+            </div>
+            
+            <div id="csrDecodeResult"></div>
+        </div>
+        
+        <!-- SSL Bundle Tool Tab -->
+        <div id="tab-ssl" class="tab-content">
+            <div class="ssl-header">
+                <h2>🔒 SSL Certificate Bundle Tool</h2>
+                <p>Công cụ gộp chứng chỉ SSL tự động</p>
+            </div>
+
+            <div class="upload-area" id="uploadArea">
+                <div class="upload-icon">📁</div>
+                <p><strong>Kéo thả file ZIP vào đây</strong></p>
+                <p style="color: #64748b; margin-top: 10px;">hoặc</p>
+                <button class="btn btn-primary" style="margin-top: 10px;" onclick="document.getElementById('fileInput').click()">
+                    Chọn file ZIP
+                </button>
+                <input type="file" id="fileInput" accept=".zip" style="display:none">
+            </div>
+
+            <div id="sslMessage" class="message"></div>
+
+            <div class="ssl-result-area" id="sslResultArea">
+                <div class="result-box">
+                    <h3>
+                        Certificate Bundle
+                        <div class="btn-group">
+                            <button class="btn btn-success" onclick="copyToClipboard('bundleOutput')">📋 Copy</button>
+                            <button class="btn btn-info" onclick="downloadBundle()">⬇️ Download</button>
+                        </div>
+                    </h3>
+                    <textarea id="bundleOutput" readonly></textarea>
+                </div>
+
+                <div class="result-box">
+                    <h3>🔑 Private Key (Optional)</h3>
+                    <p style="color: #64748b; font-size: 0.9rem; margin-bottom: 10px;">Dán private key để tạo PEM và PFX files</p>
+                    <textarea id="privateKeyInput" placeholder="-----BEGIN PRIVATE KEY-----&#10;...&#10;-----END PRIVATE KEY-----"></textarea>
+                    <div style="margin-top: 12px;">
+                        <button class="btn btn-primary" onclick="generatePemAndPfx()" id="generateBtn" disabled>
+                            🔧 Generate PEM, PFX & ZIP Package
+                        </button>
+                    </div>
+                </div>
+
+                <div id="additionalResults"></div>
+            </div>
+        </div>
+        
+    <script>
+        // ========== Tab Switching ==========
+        function switchTab(tab) {
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            
+            const tabMap = { 'dns': 1, 'sslcheck': 2, 'hostcheck': 3, 'ssl': 4, 'ssldecoder': 5 };
+            document.querySelector(`.tab-btn:nth-child(${tabMap[tab]})`).classList.add('active');
+            document.getElementById('tab-' + tab).classList.add('active');
+        }
+        
+        // ========== SSL Check ==========
+        async function checkSSL() {
+            const domain = document.getElementById('sslDomainInput').value.trim();
+            if (!domain) { alert('Vui lòng nhập tên miền'); return; }
+
+            document.getElementById('sslLoading').classList.add('show');
+            document.getElementById('sslCheckResults').classList.remove('show');
+            document.getElementById('sslCheckMessage').innerHTML = '';
+
+            try {
+                const response = await fetch('/api/check-ssl', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ domain: domain })
+                });
+                const data = await response.json();
+                
+                if (data.error && !data.valid) {
+                    document.getElementById('sslCheckMessage').innerHTML = '<div class="message-error">❌ ' + data.error + '</div>';
+                    document.getElementById('sslCheckResults').classList.remove('show');
+                } else {
+                    renderSSLResults(data);
+                }
+            } catch (err) {
+                document.getElementById('sslCheckMessage').innerHTML = '<div class="message-error">❌ Lỗi kết nối: ' + err.message + '</div>';
+            } finally {
+                document.getElementById('sslLoading').classList.remove('show');
+            }
+        }
+
+        function renderSSLResults(data) {
+            // Status
+            const statusEl = document.getElementById('sslStatus');
+            if (data.valid) {
+                statusEl.innerHTML = '<span class="ssl-status-badge valid">✓ Hợp lệ</span>';
+            } else {
+                statusEl.innerHTML = '<span class="ssl-status-badge invalid">✗ Không hợp lệ</span>';
+            }
+            
+            // Days remaining with color coding
+            const daysEl = document.getElementById('sslDaysRemaining');
+            const days = data.days_remaining;
+            daysEl.textContent = days !== null ? days : '-';
+            daysEl.className = 'card-value large';
+            if (days !== null) {
+                if (days > 30) daysEl.classList.add('success');
+                else if (days > 7) daysEl.classList.add('warning');
+                else daysEl.classList.add('error');
+            }
+            
+            // Dates
+            document.getElementById('sslValidFrom').textContent = data.valid_from || '-';
+            document.getElementById('sslValidTo').textContent = data.valid_to || '-';
+            
+            // Issuer
+            document.getElementById('sslIssuer').textContent = data.issuer || '-';
+            document.getElementById('sslIssuerOrg').textContent = data.issuer_org ? `Tổ chức: ${data.issuer_org}` : '';
+            
+            // Subject
+            document.getElementById('sslSubject').textContent = data.subject || '-';
+            document.getElementById('sslSubjectOrg').textContent = data.subject_org ? `Tổ chức: ${data.subject_org}` : '';
+            
+            // SAN
+            const sanEl = document.getElementById('sslSAN');
+            if (data.subject_alt_names && data.subject_alt_names.length > 0) {
+                sanEl.innerHTML = data.subject_alt_names.map(san => `<span class="san-item">${san}</span>`).join('');
+            } else {
+                sanEl.innerHTML = '<span style="color: #64748b;">Không có SAN</span>';
+            }
+            
+            // Serial & Version
+            document.getElementById('sslSerial').textContent = data.serial_number || '-';
+            document.getElementById('sslVersion').textContent = data.version ? `v${data.version}` : '-';
+            
+            document.getElementById('sslCheckResults').classList.add('show');
+        }
+        
+        // ========== Host Check ==========
+        async function checkHost() {
+            const host = document.getElementById('hostInput').value.trim();
+            if (!host) { alert('Vui lòng nhập IP hoặc Domain'); return; }
+
+            document.getElementById('hostLoading').classList.add('show');
+            document.getElementById('hostCheckResults').classList.remove('show');
+            document.getElementById('hostCheckMessage').innerHTML = '';
+
+            try {
+                const response = await fetch('/api/check-host', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ host: host })
+                });
+                const data = await response.json();
+                
+                if (data.error && !data.ip) {
+                    document.getElementById('hostCheckMessage').innerHTML = '<div class="message-error">❌ ' + data.error + '</div>';
+                } else {
+                    renderHostResults(data);
+                }
+            } catch (err) {
+                document.getElementById('hostCheckMessage').innerHTML = '<div class="message-error">❌ Lỗi kết nối: ' + err.message + '</div>';
+            } finally {
+                document.getElementById('hostLoading').classList.remove('show');
+            }
+        }
+
+        function renderHostResults(data) {
+            document.getElementById('hostIP').textContent = data.ip || '-';
+            document.getElementById('hostHostname').textContent = data.hostname || '-';
+            document.getElementById('hostProvider').textContent = data.provider || '-';
+            document.getElementById('hostOrg').textContent = data.org ? `Organization: ${data.org}` : '';
+            document.getElementById('hostASN').textContent = data.asn || '-';
+            document.getElementById('hostReverseDNS').textContent = data.reverse_dns || '-';
+            
+            // Location
+            const locEl = document.getElementById('hostLocation');
+            if (data.city || data.country) {
+                const parts = [data.city, data.region, data.country].filter(Boolean);
+                locEl.innerHTML = `<span class="location-badge">📍 ${parts.join(', ')}</span>`;
+            } else {
+                locEl.textContent = '-';
+            }
+            
+            document.getElementById('hostCheckResults').classList.add('show');
+        }
+        
+        // ========== DNS Checker ==========
+        async function checkDNS() {
+            var domain = document.getElementById('domainInput').value.trim();
+            if (!domain) { alert('Vui lòng nhập tên miền'); return; }
+
+            var recordTypes = [];
+            document.querySelectorAll('#recordTypes input:checked').forEach(cb => recordTypes.push(cb.value));
+            if (recordTypes.length === 0) { alert('Vui lòng chọn ít nhất 1 loại record'); return; }
+
+            document.getElementById('loading').classList.add('show');
+            document.getElementById('results').classList.remove('show');
+
+            try {
+                var response = await fetch('/api/check-dns', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ domain: domain, record_types: recordTypes })
+                });
+                var data = await response.json();
+                if (data.error) { alert('Lỗi: ' + data.error); return; }
+                renderResults(data);
+            } catch (err) {
+                alert('Lỗi kết nối: ' + err.message);
+            } finally {
+                document.getElementById('loading').classList.remove('show');
+            }
+        }
+
+        function renderResults(data) {
+            document.getElementById('summaryDomain').textContent = data.domain;
+            
+            var prop = data.summary.propagation;
+            document.getElementById('summaryPropagation').textContent = prop;
+            if (prop !== 'N/A') {
+                var parts = prop.split('/');
+                var success = parseInt(parts[0]), total = parseInt(parts[1]);
+                document.getElementById('cardPropagation').className = 'summary-card ' + (success === total ? 'success' : (success > 0 ? 'warning' : 'error'));
+            }
+
+            var dnssecEnabled = data.summary.dnssec_enabled;
+            document.getElementById('summaryDNSSEC').textContent = dnssecEnabled ? '✓ Enabled' : '✗ Disabled';
+            document.getElementById('cardDNSSEC').className = 'summary-card ' + (dnssecEnabled ? 'success' : 'error');
+
+            var recordsHtml = '';
+            for (var type in data.dns_records) {
+                var typeData = data.dns_records[type];
+                var rateParts = typeData.success_rate.split('/');
+                var successCount = parseInt(rateParts[0]), totalCount = parseInt(rateParts[1]);
+                var rateClass = successCount === totalCount ? 'full' : (successCount > 0 ? 'partial' : 'none');
+                
+                var serversHtml = '';
+                for (var serverName in typeData.servers) {
+                    var serverData = typeData.servers[serverName];
+                    var recordsStr = '';
+                    if (serverData.records && serverData.records.length > 0) {
+                        serverData.records.forEach(r => recordsStr += '<span class="record-value">' + escapeHtml(r) + '</span>');
+                    } else {
+                        recordsStr = '<span class="no-record">No record</span>';
+                    }
+                    serversHtml += '<div class="server-row"><span class="server-name">' + serverName + '</span><span class="server-ip">' + serverData.ip + '</span><div class="server-records">' + recordsStr + '</div></div>';
+                }
+                recordsHtml += '<div class="record-block"><div class="record-header"><span class="type">' + type + ' Record</span><span class="rate ' + rateClass + '">' + typeData.success_rate + '</span></div><div class="record-body">' + serversHtml + '</div></div>';
+            }
+            document.getElementById('dnsRecords').innerHTML = recordsHtml;
+
+            var dnssec = data.dnssec;
+            var dnssecHtml = '<div class="dnssec-status ' + (dnssec.enabled ? 'enabled' : 'disabled') + '"><div class="dnssec-icon">' + (dnssec.enabled ? '🔒' : '🔓') + '</div><div class="dnssec-text"><div class="title">' + dnssec.status + '</div><div class="desc">' + (dnssec.enabled ? 'Domain được bảo vệ bởi DNSSEC' : 'DNSSEC chưa được cấu hình') + '</div></div></div>';
+            if (dnssec.details) {
+                dnssecHtml += '<div class="dnssec-details"><div class="dnssec-row"><span class="label">DNSKEY Record</span><span class="value ' + (dnssec.details.dnskey ? 'success' : 'error') + '">' + (dnssec.details.dnskey ? '✓ Found' : '✗ Not found') + '</span></div><div class="dnssec-row"><span class="label">DS Record</span><span class="value ' + (dnssec.details.ds ? 'success' : 'error') + '">' + (dnssec.details.ds ? '✓ Found' : '✗ Not found') + '</span></div></div>';
+            }
+            document.getElementById('dnssecContent').innerHTML = dnssecHtml;
+            document.getElementById('results').classList.add('show');
+        }
+
+        function escapeHtml(text) { var div = document.createElement('div'); div.textContent = text; return div.innerHTML; }
+        function clearCache() { fetch('/api/clear-cache', { method: 'POST' }).then(() => alert('✓ Cache đã được xóa')).catch(err => alert('Lỗi: ' + err.message)); }
+
+        // ========== SSL Tool ==========
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const sslResultArea = document.getElementById('sslResultArea');
+        const bundleOutput = document.getElementById('bundleOutput');
+        const sslMessage = document.getElementById('sslMessage');
+        const privateKeyInput = document.getElementById('privateKeyInput');
+        const generateBtn = document.getElementById('generateBtn');
+
+        let currentDomain = '', currentBundle = '', currentZipFilename = '', currentOriginalFiles = {};
+
+        privateKeyInput.addEventListener('input', () => { generateBtn.disabled = !privateKeyInput.value.trim() || !currentBundle; });
+
+        uploadArea.addEventListener('dragover', (e) => { e.preventDefault(); uploadArea.classList.add('dragover'); });
+        uploadArea.addEventListener('dragleave', () => { uploadArea.classList.remove('dragover'); });
+        uploadArea.addEventListener('drop', (e) => { e.preventDefault(); uploadArea.classList.remove('dragover'); if (e.dataTransfer.files.length > 0) handleFile(e.dataTransfer.files[0]); });
+        fileInput.addEventListener('change', (e) => { if (e.target.files.length > 0) handleFile(e.target.files[0]); });
+
+        function showSSLMessage(msg, type) {
+            sslMessage.innerHTML = '<div class="message-' + type + '">' + msg + '</div>';
+            if (type !== 'info') setTimeout(() => sslMessage.innerHTML = '', 5000);
+        }
+
+        async function handleFile(file) {
+            if (!file.name.endsWith('.zip')) { showSSLMessage('Vui lòng chọn file ZIP!', 'error'); return; }
+
+            currentBundle = ''; currentDomain = ''; currentZipFilename = ''; currentOriginalFiles = {};
+            bundleOutput.value = ''; privateKeyInput.value = ''; generateBtn.disabled = true;
+            document.getElementById('additionalResults').innerHTML = '';
+            
+            showSSLMessage('Đang xử lý file...', 'info');
+
+            try {
+                const zip = await JSZip.loadAsync(file);
+                currentDomain = file.name.replace('.zip', '').toLowerCase();
+                currentZipFilename = file.name;
+
+                const files = {};
+                for (const [filename, fileObj] of Object.entries(zip.files)) {
+                    if (!fileObj.dir) {
+                        const content = await fileObj.async('string');
+                        const basename = filename.split('/').pop().toLowerCase();
+                        files[basename] = content;
+                        currentOriginalFiles[basename] = content;
+                    }
+                }
+
+                let bundle = processFullBundle(files);
+                if (bundle) {
+                    currentBundle = bundle;
+                    bundleOutput.value = bundle;
+                    sslResultArea.classList.add('show');
+                    showSSLMessage('✅ Xử lý thành công! Tìm thấy ' + (bundle.match(/BEGIN CERTIFICATE/g) || []).length + ' certificates.', 'success');
+                } else {
+                    showSSLMessage('❌ Không tìm thấy file certificate hợp lệ!', 'error');
+                }
+            } catch (error) {
+                showSSLMessage('❌ Lỗi khi xử lý file: ' + error.message, 'error');
+            }
+        }
+
+        function processFullBundle(files) {
+            let bundle = '';
+            const fileKeys = Object.keys(files);
+
+            const starCert = fileKeys.find(f => f.toLowerCase().includes('star_'));
+            const sectigoDV = fileKeys.find(f => f.toLowerCase().includes('sectigopublicserverauthenticationcadvr'));
+            const sectigoRoot = fileKeys.find(f => f.toLowerCase().includes('sectigopublicserverauthenticationrootr46'));
+            const userTrustRoot = fileKeys.find(f => f.toLowerCase().includes('usertrustrsacertificationauthority'));
+            
+            const certFile = fileKeys.find(f => f === 'cert' || (f.endsWith('.crt') && !f.includes('bundle') && !f.includes('root') && !f.includes('sectigo') && !f.includes('usertrust') && !f.includes('star') && !f.includes('ca')));
+            const intermediateFile = fileKeys.find(f => f.includes('my_ca_bundle') || f === 'my_ca_bundle' || f.includes('ca_bundle') || f.includes('intermediate'));
+            const rootFile = fileKeys.find(f => f.includes('trustedroot') || f === 'trustedroot' || (f.includes('root') && !f.includes('my_ca_bundle')));
+
+            if (starCert && sectigoDV && sectigoRoot && userTrustRoot) {
+                bundle += files[starCert].trim() + '\n' + files[sectigoDV].trim() + '\n' + files[sectigoRoot].trim() + '\n' + files[userTrustRoot].trim() + '\n';
+            } else if (certFile && sectigoDV && sectigoRoot && userTrustRoot) {
+                bundle += files[certFile].trim() + '\n' + files[sectigoDV].trim() + '\n' + files[sectigoRoot].trim() + '\n' + files[userTrustRoot].trim() + '\n';
+            } else if (certFile && intermediateFile && rootFile) {
+                bundle += files[certFile].trim() + '\n' + files[intermediateFile].trim() + '\n' + files[rootFile].trim() + '\n';
+            } else if (certFile && intermediateFile) {
+                bundle += files[certFile].trim() + '\n' + files[intermediateFile].trim() + '\n';
+            } else if (certFile && rootFile) {
+                bundle += files[certFile].trim() + '\n' + files[rootFile].trim() + '\n';
+            } else {
+                for (const [filename, content] of Object.entries(files)) {
+                    if (content.trim().includes('BEGIN CERTIFICATE')) bundle += content.trim() + '\n';
+                }
+            }
+            return removeDuplicateCerts(bundle.trim());
+        }
+
+        function removeDuplicateCerts(bundle) {
+            const certRegex = /(-----BEGIN CERTIFICATE-----[\s\S]*?-----END CERTIFICATE-----)/g;
+            const certificates = bundle.match(certRegex) || [];
+            const parsedCerts = [];
+            
+            certificates.forEach(cert => {
+                try {
+                    const parsed = forge.pki.certificateFromPem(cert);
+                    parsedCerts.push({ pem: cert.trim(), cert: parsed, subject: parsed.subject.getField('CN')?.value || 'Unknown', issuer: parsed.issuer.getField('CN')?.value || 'Unknown' });
+                } catch (e) {}
+            });
+            
+            const uniqueCerts = [];
+            const seen = new Set();
+            parsedCerts.forEach(item => { if (!seen.has(item.pem)) { seen.add(item.pem); uniqueCerts.push(item); } });
+            
+            return sortCertificateChain(uniqueCerts).map(item => item.pem).join('\n');
+        }
+
+        function sortCertificateChain(certObjects) {
+            if (certObjects.length <= 1) return certObjects;
+            
+            let leafCert = null;
+            const remaining = [];
+            
+            for (const certObj of certObjects) {
+                const subjectDN = certObj.cert.subject.attributes.map(a => `${a.shortName}=${a.value}`).join(',');
+                const issuerDN = certObj.cert.issuer.attributes.map(a => `${a.shortName}=${a.value}`).join(',');
+                const isSelfSigned = subjectDN === issuerDN;
+                
+                if (!isSelfSigned && !leafCert) {
+                    const isLeaf = !certObjects.some(other => {
+                        const otherIssuerDN = other.cert.issuer.attributes.map(a => `${a.shortName}=${a.value}`).join(',');
+                        return otherIssuerDN === subjectDN;
+                    });
+                    if (isLeaf) leafCert = certObj; else remaining.push(certObj);
+                } else {
+                    remaining.push(certObj);
+                }
+            }
+            
+            if (!leafCert && certObjects.length > 0) {
+                leafCert = certObjects.find(c => { const s = c.cert.subject.attributes.map(a => `${a.shortName}=${a.value}`).join(','); const i = c.cert.issuer.attributes.map(a => `${a.shortName}=${a.value}`).join(','); return s !== i; }) || certObjects[0];
+                const leafIndex = certObjects.indexOf(leafCert);
+                remaining.push(...certObjects.filter((_, idx) => idx !== leafIndex));
+            }
+            
+            const chain = [leafCert];
+            let current = leafCert;
+            
+            while (remaining.length > 0 && current) {
+                const currentIssuerDN = current.cert.issuer.attributes.map(a => `${a.shortName}=${a.value}`).join(',');
+                const issuerIndex = remaining.findIndex(certObj => certObj.cert.subject.attributes.map(a => `${a.shortName}=${a.value}`).join(',') === currentIssuerDN);
+                if (issuerIndex !== -1) { const issuerCert = remaining.splice(issuerIndex, 1)[0]; chain.push(issuerCert); current = issuerCert; } else break;
+            }
+            if (remaining.length > 0) chain.push(...remaining);
+            return chain;
+        }
+
+        function copyToClipboard(elementId) {
+            const el = document.getElementById(elementId);
+            el.select();
+            document.execCommand('copy');
+            showSSLMessage('✅ Đã copy vào clipboard!', 'success');
+        }
+
+        function downloadBundle() {
+            const blob = new Blob([currentBundle], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url; a.download = currentDomain + '_bundle.crt';
+            document.body.appendChild(a); a.click(); document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        async function verifyKeyAndCert(privateKeyPem, certBundle) {
+            try {
+                const privateKey = forge.pki.privateKeyFromPem(privateKeyPem);
+                const certMatches = certBundle.match(/-----BEGIN CERTIFICATE-----[\s\S]+?-----END CERTIFICATE-----/g);
+                if (!certMatches || certMatches.length === 0) throw new Error('No certificate found');
+                
+                let domainCert = null;
+                for (const certPem of certMatches) {
+                    const cert = forge.pki.certificateFromPem(certPem);
+                    const subjectDN = cert.subject.attributes.map(a => `${a.shortName}=${a.value}`).join(',');
+                    const issuerDN = cert.issuer.attributes.map(a => `${a.shortName}=${a.value}`).join(',');
+                    if (subjectDN !== issuerDN) {
+                        const isLeaf = !certMatches.some(otherPem => {
+                            if (otherPem === certPem) return false;
+                            try { return forge.pki.certificateFromPem(otherPem).issuer.attributes.map(a => `${a.shortName}=${a.value}`).join(',') === subjectDN; } catch (e) { return false; }
+                        });
+                        if (isLeaf) { domainCert = cert; break; }
+                    }
+                }
+                if (!domainCert) domainCert = forge.pki.certificateFromPem(certMatches[0]);
+                
+                const certPublicKeyPem = forge.pki.publicKeyToPem(domainCert.publicKey);
+                const privateKeyPublicKeyPem = forge.pki.publicKeyToPem(forge.pki.setRsaPublicKey(privateKey.n, privateKey.e));
+                return certPublicKeyPem === privateKeyPublicKeyPem;
+            } catch (error) {
+                showSSLMessage('❌ Lỗi khi kiểm tra key: ' + error.message, 'error');
+                return false;
+            }
+        }
+
+        async function generatePemAndPfx() {
+            const privateKey = privateKeyInput.value.trim();
+            if (!privateKey || !currentBundle) { showSSLMessage('❌ Vui lòng nhập private key!', 'error'); return; }
+            if (typeof forge === 'undefined') { showSSLMessage('❌ Đang tải thư viện...', 'error'); return; }
+
+            showSSLMessage('🔧 Đang kiểm tra private key...', 'info');
+            generateBtn.disabled = true;
+
+            try {
+                const isMatch = await verifyKeyAndCert(privateKey, currentBundle);
+                if (!isMatch) { showSSLMessage('❌ Private key KHÔNG KHỚP với certificate!', 'error'); generateBtn.disabled = false; return; }
+                
+                showSSLMessage('✅ Key khớp! Đang tạo files...', 'success');
+                await new Promise(r => setTimeout(r, 300));
+
+                const pemContent = currentBundle + '\n' + privateKey;
+                const pfxBuffer = await createPFX(privateKey, currentBundle, '123456');
+                
+                const zip = new JSZip();
+                const domainName = currentDomain.replace(/\.zip$/i, '');
+                const originalFolder = zip.folder('original');
+                for (const [filename, content] of Object.entries(currentOriginalFiles)) originalFolder.file(filename, content);
+                
+                zip.file('private.key', privateKey);
+                zip.file(domainName + '.pem', pemContent);
+                zip.file(domainName + '.crt', currentBundle);
+                zip.file(domainName + '.pfx', pfxBuffer);
+                
+                const zipBlob = await zip.generateAsync({type: 'blob'});
+                displayResults(pemContent, pfxBuffer, zipBlob, domainName + '-package.zip');
+                showSSLMessage('✅ Hoàn thành! Đã tạo PEM, PFX và ZIP.', 'success');
+            } catch (error) {
+                showSSLMessage('❌ Lỗi: ' + error.message, 'error');
+            } finally {
+                generateBtn.disabled = false;
+            }
+        }
+
+        async function createPFX(privateKey, certBundle, password) {
+            const privateKeyPem = forge.pki.privateKeyFromPem(privateKey);
+            const certs = [];
+            const certMatches = certBundle.match(/-----BEGIN CERTIFICATE-----[\s\S]+?-----END CERTIFICATE-----/g);
+            certMatches.forEach(certPem => { try { certs.push(forge.pki.certificateFromPem(certPem)); } catch (e) {} });
+            
+            const p12Asn1 = forge.pkcs12.toPkcs12Asn1(privateKeyPem, certs, password, {algorithm: '3des'});
+            const p12Der = forge.asn1.toDer(p12Asn1).getBytes();
+            const uint8Array = new Uint8Array(p12Der.length);
+            for (let i = 0; i < p12Der.length; i++) uint8Array[i] = p12Der.charCodeAt(i);
+            return uint8Array;
+        }
+
+        function displayResults(pemContent, pfxBuffer, zipBlob, zipFilename) {
+            const certMatches = currentBundle.match(/-----BEGIN CERTIFICATE-----[\s\S]*?-----END CERTIFICATE-----/g) || [];
+            const domainCert = certMatches[0] || '';
+            const caBundle = certMatches.slice(1).join('\n') || '';
+            const privateKeyText = privateKeyInput.value.trim();
+            
+            const copyFormat = `SSL xác thực thành công. Kỹ thuật xin phép gửi Quý khách thông tin Cert:\nPrivate key:\n\n${privateKeyText}\n\nCert:\n\n${domainCert}\n\nCA bundle:\n\n${caBundle}`;
+            
+            document.getElementById('additionalResults').innerHTML = `
+                <div class="result-box" style="background: #fef3c7;">
+                    <h3>📋 Thông tin Cert (Copy)<div class="btn-group"><button class="btn btn-success" onclick="navigator.clipboard.writeText(decodeURIComponent('${encodeURIComponent(copyFormat)}')).then(()=>showSSLMessage('✅ Copied!','success'))">📋 Copy</button></div></h3>
+                    <textarea readonly style="min-height: 180px;">${copyFormat}</textarea>
+                </div>
+                <div class="result-box">
+                    <h3>📄 PEM File<div class="btn-group"><button class="btn btn-info" onclick="downloadFile('pem')">⬇️ Download</button></div></h3>
+                    <textarea readonly style="min-height: 100px;">${pemContent.substring(0, 400)}...</textarea>
+                </div>
+                <div class="result-box">
+                    <h3>🔐 PFX File (Password: 123456)<div class="btn-group"><button class="btn btn-info" onclick="downloadFile('pfx')">⬇️ Download</button></div></h3>
+                    <p style="color: #64748b;">File PFX đã tạo với password: <strong>123456</strong></p>
+                </div>
+                <div class="result-box" style="background: #dcfce7;">
+                    <h3>📦 Complete Package<div class="btn-group"><button class="btn btn-success" onclick="downloadFile('zip')">⬇️ Download ZIP</button></div></h3>
+                    <p style="color: #64748b;">Chứa: private.key, .pem, .crt, .pfx</p>
+                </div>`;
+            
+            window.sslFiles = { pem: pemContent, pfx: pfxBuffer, zip: zipBlob, zipName: zipFilename };
+        }
+
+        function downloadFile(type) {
+            if (!window.sslFiles) return;
+            const domainName = currentDomain.replace(/\.zip$/i, '');
+            let blob, filename;
+            
+            if (type === 'pem') { blob = new Blob([window.sslFiles.pem], {type: 'text/plain'}); filename = domainName + '.pem'; }
+            else if (type === 'pfx') { blob = new Blob([window.sslFiles.pfx], {type: 'application/x-pkcs12'}); filename = domainName + '.pfx'; }
+            else if (type === 'zip') { blob = window.sslFiles.zip; filename = window.sslFiles.zipName; }
+            
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url; a.download = filename;
+            document.body.appendChild(a); a.click(); document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+        
+        // ========== SSL Decoder Functions ==========
+        function checkCertKeyMatch() {
+            const certPem = document.getElementById('matchCertInput').value.trim();
+            const keyPem = document.getElementById('matchKeyInput').value.trim();
+            const resultDiv = document.getElementById('matchResult');
+            
+            if (!certPem || !keyPem) {
+                resultDiv.className = 'match-result pending';
+                resultDiv.innerHTML = '⚠️ Vui lòng nhập cả Certificate và Private Key';
+                return;
+            }
+            
+            try {
+                // Parse certificate
+                const cert = forge.pki.certificateFromPem(certPem);
+                const certPublicKey = cert.publicKey;
+                
+                // Parse private key (support both RSA PRIVATE KEY and PRIVATE KEY)
+                let privateKey;
+                try {
+                    privateKey = forge.pki.privateKeyFromPem(keyPem);
+                } catch (e) {
+                    resultDiv.className = 'match-result no-match';
+                    resultDiv.innerHTML = '❌ Không thể parse Private Key. Kiểm tra định dạng PEM.';
+                    return;
+                }
+                
+                // Get public key from private key
+                const privateKeyPublicKey = forge.pki.setRsaPublicKey(privateKey.n, privateKey.e);
+                
+                // Compare modulus (n)
+                const certModulus = certPublicKey.n.toString(16);
+                const keyModulus = privateKeyPublicKey.n.toString(16);
+                
+                if (certModulus === keyModulus) {
+                    resultDiv.className = 'match-result match';
+                    resultDiv.innerHTML = '✅ MATCH! Certificate và Private Key KHỚP nhau.';
+                } else {
+                    resultDiv.className = 'match-result no-match';
+                    resultDiv.innerHTML = '❌ KHÔNG KHỚP! Certificate và Private Key không cùng cặp.';
+                }
+            } catch (e) {
+                resultDiv.className = 'match-result no-match';
+                resultDiv.innerHTML = '❌ Lỗi: ' + e.message;
+            }
+        }
+        
+        function decodeCertificate() {
+            const certPem = document.getElementById('decodeCertInput').value.trim();
+            const resultDiv = document.getElementById('certDecodeResult');
+            
+            if (!certPem) {
+                resultDiv.innerHTML = '<div class="message message-error">Vui lòng nhập Certificate PEM</div>';
+                return;
+            }
+            
+            try {
+                const cert = forge.pki.certificateFromPem(certPem);
+                
+                // Extract subject info
+                const subject = cert.subject.attributes.reduce((obj, attr) => {
+                    obj[attr.shortName || attr.name] = attr.value;
+                    return obj;
+                }, {});
+                
+                // Extract issuer info  
+                const issuer = cert.issuer.attributes.reduce((obj, attr) => {
+                    obj[attr.shortName || attr.name] = attr.value;
+                    return obj;
+                }, {});
+                
+                // Get SAN (Subject Alternative Names)
+                let sans = [];
+                const sanExt = cert.extensions.find(ext => ext.name === 'subjectAltName');
+                if (sanExt && sanExt.altNames) {
+                    sans = sanExt.altNames.filter(n => n.type === 2).map(n => n.value);
+                }
+                
+                // Calculate days remaining
+                const now = new Date();
+                const notAfter = cert.validity.notAfter;
+                const daysRemaining = Math.floor((notAfter - now) / (1000 * 60 * 60 * 24));
+                let daysClass = 'success';
+                if (daysRemaining < 0) daysClass = 'error';
+                else if (daysRemaining < 30) daysClass = 'warning';
+                
+                // Serial number
+                const serialNumber = cert.serialNumber.match(/.{2}/g).join(':').toUpperCase();
+                
+                // Signature algorithm
+                const sigAlg = cert.signatureOid;
+                const sigAlgName = {
+                    '1.2.840.113549.1.1.11': 'SHA256withRSA',
+                    '1.2.840.113549.1.1.12': 'SHA384withRSA',
+                    '1.2.840.113549.1.1.13': 'SHA512withRSA',
+                    '1.2.840.113549.1.1.5': 'SHA1withRSA',
+                    '1.2.840.10045.4.3.2': 'ECDSA-SHA256',
+                    '1.2.840.10045.4.3.3': 'ECDSA-SHA384'
+                }[sigAlg] || sigAlg;
+                
+                // Key info
+                let keyInfo = 'Unknown';
+                if (cert.publicKey.n) {
+                    const keyBits = cert.publicKey.n.bitLength();
+                    keyInfo = `RSA ${keyBits} bits`;
+                } else if (cert.publicKey.curve) {
+                    keyInfo = `ECDSA ${cert.publicKey.curve}`;
+                }
+                
+                resultDiv.innerHTML = `
+                    <div class="decode-info-grid">
+                        <div class="decode-info-item full">
+                            <div class="label">Common Name (CN)</div>
+                            <div class="value">${subject.CN || 'N/A'}</div>
+                        </div>
+                        <div class="decode-info-item">
+                            <div class="label">Organization (O)</div>
+                            <div class="value">${subject.O || 'N/A'}</div>
+                        </div>
+                        <div class="decode-info-item">
+                            <div class="label">Country (C)</div>
+                            <div class="value">${subject.C || 'N/A'}</div>
+                        </div>
+                        <div class="decode-info-item">
+                            <div class="label">Valid From</div>
+                            <div class="value">${cert.validity.notBefore.toISOString().split('T')[0]}</div>
+                        </div>
+                        <div class="decode-info-item">
+                            <div class="label">Valid To</div>
+                            <div class="value">${cert.validity.notAfter.toISOString().split('T')[0]}</div>
+                        </div>
+                        <div class="decode-info-item">
+                            <div class="label">Days Remaining</div>
+                            <div class="value ${daysClass}">${daysRemaining} days ${daysRemaining < 0 ? '(EXPIRED!)' : ''}</div>
+                        </div>
+                        <div class="decode-info-item">
+                            <div class="label">Key Type</div>
+                            <div class="value">${keyInfo}</div>
+                        </div>
+                        <div class="decode-info-item full">
+                            <div class="label">Issuer</div>
+                            <div class="value">${issuer.CN || ''} ${issuer.O ? '(' + issuer.O + ')' : ''}</div>
+                        </div>
+                        <div class="decode-info-item full">
+                            <div class="label">Subject Alternative Names (SAN)</div>
+                            <div class="value mono">${sans.length > 0 ? sans.join(', ') : 'N/A'}</div>
+                        </div>
+                        <div class="decode-info-item full">
+                            <div class="label">Serial Number</div>
+                            <div class="value mono">${serialNumber}</div>
+                        </div>
+                        <div class="decode-info-item">
+                            <div class="label">Signature Algorithm</div>
+                            <div class="value">${sigAlgName}</div>
+                        </div>
+                        <div class="decode-info-item">
+                            <div class="label">Version</div>
+                            <div class="value">V${cert.version + 1}</div>
+                        </div>
+                    </div>
+                `;
+            } catch (e) {
+                resultDiv.innerHTML = `<div class="message message-error">❌ Lỗi parse Certificate: ${e.message}</div>`;
+            }
+    </script>
+</body>
+</html>
