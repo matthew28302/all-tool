@@ -2319,21 +2319,50 @@
 
         async function freeSslDownloadAll() {
             if (!freeSslResultData) return;
-            const domain = document.getElementById('freesslDomain').value.trim() || 'domain';
-            const zip = new JSZip();
-            zip.file('cert.crt', freeSslResultData.certificate || '');
-            zip.file('private.key', freeSslResultData.private_key || '');
-            zip.file('ca-bundle.crt', freeSslResultData.ca_bundle || '');
-            zip.file('fullchain.pem', freeSslResultData.full_chain || '');
-            const blob = await zip.generateAsync({ type: 'blob' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = domain + '-ssl.zip';
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
+            const domainInput = document.getElementById('freesslDomain').value.trim() || freeSslResultData.domain || 'domain';
+            const domain = domainInput.replace(/[\\/:*?"<>|\s]+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '') || 'domain';
+
+            const cert = (freeSslResultData.certificate || '').trim();
+            const privateKey = (freeSslResultData.private_key || '').trim();
+            const caBundle = (freeSslResultData.ca_bundle || '').trim();
+            const fullchain = (freeSslResultData.full_chain || '').trim();
+
+            if (!cert || !privateKey) {
+                freeSslShowMessage('❌ Thiếu cert hoặc private key, không thể tạo gói tải xuống.', 'error');
+                return;
+            }
+
+            if (typeof forge === 'undefined') {
+                freeSslShowMessage('❌ Chưa tải xong thư viện tạo PFX, vui lòng thử lại sau vài giây.', 'error');
+                return;
+            }
+
+            try {
+                const pemContent = [privateKey, cert, caBundle].filter(Boolean).join('\n') + '\n';
+                const pfxBuffer = await createPFX(privateKey, fullchain || [cert, caBundle].filter(Boolean).join('\n\n'), '123456');
+
+                const zip = new JSZip();
+                zip.file('cert.crt', cert + '\n');
+                zip.file('private.key', privateKey + '\n');
+                zip.file('ca-bundle.crt', caBundle ? (caBundle + '\n') : '');
+                zip.file('fullchain.pem', fullchain ? (fullchain + '\n') : [cert, caBundle].filter(Boolean).join('\n\n') + '\n');
+                zip.file(domain + '.pem', pemContent);
+                zip.file(domain + '.pfx', pfxBuffer);
+
+                const blob = await zip.generateAsync({ type: 'blob' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = domain + '-ssl.zip';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+
+                freeSslShowMessage('✅ Đã tạo ZIP gồm 6 file: cert, key, ca-bundle, fullchain, PEM, PFX (password PFX: 123456).', 'success');
+            } catch (err) {
+                freeSslShowMessage('❌ Không thể tạo PEM/PFX: ' + (err.message || err), 'error');
+            }
         }
 
         function freeSslReset() {
