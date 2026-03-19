@@ -43,6 +43,9 @@ from acme import client as acme_client, challenges as acme_challenges, messages 
 
 app = Flask(__name__)
 CORS(app)
+@app.route('/ping')
+def ping():
+    return 'OK', 200  # Response siêu ngắn
 
 # --- API: Check certificate files on server ---
 @app.route('/api/check-cert-file', methods=['POST'])
