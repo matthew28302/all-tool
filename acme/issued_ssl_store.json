@@ -1,5 +1,159 @@
 [
   {
+    "id": "391c6c4f-97cf-4291-adc9-968bea2193fa",
+    "session_id": "ad813d97-72a1-4bfb-a979-63a4d04aa7cf",
+    "domain": "nhaxexuanhuong.com",
+    "sans": [
+      "*.nhaxexuanhuong.com"
+    ],
+    "challenge_type": "dns-01",
+    "issued_at": null,
+    "status": "ready",
+    "certificate": "",
+    "private_key": "",
+    "ca_bundle": "",
+    "full_chain": "",
+    "valid_from": null,
+    "valid_to": null,
+    "subject": null,
+    "issuer": null,
+    "serial_number": null,
+    "provider": "letsencrypt",
+    "email": "admin@nhaxexuanhuong.com",
+    "challenges": [
+      {
+        "type": "dns-01",
+        "domain": "nhaxexuanhuong.com",
+        "token": "Iu6CgYgI5EEekc0hdBnkHEuuvWHlt0T5ytpPqDkru6s",
+        "key_auth": "Iu6CgYgI5EEekc0hdBnkHEuuvWHlt0T5ytpPqDkru6s.mnwqimEDfc9cIGrhJ9FLyeHWiwmzWMIaEd3fUvB9by8",
+        "dns_name": "_acme-challenge.nhaxexuanhuong.com",
+        "dns_value": "qBRjmT7UGuJ1NBSlI6kopnqygJOlFaFatAiWpoxi1FQ"
+      },
+      {
+        "type": "dns-01",
+        "domain": "nhaxexuanhuong.com",
+        "token": "NYmsIRxN7WajXKHgSRUp0Wdm7iQgTfyhvsTqJ3kg9jw",
+        "key_auth": "NYmsIRxN7WajXKHgSRUp0Wdm7iQgTfyhvsTqJ3kg9jw.mnwqimEDfc9cIGrhJ9FLyeHWiwmzWMIaEd3fUvB9by8",
+        "dns_name": "_acme-challenge.nhaxexuanhuong.com",
+        "dns_value": "rk3VQ-4ok5Eekb-atTrQIX3v5ZlRaCBVEJCmg75NYlM"
+      }
+    ],
+    "created_at": "2026-03-30 10:10:50",
+    "last_check_at": "2026-03-30 10:17:39",
+    "last_check_results": [
+      {
+        "domain": "nhaxexuanhuong.com",
+        "type": "dns-01",
+        "ok": true,
+        "detail": "✅ Tìm thấy TXT record đúng: qBRjmT7UGuJ1NBSlI6kopnqygJOlFaFatAiWpoxi1FQ"
+      },
+      {
+        "domain": "nhaxexuanhuong.com",
+        "type": "dns-01",
+        "ok": true,
+        "detail": "✅ Tìm thấy TXT record đúng: rk3VQ-4ok5Eekb-atTrQIX3v5ZlRaCBVEJCmg75NYlM"
+      }
+    ],
+    "dns_cache_clear": [
+      {
+        "dns_name": "_acme-challenge.nhaxexuanhuong.com",
+        "targets": [
+          {
+            "provider": "Google Public DNS",
+            "resolver": "8.8.8.8",
+            "dns_name": "_acme-challenge.nhaxexuanhuong.com",
+            "dns_query": "ok",
+            "doh_query": "ok",
+            "ok": true,
+            "note": "Best-effort refresh request sent"
+          },
+          {
+            "provider": "Google Public DNS",
+            "resolver": "8.8.4.4",
+            "dns_name": "_acme-challenge.nhaxexuanhuong.com",
+            "dns_query": "ok",
+            "doh_query": "ok",
+            "ok": true,
+            "note": "Best-effort refresh request sent"
+          },
+          {
+            "provider": "Cloudflare DNS",
+            "resolver": "1.1.1.1",
+            "dns_name": "_acme-challenge.nhaxexuanhuong.com",
+            "dns_query": "ok",
+            "doh_query": "ok",
+            "ok": true,
+            "note": "Best-effort refresh request sent"
+          },
+          {
+            "provider": "OpenDNS (Cisco)",
+            "resolver": "208.67.222.222",
+            "dns_name": "_acme-challenge.nhaxexuanhuong.com",
+            "dns_query": "ok",
+            "doh_query": "fail: HTTP 400",
+            "ok": true,
+            "note": "Best-effort refresh request sent"
+          },
+          {
+            "provider": "Quad9",
+            "resolver": "9.9.9.9",
+            "dns_name": "_acme-challenge.nhaxexuanhuong.com",
+            "dns_query": "ok",
+            "doh_query": "fail: HTTP 400",
+            "ok": true,
+            "note": "Best-effort refresh request sent"
+          }
+        ]
+      }
+    ],
+    "updated_at": "2026-03-30 10:17:39"
+  },
+  {
+    "id": "acf46ab4-2086-4140-8ce4-5c00e8971454",
+    "session_id": "98cfdcf0-1eb0-4e8f-83aa-921260b35a24",
+    "domain": "demo.com",
+    "sans": [
+      "www.demo.com"
+    ],
+    "challenge_type": "dns-01",
+    "issued_at": null,
+    "status": "processing",
+    "certificate": "",
+    "private_key": "",
+    "ca_bundle": "",
+    "full_chain": "",
+    "valid_from": null,
+    "valid_to": null,
+    "subject": null,
+    "issuer": null,
+    "serial_number": null,
+    "provider": "letsencrypt",
+    "email": "admin@demo.com",
+    "challenges": [
+      {
+        "type": "dns-01",
+        "domain": "demo.com",
+        "token": "sMVT20Bt8TEmVbxDWB2ii_yy7fw1GO52J7I2T6jQSWg",
+        "key_auth": "sMVT20Bt8TEmVbxDWB2ii_yy7fw1GO52J7I2T6jQSWg.n_QDUmO2o63uJC6LN3On5eU4g-1xPMg1WEWS5UB--Ao",
+        "dns_name": "_acme-challenge.demo.com",
+        "dns_value": "FnjwOxx4UXU4NYHVRp5uoi-9ULE3Sg5MSWQRRf_sZM8"
+      },
+      {
+        "type": "dns-01",
+        "domain": "www.demo.com",
+        "token": "vSkBfwM5gCiOnggXlSvDz2-fYvV0mDQ30-_MVEcyFaU",
+        "key_auth": "vSkBfwM5gCiOnggXlSvDz2-fYvV0mDQ30-_MVEcyFaU.n_QDUmO2o63uJC6LN3On5eU4g-1xPMg1WEWS5UB--Ao",
+        "dns_name": "_acme-challenge.www.demo.com",
+        "dns_value": "D2nps1QInyvteVBDY7V6zqX2ZV83MEUHnP86hUZyoVI"
+      }
+    ],
+    "created_at": "2026-03-30 10:07:15",
+    "last_check_at": null,
+    "last_check_results": [],
+    "dns_cache_clear": [],
+    "updated_at": "2026-03-30 10:07:15"
+  },
+  {
     "domain": "imfishball.id.vn",
     "sans": [],
     "challenge_type": "dns-01",

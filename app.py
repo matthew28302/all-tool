@@ -544,6 +544,39 @@ ACME_PROVIDER_DIRECTORIES = {
     'sslcom':      SSLCOM_DIRECTORY,
 }
 
+DNS_CACHE_CLEAR_TARGETS = [
+    {
+        "provider": "Google Public DNS",
+        "label": "8.8.8.8",
+        "resolver_ip": "8.8.8.8",
+        "doh_url": "https://dns.google/resolve",
+    },
+    {
+        "provider": "Google Public DNS",
+        "label": "8.8.4.4",
+        "resolver_ip": "8.8.4.4",
+        "doh_url": "https://dns.google/resolve",
+    },
+    {
+        "provider": "Cloudflare DNS",
+        "label": "1.1.1.1",
+        "resolver_ip": "1.1.1.1",
+        "doh_url": "https://cloudflare-dns.com/dns-query",
+    },
+    {
+        "provider": "OpenDNS (Cisco)",
+        "label": "208.67.222.222",
+        "resolver_ip": "208.67.222.222",
+        "doh_url": "https://doh.opendns.com/dns-query",
+    },
+    {
+        "provider": "Quad9",
+        "label": "9.9.9.9",
+        "resolver_ip": "9.9.9.9",
+        "doh_url": "https://dns.quad9.net/dns-query",
+    },
+]
+
 ISSUED_SSL_STORE_PATH = os.path.join(app.root_path, 'acme', 'issued_ssl_store.json')
 
 # In-memory session store  { session_id -> {...} }
@@ -786,16 +819,91 @@ def _extract_cert_summary(cert_pem: str) -> dict:
     return summary
 
 
+def _request_public_dns_cache_clear(dns_name: str) -> List[dict]:
+    """
+    Best-effort refresh request to public DNS resolvers.
+    Public resolvers generally do not expose hard cache purge APIs,
+    so we trigger fresh TXT lookups via DNS + DoH endpoints.
+    """
+    results: List[dict] = []
+    for target in DNS_CACHE_CLEAR_TARGETS:
+        provider = target.get("provider")
+        label = target.get("label")
+        resolver_ip = target.get("resolver_ip")
+        doh_url = target.get("doh_url")
+
+        entry = {
+            "provider": provider,
+            "resolver": label,
+            "dns_name": dns_name,
+            "dns_query": "skipped",
+            "doh_query": "skipped",
+            "ok": False,
+            "note": "Best-effort refresh request sent",
+        }
+
+        # 1) Direct DNS query to target resolver
+        try:
+            resolver = dns.resolver.Resolver(configure=False)
+            resolver.cache = None
+            resolver.nameservers = [resolver_ip]
+            resolver.timeout = 3
+            resolver.lifetime = 3
+            resolver.resolve(dns_name, 'TXT', raise_on_no_answer=False)
+            entry["dns_query"] = "ok"
+        except Exception as e:
+            entry["dns_query"] = f"fail: {str(e)}"
+
+        # 2) DoH query (where available)
+        try:
+            if doh_url:
+                params = {
+                    "name": dns_name,
+                    "type": "TXT",
+                    "cd": "0",
+                    "do": "1",
+                    "ts": str(int(time.time() * 1000)),
+                }
+                headers = {
+                    "accept": "application/dns-json"
+                }
+                resp = requests.get(doh_url, params=params, headers=headers, timeout=5)
+                if resp.status_code < 400:
+                    entry["doh_query"] = "ok"
+                else:
+                    entry["doh_query"] = f"fail: HTTP {resp.status_code}"
+        except Exception as e:
+            entry["doh_query"] = f"fail: {str(e)}"
+
+        entry["ok"] = entry["dns_query"] == "ok" or entry["doh_query"] == "ok"
+        results.append(entry)
+    return results
+
+
 def _upsert_issued_ssl_record(record: dict) -> dict:
     with _issued_ssl_store_lock:
         items = _load_issued_ssl_store()
-        # Key: same domain AND same provider → overwrite that specific record
-        existing_idx = next(
-            (i for i, item in enumerate(items)
-             if item.get('domain') == record.get('domain')
-             and item.get('provider', 'letsencrypt') == record.get('provider', 'letsencrypt')),
-            None
-        )
+
+        # Priority 1: match by explicit id
+        existing_idx = None
+        record_id = record.get('id')
+        if record_id:
+            existing_idx = next((i for i, item in enumerate(items) if item.get('id') == record_id), None)
+
+        # Priority 2: match by session_id (for in-progress records)
+        if existing_idx is None and record.get('session_id'):
+            sess_id = record.get('session_id')
+            existing_idx = next((i for i, item in enumerate(items) if item.get('session_id') == sess_id), None)
+
+        # Priority 3: backwards-compatible key (domain + provider)
+        if existing_idx is None:
+            existing_idx = next(
+                (i for i, item in enumerate(items)
+                 if item.get('domain') == record.get('domain')
+                 and item.get('provider', 'letsencrypt') == record.get('provider', 'letsencrypt')),
+                None
+            )
+
         if existing_idx is not None:
             existing_id = items[existing_idx].get('id')
             record['id'] = existing_id or record.get('id') or _gen_session_id()
@@ -809,9 +917,53 @@ def _upsert_issued_ssl_record(record: dict) -> dict:
         return record
 
 
+def _patch_issued_ssl_record_by_session(session_id: str, updates: dict) -> Optional[dict]:
+    with _issued_ssl_store_lock:
+        items = _load_issued_ssl_store()
+        idx = next((i for i, item in enumerate(items) if item.get('session_id') == session_id), None)
+        if idx is None:
+            return None
+        item = dict(items[idx])
+        item.update(updates or {})
+        item['updated_at'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        items[idx] = item
+        _save_issued_ssl_store(items)
+        return item
+
+
+def _build_pending_ssl_record(sess: dict, session_id: str) -> dict:
+    return {
+        "id": sess.get('storage_id'),
+        "session_id": session_id,
+        "domain": sess.get('domain'),
+        "sans": sess.get('sans', []),
+        "challenge_type": sess.get('challenge_type'),
+        "issued_at": None,
+        "status": "processing",
+        "certificate": "",
+        "private_key": "",
+        "ca_bundle": "",
+        "full_chain": "",
+        "valid_from": None,
+        "valid_to": None,
+        "subject": None,
+        "issuer": None,
+        "serial_number": None,
+        "provider": sess.get('provider', 'letsencrypt'),
+        "email": sess.get('email'),
+        "challenges": sess.get('challenges', []),
+        "created_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+        "last_check_at": None,
+        "last_check_results": [],
+        "dns_cache_clear": [],
+    }
+
+
 def _build_issued_ssl_record(sess: dict, result: dict) -> dict:
     cert_summary = _extract_cert_summary(result.get('certificate', ''))
     return {
+        "id": sess.get('storage_id'),
+        "session_id": sess.get('session_id'),
         "domain": sess.get('domain'),
         "sans": sess.get('sans', []),
         "challenge_type": sess.get('challenge_type'),
@@ -954,8 +1106,20 @@ def api_ssl_free_start():
                 "status": "pending",
             }
 
+        # Persist in-progress session so UI can recover after F5
+        with _ssl_sessions_lock:
+            pending_sess = _ssl_sessions.get(session_id)
+            pending_sess["session_id"] = session_id
+
+        pending_record = _upsert_issued_ssl_record(_build_pending_ssl_record(pending_sess, session_id))
+
+        with _ssl_sessions_lock:
+            if session_id in _ssl_sessions:
+                _ssl_sessions[session_id]['storage_id'] = pending_record.get('id')
+
         return jsonify({
             "session_id": session_id,
+            "storage_id": pending_record.get('id'),
             "domain": domain,
             "challenge_type": challenge_type,
             "challenges": challenge_infos,
@@ -988,6 +1152,15 @@ def api_ssl_free_check_challenge():
         challenges = sess['challenges']
         challenge_type = sess['challenge_type']
         results = []
+        dns_cache_clear_results = []
+
+        if challenge_type == 'dns-01':
+            dns_names = sorted(set(ch.get('dns_name') for ch in challenges if ch.get('dns_name')))
+            for dns_name in dns_names:
+                dns_cache_clear_results.append({
+                    "dns_name": dns_name,
+                    "targets": _request_public_dns_cache_clear(dns_name),
+                })
 
         for ch in challenges:
             ch_domain = ch['domain']
@@ -1040,10 +1213,71 @@ def api_ssl_free_check_challenge():
             results.append({"domain": ch_domain, "type": challenge_type, "ok": ok, "detail": detail})
 
         all_ok = all(r['ok'] for r in results)
-        return jsonify({"results": results, "all_ok": all_ok}), 200
+        check_status = 'ready' if all_ok else 'processing'
+
+        with _ssl_sessions_lock:
+            if session_id in _ssl_sessions:
+                _ssl_sessions[session_id]['status'] = check_status
+                _ssl_sessions[session_id]['last_check_results'] = results
+                _ssl_sessions[session_id]['dns_cache_clear'] = dns_cache_clear_results
+
+        _patch_issued_ssl_record_by_session(session_id, {
+            "status": check_status,
+            "last_check_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+            "last_check_results": results,
+            "dns_cache_clear": dns_cache_clear_results,
+        })
+
+        return jsonify({
+            "results": results,
+            "all_ok": all_ok,
+            "dns_cache_clear": dns_cache_clear_results,
+        }), 200
 
     except Exception as e:
         logger.error(f"[ACME] check-challenge error: {e}", exc_info=True)
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/ssl-free/clear-dns-cache', methods=['POST'])
+def api_ssl_free_clear_dns_cache():
+    """
+    Trigger best-effort DNS cache refresh requests for DNS-01 challenges.
+    Body: { session_id }
+    """
+    try:
+        data = request.json or {}
+        session_id = data.get('session_id', '')
+
+        with _ssl_sessions_lock:
+            sess = _ssl_sessions.get(session_id)
+        if not sess:
+            return jsonify({"error": "Session not found or expired"}), 404
+
+        if sess.get('challenge_type') != 'dns-01':
+            return jsonify({"results": [], "note": "Challenge type is not dns-01"}), 200
+
+        challenges = sess.get('challenges', [])
+        dns_names = sorted(set(ch.get('dns_name') for ch in challenges if ch.get('dns_name')))
+        refresh_results = []
+
+        for dns_name in dns_names:
+            refresh_results.append({
+                "dns_name": dns_name,
+                "targets": _request_public_dns_cache_clear(dns_name),
+            })
+
+        with _ssl_sessions_lock:
+            if session_id in _ssl_sessions:
+                _ssl_sessions[session_id]['dns_cache_clear'] = refresh_results
+
+        _patch_issued_ssl_record_by_session(session_id, {
+            "dns_cache_clear": refresh_results,
+        })
+
+        return jsonify({"results": refresh_results}), 200
+    except Exception as e:
+        logger.error(f"[ACME] clear-dns-cache error: {e}", exc_info=True)
         return jsonify({"error": str(e)}), 500
 
 
@@ -1161,6 +1395,7 @@ def api_ssl_free_list():
                 "challenge_type": item.get("challenge_type"),
                 "provider": item.get("provider", "letsencrypt"),
                 "status": item.get("status", "issued"),
+                "session_id": item.get("session_id"),
             }
             for item in items if _matches(item)
         ]

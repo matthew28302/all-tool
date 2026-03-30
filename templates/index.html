@@ -1015,9 +1015,9 @@
             <div id="freesslMessage" class="message"></div>
 
             <div id="freesslStorageBackdrop" class="freessl-storage-backdrop" onclick="freeSslToggleStorage(false)"></div>
-            <aside id="freesslStorageSidebar" class="freessl-storage-sidebar" aria-label="Danh sách SSL đã cấp">
+            <aside id="freesslStorageSidebar" class="freessl-storage-sidebar" aria-label="Danh sách SSL đã lưu">
                 <div class="freessl-storage-sidebar-header">
-                    <h3>🗂️ Danh sách SSL đã cấp</h3>
+                    <h3>🗂️ Danh sách SSL đã lưu</h3>
                     <button class="btn btn-secondary" style="padding:6px 10px;" onclick="freeSslToggleStorage(false)">✕</button>
                 </div>
                 <div class="freessl-storage-sidebar-body">
@@ -1967,10 +1967,30 @@
         }
 
         let freeSslSessionId = null;
+        let freeSslStorageId = null;
         let freeSslSans = [];
         let freeSslChallengeType = 'dns-01';
         let freeSslProvider = 'letsencrypt';
         let freeSslResultData = null;
+
+        function freeSslRememberActiveStorageId(storageId) {
+            freeSslStorageId = storageId || null;
+            if (storageId) localStorage.setItem('freessl_active_storage_id', storageId);
+            else localStorage.removeItem('freessl_active_storage_id');
+        }
+
+        async function freeSslRestoreActiveFromStorage() {
+            const storageId = localStorage.getItem('freessl_active_storage_id');
+            if (!storageId) return;
+            const { ok, data } = await freeSslFetch('/api/ssl-free/item/' + encodeURIComponent(storageId), null, 'GET');
+            if (!ok || !data) {
+                localStorage.removeItem('freessl_active_storage_id');
+                return;
+            }
+            freeSslApplyStoredItem(data);
+            const statusText = data.status === 'issued' ? 'đã cấp' : 'đang xử lý';
+            freeSslShowMessage('ℹ️ Đã khôi phục SSL ' + statusText + ' sau khi tải lại trang.', 'info');
+        }
 
         function freeSslToggleStorage(show) {
             document.getElementById('freesslStorageSidebar').classList.toggle('show', !!show);
@@ -1999,16 +2019,54 @@
         }
 
         function freeSslApplyStoredItem(data) {
-            freeSslResultData = data;
+            freeSslResultData = null;
             document.getElementById('freesslDomain').value = data.domain || '';
-            document.getElementById('freesslCert').value = data.certificate || '';
-            document.getElementById('freesslPrivKey').value = data.private_key || '';
-            document.getElementById('freesslCaBundle').value = data.ca_bundle || '';
-            document.getElementById('freesslFullChain').value = data.full_chain || '';
-            document.getElementById('freesslResultArea').classList.add('show');
-            document.getElementById('freesslChallengeCard').style.display = 'none';
-            document.getElementById('freesslFinalizeCard').style.display = 'none';
-            freeSslSetStep(5);
+            freeSslSessionId = data.session_id || null;
+            freeSslSans = Array.isArray(data.sans) ? data.sans : [];
+            freeSslChallengeType = data.challenge_type || 'dns-01';
+            freeSslProvider = data.provider || 'letsencrypt';
+            freeSslRenderSans();
+            freeSslSelectChallenge(freeSslChallengeType);
+            freeSslSelectProvider(freeSslProvider);
+            freeSslRememberActiveStorageId(data.id || null);
+
+            if (data.status === 'issued') {
+                freeSslResultData = data;
+                document.getElementById('freesslCert').value = data.certificate || '';
+                document.getElementById('freesslPrivKey').value = data.private_key || '';
+                document.getElementById('freesslCaBundle').value = data.ca_bundle || '';
+                document.getElementById('freesslFullChain').value = data.full_chain || '';
+                document.getElementById('freesslResultArea').classList.add('show');
+                document.getElementById('freesslChallengeCard').style.display = 'none';
+                document.getElementById('freesslFinalizeCard').style.display = 'none';
+                freeSslSetStep(5);
+                return;
+            }
+
+            // In-progress session restore
+            document.getElementById('freesslResultArea').classList.remove('show');
+            if (Array.isArray(data.challenges) && data.challenges.length > 0) {
+                freeSslRenderChallenges(data.challenges, freeSslChallengeType, freeSslProvider);
+                document.getElementById('freesslChallengeCard').style.display = 'block';
+            } else {
+                document.getElementById('freesslChallengeCard').style.display = 'none';
+            }
+
+            const checkResults = Array.isArray(data.last_check_results) ? data.last_check_results : [];
+            if (checkResults.length > 0) {
+                document.getElementById('freesslCheckResults').innerHTML = checkResults.map(r => `
+                    <div class="check-result-row ${r.ok ? 'ok' : 'fail'}">
+                        <span style="font-size:1.2rem;">${r.ok ? '✅' : '❌'}</span>
+                        <div><strong>${r.domain}</strong><br><span style="font-size:0.88rem;">${r.detail}</span></div>
+                    </div>
+                `).join('');
+            } else {
+                document.getElementById('freesslCheckResults').innerHTML = '';
+            }
+
+            const ready = data.status === 'ready';
+            document.getElementById('freesslFinalizeCard').style.display = ready ? 'block' : 'none';
+            freeSslSetStep(ready ? 4 : 2);
         }
 
         async function freeSslLoadStoredList() {
@@ -2025,7 +2083,17 @@
                 listEl.innerHTML = '<div class="freessl-storage-empty">Chưa có SSL nào được lưu.</div>';
                 return;
             }
-            listEl.innerHTML = data.items.map(item => `
+            listEl.innerHTML = data.items.map(item => {
+                const status = item.status || 'issued';
+                const statusMap = {
+                    issued: { text: '✅ issued', style: 'background:#dcfce7;color:#166534;' },
+                    ready: { text: '🟢 ready', style: 'background:#dbeafe;color:#1d4ed8;' },
+                    processing: { text: '🟡 processing', style: 'background:#fef3c7;color:#92400e;' },
+                    pending: { text: '🟡 pending', style: 'background:#fef3c7;color:#92400e;' }
+                };
+                const st = statusMap[status] || { text: 'ℹ️ ' + status, style: 'background:#e2e8f0;color:#334155;' };
+
+                return `
                 <div class="freessl-storage-item">
                     <div>
                         <div class="freessl-storage-domain">${item.domain}</div>
@@ -2034,27 +2102,34 @@
                             <span class="freessl-storage-badge">⏳ Hết hạn: ${item.valid_to || '-'}</span>
                             <span class="freessl-storage-badge">🧩 ${item.challenge_type || '-'}</span>
                             <span class="freessl-storage-badge" style="background:#e0f2fe;color:#0369a1;">🏪 ${item.provider || 'letsencrypt'}</span>
+                            <span class="freessl-storage-badge" style="${st.style}">${st.text}</span>
                         </div>
                     </div>
                     <div class="freessl-storage-actions">
-                        <button class="btn btn-secondary" onclick="freeSslViewStoredItem('${item.id}')">👁️ Xem lại</button>
+                        <button class="btn btn-secondary" onclick="freeSslViewStoredItem('${item.id}')">👁️ Mở</button>
                         <button class="btn btn-danger" onclick="freeSslDeleteStoredItem('${item.id}')">🗑️ Xóa</button>
                     </div>
                 </div>
-            `).join('');
+            `;
+            }).join('');
         }
 
         async function freeSslViewStoredItem(itemId) {
             const { ok, data, errorText } = await freeSslFetch('/api/ssl-free/item/' + encodeURIComponent(itemId), null, 'GET');
             if (!ok) { freeSslShowMessage('❌ ' + errorText, 'error'); return; }
             freeSslApplyStoredItem(data);
-            freeSslShowMessage('✅ Đã tải SSL đã lưu cho domain ' + (data.domain || ''), 'success');
+            freeSslRememberActiveStorageId(itemId);
+            const stateText = (data.status === 'issued') ? 'đã cấp' : 'đang xử lý';
+            freeSslShowMessage('✅ Đã tải SSL ' + stateText + ' cho domain ' + (data.domain || ''), 'success');
         }
 
         async function freeSslDeleteStoredItem(itemId) {
             if (!confirm('Xóa SSL đã lưu này?')) return;
             const { ok, errorText } = await freeSslFetch('/api/ssl-free/item/' + encodeURIComponent(itemId), null, 'DELETE');
             if (!ok) { freeSslShowMessage('❌ ' + errorText, 'error'); return; }
+            if (localStorage.getItem('freessl_active_storage_id') === itemId) {
+                freeSslRememberActiveStorageId(null);
+            }
             freeSslShowMessage('✅ Đã xóa SSL đã lưu.', 'success');
             await freeSslLoadStoredList();
         }
@@ -2151,6 +2226,7 @@
                 if (!ok) { freeSslShowMessage('❌ ' + errorText, 'error'); return; }
 
                 freeSslSessionId = data.session_id;
+                freeSslRememberActiveStorageId(data.storage_id || null);
                 freeSslRenderChallenges(data.challenges, freeSslChallengeType, freeSslProvider);
                 document.getElementById('freesslChallengeCard').style.display = 'block';
                 document.getElementById('freesslCheckResults').innerHTML = '';
@@ -2230,7 +2306,7 @@
 
         async function freeSslCheck() {
             if (!freeSslSessionId) { alert('Chưa có session! Hãy bắt đầu lại.'); return; }
-            freeSslSetLoading(true, '🔎 Đang kiểm tra xác thực...');
+            freeSslSetLoading(true, '🔎 Đang refresh DNS cache công cộng và kiểm tra xác thực...');
             freeSslSetStep(3);
 
             try {
@@ -2275,6 +2351,7 @@
                 }
 
                 freeSslResultData = data;
+                freeSslRememberActiveStorageId(data.storage_id || freeSslStorageId || null);
                 document.getElementById('freesslCert').value = data.certificate || '';
                 document.getElementById('freesslPrivKey').value = data.private_key || '';
                 document.getElementById('freesslCaBundle').value = data.ca_bundle || '';
@@ -2367,6 +2444,7 @@
 
         function freeSslReset() {
             freeSslSessionId = null;
+            freeSslRememberActiveStorageId(null);
             freeSslSans = [];
             freeSslChallengeType = 'dns-01';
             freeSslProvider = 'letsencrypt';
@@ -2385,6 +2463,7 @@
         }
 
         freeSslLoadStoredList();
+        freeSslRestoreActiveFromStorage();
         freeSslUpdateProviderNote();
     </script>
 </body>
