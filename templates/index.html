@@ -483,6 +483,28 @@
         .check-result-row.fail { background: #fee2e2; color: #991b1b; }
         .check-result-row.pending { background: #f1f5f9; color: #475569; }
 
+        .freessl-log-box {
+            margin-top: 12px;
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 10px;
+            max-height: 220px;
+            overflow: auto;
+        }
+        .freessl-log-row {
+            font-size: 0.88rem;
+            padding: 8px 10px;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            border: 1px solid transparent;
+        }
+        .freessl-log-row:last-child { margin-bottom: 0; }
+        .freessl-log-row.success { background: #dcfce7; color: #166534; border-color: #86efac; }
+        .freessl-log-row.error { background: #fee2e2; color: #991b1b; border-color: #fca5a5; }
+        .freessl-log-row.loading { background: #fef3c7; color: #92400e; border-color: #fcd34d; }
+        .freessl-log-row.info { background: #e0f2fe; color: #0c4a6e; border-color: #7dd3fc; }
+
         .freessl-result-area { display: none; }
         .freessl-result-area.show { display: block; }
         .freessl-cert-box {
@@ -550,7 +572,8 @@
         .btn-danger { background: #ef4444; color: white; }
         .btn-danger:hover { background: #dc2626; }
 
-        .freessl-toolbar-row { display:flex; justify-content:flex-end; margin-bottom:14px; }
+        .freessl-toolbar-row { display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; gap:10px; }
+        .freessl-toolbar-actions { display:flex; align-items:center; gap:10px; }
         .freessl-hamburger-btn {
             background:#0f172a; color:#fff; border:none; border-radius:10px;
             padding:10px 14px; font-size:0.9rem; font-weight:700; cursor:pointer;
@@ -904,6 +927,9 @@
             </div>
 
             <div class="freessl-toolbar-row">
+                <div class="freessl-toolbar-actions">
+                    <button class="btn btn-green" onclick="freeSslNewOrder()">+ Thêm order mới</button>
+                </div>
                 <button class="freessl-hamburger-btn" onclick="freeSslToggleStorage(true)">☰ Danh sách SSL đã cấp</button>
             </div>
 
@@ -1005,15 +1031,6 @@
                 </button>
             </div>
 
-            <!-- Loading -->
-            <div class="freessl-loading" id="freesslLoading">
-                <div class="spinner"></div>
-                <p id="freesslLoadingText">Đang xử lý...</p>
-            </div>
-
-            <!-- Message -->
-            <div id="freesslMessage" class="message"></div>
-
             <div id="freesslStorageBackdrop" class="freessl-storage-backdrop" onclick="freeSslToggleStorage(false)"></div>
             <aside id="freesslStorageSidebar" class="freessl-storage-sidebar" aria-label="Danh sách SSL đã lưu">
                 <div class="freessl-storage-sidebar-header">
@@ -1042,10 +1059,14 @@
 
                 <!-- Step 3: Pre-check -->
                 <div style="margin-top: 16px; display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
-                    <button class="btn btn-primary" style="background:#0ea5e9;" onclick="freeSslCheck()">
+                    <button class="btn btn-primary" id="freesslVerifyBtn" style="background:#0ea5e9;" onclick="freeSslCheck()">
                         🔎 Bước 3: Kiểm tra xác thực (Pre-check)
                     </button>
+                    <button class="btn btn-orange" id="freesslRetryBtn" style="display:none;" onclick="freeSslRetryCurrentStep()">
+                        🔁 Retry bước xác thực
+                    </button>
                 </div>
+                <div id="freesslLogBox" class="freessl-log-box" style="display:none;"></div>
                 <div id="freesslCheckResults" style="margin-top:14px;"></div>
             </div>
 
@@ -1060,6 +1081,14 @@
                     🎁 Nhận Chứng Chỉ SSL
                 </button>
             </div>
+
+            <!-- Loading + Message (đặt phía dưới để không chen giữa form) -->
+            <div class="freessl-loading" id="freesslLoading">
+                <div class="spinner"></div>
+                <p id="freesslLoadingText">Đang xử lý...</p>
+            </div>
+
+            <div id="freesslMessage" class="message"></div>
 
             <!-- Step 5: Result -->
             <div class="freessl-result-area" id="freesslResultArea">
@@ -1972,6 +2001,162 @@
         let freeSslChallengeType = 'dns-01';
         let freeSslProvider = 'letsencrypt';
         let freeSslResultData = null;
+        let freeSslStatus = 'pending';
+        let freeSslStatusMonitorTimer = null;
+        let freeSslLogCursor = 0;
+        let freeSslCurrentRunId = null;
+        let freeSslCurrentOrderId = null;
+
+        function freeSslRenderDomainProgress(domains) {
+            if (!Array.isArray(domains) || domains.length === 0) return;
+            const html = domains.map(d => {
+                const st = (d.status || 'pending').toLowerCase();
+                const cls = st === 'valid' ? 'ok' : (st === 'invalid' ? 'fail' : 'pending');
+                return `<div class="check-result-row ${cls}"><div><strong>${d.domain || '-'}</strong><br><span style="font-size:0.88rem;">Authorization: ${st}</span></div></div>`;
+            }).join('');
+            document.getElementById('freesslCheckResults').innerHTML = html;
+        }
+
+        function freeSslApplyProgressLogs(logs, runId = null) {
+            if (!Array.isArray(logs)) return;
+            if (runId && runId !== freeSslCurrentRunId) {
+                freeSslCurrentRunId = runId;
+                freeSslClearLog();
+            }
+            const targetRunId = freeSslCurrentRunId || runId;
+            const filtered = targetRunId ? logs.filter(x => (x && x.run_id) === targetRunId) : logs;
+            if (filtered.length < freeSslLogCursor) freeSslLogCursor = 0;
+            for (let i = freeSslLogCursor; i < filtered.length; i++) {
+                const entry = filtered[i] || {};
+                const lv = (entry.level || 'info').toLowerCase();
+                const type = lv === 'error' ? 'error' : (lv === 'success' ? 'success' : (lv === 'loading' ? 'loading' : 'info'));
+                const line = `[${entry.time || '...'}] ${entry.message || ''}`;
+                freeSslLog(line, type);
+            }
+            freeSslLogCursor = filtered.length;
+        }
+
+        function freeSslStopStatusMonitor() {
+            if (freeSslStatusMonitorTimer) {
+                clearInterval(freeSslStatusMonitorTimer);
+                freeSslStatusMonitorTimer = null;
+            }
+        }
+
+        function freeSslStartStatusMonitor() {
+            if (!freeSslSessionId && !freeSslStorageId) return;
+            freeSslStopStatusMonitor();
+            freeSslStatusMonitorTimer = setInterval(async () => {
+                let ok = false;
+                let data = null;
+
+                if (freeSslSessionId) {
+                    const sessionResp = await freeSslFetch('/api/ssl-free/session/' + encodeURIComponent(freeSslSessionId) + '/status', null, 'GET');
+                    ok = sessionResp.ok;
+                    data = sessionResp.data;
+                }
+
+                if (!ok && freeSslStorageId) {
+                    const itemResp = await freeSslFetch('/api/ssl-free/item/' + encodeURIComponent(freeSslStorageId), null, 'GET');
+                    ok = itemResp.ok;
+                    data = itemResp.data;
+                }
+
+                if (!ok || !data) return;
+
+                freeSslSetActionState(data.status || 'pending');
+                freeSslApplyProgressLogs(data.progress_logs || [], data.current_run_id || freeSslCurrentRunId);
+                freeSslRenderDomainProgress(data.domains || []);
+
+                if (data.storage_id && !freeSslStorageId) {
+                    freeSslRememberActiveStorageId(data.storage_id);
+                }
+
+                if (data.status === 'issued') {
+                    freeSslStopStatusMonitor();
+                    const result = data.result || data;
+                    freeSslResultData = {
+                        domain: result.domain || document.getElementById('freesslDomain').value.trim(),
+                        certificate: result.certificate || '',
+                        private_key: result.private_key || '',
+                        ca_bundle: result.ca_bundle || '',
+                        full_chain: result.full_chain || ''
+                    };
+                    document.getElementById('freesslCert').value = freeSslResultData.certificate;
+                    document.getElementById('freesslPrivKey').value = freeSslResultData.private_key;
+                    document.getElementById('freesslCaBundle').value = freeSslResultData.ca_bundle;
+                    document.getElementById('freesslFullChain').value = freeSslResultData.full_chain;
+                    document.getElementById('freesslResultArea').classList.add('show');
+                    document.getElementById('freesslChallengeCard').style.display = 'none';
+                    document.getElementById('freesslFinalizeCard').style.display = 'none';
+                    freeSslSetStep(5);
+                    freeSslSetActionState('issued');
+                    freeSslShowMessage('Chứng chỉ đã cấp xong và được tải tự động.', 'success');
+                    freeSslLog('ACME hoàn tất cấp cert', 'success');
+                    await freeSslLoadStoredList();
+                    return;
+                }
+
+                if (data.status === 'invalid') {
+                    freeSslStopStatusMonitor();
+                    freeSslSetActionState('invalid');
+                    freeSslShowMessage('ACME báo lỗi xác thực. Bạn có thể Retry.', 'error');
+                    freeSslLog('Trạng thái ACME: invalid', 'error');
+                    await freeSslLoadStoredList();
+                }
+            }, 3000);
+        }
+
+        function freeSslClearLog() {
+            const box = document.getElementById('freesslLogBox');
+            if (!box) return;
+            box.style.display = 'none';
+            box.innerHTML = '';
+            freeSslLogCursor = 0;
+        }
+
+        function freeSslLog(message, type = 'info') {
+            const box = document.getElementById('freesslLogBox');
+            if (!box) return;
+            box.style.display = 'block';
+            const row = document.createElement('div');
+            row.className = 'freessl-log-row ' + type;
+            row.textContent = message;
+            box.appendChild(row);
+            box.scrollTop = box.scrollHeight;
+            box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+
+        function freeSslSetActionState(status) {
+            freeSslStatus = status || 'pending';
+            const verifyBtn = document.getElementById('freesslVerifyBtn');
+            const finalizeBtn = document.getElementById('freesslFinalizeBtn');
+            const retryBtn = document.getElementById('freesslRetryBtn');
+            if (verifyBtn) {
+                verifyBtn.disabled = (freeSslStatus === 'valid' || freeSslStatus === 'issued' || freeSslStatus === 'finalizing');
+                if (freeSslStatus === 'finalizing') {
+                    verifyBtn.textContent = '⏳ Đang tự cấp cert...';
+                } else {
+                    verifyBtn.textContent = '🔎 Bước 3: Kiểm tra xác thực (Pre-check)';
+                }
+            }
+            if (finalizeBtn) {
+                finalizeBtn.disabled = (freeSslStatus === 'processing' || freeSslStatus === 'finalizing' || freeSslStatus === 'issued');
+            }
+            if (retryBtn) {
+                retryBtn.style.display = (freeSslStatus === 'invalid' || freeSslStatus === 'pending') ? 'inline-flex' : 'none';
+            }
+        }
+
+        function freeSslRetryCurrentStep() {
+            if (!freeSslSessionId) {
+                freeSslLog('Chưa có session để retry', 'error');
+                return;
+            }
+            freeSslSetActionState('pending');
+            freeSslLog('Retry bước xác thực...', 'loading');
+            freeSslCheck();
+        }
 
         function freeSslRememberActiveStorageId(storageId) {
             freeSslStorageId = storageId || null;
@@ -1989,7 +2174,7 @@
             }
             freeSslApplyStoredItem(data);
             const statusText = data.status === 'issued' ? 'đã cấp' : 'đang xử lý';
-            freeSslShowMessage('ℹ️ Đã khôi phục SSL ' + statusText + ' sau khi tải lại trang.', 'info');
+            freeSslShowMessage('Đã khôi phục SSL ' + statusText + ' sau khi tải lại trang.', 'info');
         }
 
         function freeSslToggleStorage(show) {
@@ -2019,7 +2204,13 @@
         }
 
         function freeSslApplyStoredItem(data) {
+            const incomingOrderId = data && data.id ? data.id : null;
+            if (incomingOrderId !== freeSslCurrentOrderId) {
+                freeSslClearLog();
+            }
+            freeSslCurrentOrderId = incomingOrderId;
             freeSslResultData = null;
+            freeSslCurrentRunId = null;
             document.getElementById('freesslDomain').value = data.domain || '';
             freeSslSessionId = data.session_id || null;
             freeSslSans = Array.isArray(data.sans) ? data.sans : [];
@@ -2029,8 +2220,19 @@
             freeSslSelectChallenge(freeSslChallengeType);
             freeSslSelectProvider(freeSslProvider);
             freeSslRememberActiveStorageId(data.id || null);
+            freeSslSetActionState(data.status || 'pending');
+            freeSslCurrentRunId = data.current_run_id || null;
+            freeSslApplyProgressLogs(data.progress_logs || [], freeSslCurrentRunId);
+
+            if (data.status === 'finalizing' || data.status === 'processing') {
+                freeSslLog('Hệ thống đang xử lý ACME, sẽ tự cập nhật khi xong...', 'loading');
+                freeSslStartStatusMonitor();
+            } else {
+                freeSslStopStatusMonitor();
+            }
 
             if (data.status === 'issued') {
+                freeSslStopStatusMonitor();
                 freeSslResultData = data;
                 document.getElementById('freesslCert').value = data.certificate || '';
                 document.getElementById('freesslPrivKey').value = data.private_key || '';
@@ -2040,6 +2242,7 @@
                 document.getElementById('freesslChallengeCard').style.display = 'none';
                 document.getElementById('freesslFinalizeCard').style.display = 'none';
                 freeSslSetStep(5);
+                freeSslSetActionState('issued');
                 return;
             }
 
@@ -2056,7 +2259,6 @@
             if (checkResults.length > 0) {
                 document.getElementById('freesslCheckResults').innerHTML = checkResults.map(r => `
                     <div class="check-result-row ${r.ok ? 'ok' : 'fail'}">
-                        <span style="font-size:1.2rem;">${r.ok ? '✅' : '❌'}</span>
                         <div><strong>${r.domain}</strong><br><span style="font-size:0.88rem;">${r.detail}</span></div>
                     </div>
                 `).join('');
@@ -2064,9 +2266,14 @@
                 document.getElementById('freesslCheckResults').innerHTML = '';
             }
 
-            const ready = data.status === 'ready';
+            if (Array.isArray(data.domains) && data.domains.length > 0 && checkResults.length === 0) {
+                freeSslRenderDomainProgress(data.domains);
+            }
+
+            const ready = data.status === 'ready' || data.status === 'valid';
             document.getElementById('freesslFinalizeCard').style.display = ready ? 'block' : 'none';
-            freeSslSetStep(ready ? 4 : 2);
+            if (data.status === 'invalid') freeSslSetStep(3);
+            else freeSslSetStep(ready ? 4 : 2);
         }
 
         async function freeSslLoadStoredList() {
@@ -2089,6 +2296,7 @@
                     issued: { text: '✅ issued', style: 'background:#dcfce7;color:#166534;' },
                     ready: { text: '🟢 ready', style: 'background:#dbeafe;color:#1d4ed8;' },
                     processing: { text: '🟡 processing', style: 'background:#fef3c7;color:#92400e;' },
+                    finalizing: { text: '🟠 finalizing', style: 'background:#ffedd5;color:#9a3412;' },
                     pending: { text: '🟡 pending', style: 'background:#fef3c7;color:#92400e;' }
                 };
                 const st = statusMap[status] || { text: 'ℹ️ ' + status, style: 'background:#e2e8f0;color:#334155;' };
@@ -2116,21 +2324,21 @@
 
         async function freeSslViewStoredItem(itemId) {
             const { ok, data, errorText } = await freeSslFetch('/api/ssl-free/item/' + encodeURIComponent(itemId), null, 'GET');
-            if (!ok) { freeSslShowMessage('❌ ' + errorText, 'error'); return; }
+            if (!ok) { freeSslShowMessage(errorText, 'error'); return; }
             freeSslApplyStoredItem(data);
             freeSslRememberActiveStorageId(itemId);
             const stateText = (data.status === 'issued') ? 'đã cấp' : 'đang xử lý';
-            freeSslShowMessage('✅ Đã tải SSL ' + stateText + ' cho domain ' + (data.domain || ''), 'success');
+            freeSslShowMessage('Đã tải SSL ' + stateText + ' cho domain ' + (data.domain || ''), 'success');
         }
 
         async function freeSslDeleteStoredItem(itemId) {
             if (!confirm('Xóa SSL đã lưu này?')) return;
             const { ok, errorText } = await freeSslFetch('/api/ssl-free/item/' + encodeURIComponent(itemId), null, 'DELETE');
-            if (!ok) { freeSslShowMessage('❌ ' + errorText, 'error'); return; }
+            if (!ok) { freeSslShowMessage(errorText, 'error'); return; }
             if (localStorage.getItem('freessl_active_storage_id') === itemId) {
                 freeSslRememberActiveStorageId(null);
             }
-            freeSslShowMessage('✅ Đã xóa SSL đã lưu.', 'success');
+            freeSslShowMessage('Đã xóa SSL đã lưu.', 'success');
             await freeSslLoadStoredList();
         }
 
@@ -2192,27 +2400,33 @@
             const _firstToken = (domain.split(/[\s,;]+/).find(Boolean) || '').replace(/^\*\./, '');
             const email = _firstToken ? `admin@${_firstToken.replace(/^www\./, '')}` : '';
 
-            if (!domain) { alert('Vui lòng nhập tên miền'); return; }
+            if (!domain) {
+                freeSslShowMessage('Vui lòng nhập tên miền', 'error');
+                freeSslLog('Vui lòng nhập tên miền', 'error');
+                return;
+            }
 
             const domainTokens = domain.split(/[\s,;]+/).filter(Boolean);
             const hasWildcard = [...domainTokens, ...freeSslSans].some(x => (x || '').trim().startsWith('*.'));
             const hasMultiDomain = (domainTokens.length + freeSslSans.length) > 1;
             if (freeSslProvider === 'sslcom') {
                 if (hasWildcard) {
-                    freeSslShowMessage('❌ SSL.com không hỗ trợ wildcard domain.', 'error');
+                    freeSslShowMessage('SSL.com không hỗ trợ wildcard domain.', 'error');
                     return;
                 }
                 if (hasMultiDomain) {
-                    freeSslShowMessage('❌ SSL.com chỉ hỗ trợ 1 domain (không multi-domain/SAN).', 'error');
+                    freeSslShowMessage('SSL.com chỉ hỗ trợ 1 domain (không multi-domain/SAN).', 'error');
                     return;
                 }
             }
             if (freeSslProvider === 'zerossl' && hasWildcard) {
-                freeSslShowMessage('❌ ZeroSSL không hỗ trợ wildcard domain.', 'error');
+                freeSslShowMessage('ZeroSSL không hỗ trợ wildcard domain.', 'error');
                 return;
             }
 
             freeSslShowMessage('', '');
+            freeSslClearLog();
+            freeSslLog('Đang tạo order ACME...', 'loading');
             freeSslSetLoading(true, '⏳ Đang tạo RSA Key + CSR và gửi ACME Order...');
             document.getElementById('freesslStartBtn').disabled = true;
             document.getElementById('freesslChallengeCard').style.display = 'none';
@@ -2232,9 +2446,12 @@
                 document.getElementById('freesslCheckResults').innerHTML = '';
                 document.getElementById('freesslFinalizeCard').style.display = 'none';
                 freeSslSetStep(2);
-                freeSslShowMessage('✅ Order đã tạo! Hãy thực hiện cấu hình xác thực bên dưới.', 'success');
+                freeSslSetActionState('pending');
+                freeSslLog('Order tạo thành công, vui lòng thêm record xác thực', 'success');
+                freeSslShowMessage('Order đã tạo! Hãy thực hiện cấu hình xác thực bên dưới.', 'success');
             } catch (err) {
-                freeSslShowMessage('❌ ' + err.message, 'error');
+                freeSslLog(err.message, 'error');
+                freeSslShowMessage(err.message, 'error');
             } finally {
                 freeSslSetLoading(false);
                 document.getElementById('freesslStartBtn').disabled = false;
@@ -2305,53 +2522,122 @@
         }
 
         async function freeSslCheck() {
-            if (!freeSslSessionId) { alert('Chưa có session! Hãy bắt đầu lại.'); return; }
-            freeSslSetLoading(true, '🔎 Đang refresh DNS cache công cộng và kiểm tra xác thực...');
+            if (!freeSslSessionId) {
+                freeSslLog('Chưa có session. Hãy bắt đầu lại.', 'error');
+                freeSslShowMessage('Chưa có session. Hãy bắt đầu lại.', 'error');
+                return;
+            }
+            if (freeSslStatus === 'processing' || freeSslStatus === 'finalizing' || freeSslStatus === 'issued') {
+                freeSslLog('Session đang xử lý, vui lòng chờ...', 'info');
+                return;
+            }
+            freeSslClearLog();
+            freeSslLog('Đang refresh DNS cache công cộng và kiểm tra DNS pre-check...', 'loading');
             freeSslSetStep(3);
+            freeSslSetActionState('processing');
 
             try {
                 const { ok, data, errorText } = await freeSslFetch('/api/ssl-free/check-challenge', { session_id: freeSslSessionId });
-                if (!ok) { freeSslShowMessage('❌ ' + errorText, 'error'); return; }
+                if (!ok) {
+                    freeSslSetActionState('invalid');
+                    freeSslLog(errorText, 'error');
+                    freeSslShowMessage(errorText, 'error');
+                    return;
+                }
+
+                if (data.current_run_id) freeSslCurrentRunId = data.current_run_id;
+                freeSslApplyProgressLogs(data.progress_logs || [], freeSslCurrentRunId);
+
+                if (Array.isArray(data.dns_cache_clear) && data.dns_cache_clear.length > 0) {
+                    freeSslLog('Đã gửi yêu cầu refresh DNS cache tới Google/Cloudflare/OpenDNS/Quad9', 'success');
+                }
 
                 let html = '';
+                let okCount = 0;
                 data.results.forEach(r => {
+                    if (r.ok) okCount += 1;
                     html += `<div class="check-result-row ${r.ok ? 'ok' : 'fail'}">
-                        <span style="font-size:1.2rem;">${r.ok ? '✅' : '❌'}</span>
                         <div><strong>${r.domain}</strong><br><span style="font-size:0.88rem;">${r.detail}</span></div>
                     </div>`;
                 });
                 document.getElementById('freesslCheckResults').innerHTML = html;
+                freeSslLog(`Kết quả pre-check: ${okCount}/${data.results.length} bản ghi hợp lệ`, data.all_ok ? 'success' : 'info');
 
-                if (data.all_ok) {
+                if (data.status === 'invalid') {
+                    freeSslSetActionState('invalid');
+                    freeSslShowMessage('ACME xác thực thất bại. Có thể Retry sau khi sửa DNS.', 'error');
+                    freeSslLog('ACME xác thực thất bại, hãy sửa cấu hình và Retry', 'error');
+                    return;
+                }
+
+                if (data.auto_finalized && data.certificate) {
+                    freeSslStopStatusMonitor();
+                    freeSslLog('[ĐANG CHẠY] Đã xác thực auth, đang finalize order...', 'loading');
+                    freeSslResultData = data;
+                    freeSslRememberActiveStorageId(data.storage_id || freeSslStorageId || null);
+                    document.getElementById('freesslCert').value = data.certificate || '';
+                    document.getElementById('freesslPrivKey').value = data.private_key || '';
+                    document.getElementById('freesslCaBundle').value = data.ca_bundle || '';
+                    document.getElementById('freesslFullChain').value = data.full_chain || '';
+                    document.getElementById('freesslResultArea').classList.add('show');
+                    document.getElementById('freesslChallengeCard').style.display = 'none';
+                    document.getElementById('freesslFinalizeCard').style.display = 'none';
+                    freeSslSetStep(5);
+                    freeSslSetActionState('issued');
+                    freeSslLog('[OK] Đã tải chứng chỉ thành công', 'success');
+                    freeSslShowMessage('🎉 Chứng chỉ SSL đã được cấp thành công! Có hiệu lực 90 ngày.', 'success');
+                    await freeSslLoadStoredList();
+                    return;
+                }
+
+                if (data.status === 'processing' || data.status === 'finalizing') {
+                    freeSslSetActionState(data.status);
+                    freeSslShowMessage('Đã gửi challenge. Hệ thống đang tự xác thực và sẽ tự hiển thị kết quả.', 'info');
+                    freeSslRenderDomainProgress(data.domains || []);
+                    freeSslStartStatusMonitor();
+                } else if (data.all_ok) {
                     document.getElementById('freesslFinalizeCard').style.display = 'block';
                     freeSslSetStep(4);
-                    freeSslShowMessage('✅ Tất cả xác thực đã sẵn sàng! Nhấn nút Nhận Chứng Chỉ.', 'success');
+                    freeSslSetActionState('valid');
+                    freeSslLog('Authorization đã valid, có thể finalize thủ công nếu cần', 'success');
+                    freeSslShowMessage('Xác thực xong. Có thể finalize.', 'success');
                 } else {
-                    freeSslShowMessage('⚠️ Một số xác thực chưa đúng. Kiểm tra lại và thử lại sau vài phút.', 'info');
+                    freeSslSetActionState('pending');
+                    freeSslShowMessage('Một số xác thực chưa đúng. Kiểm tra lại và thử lại sau vài phút.', 'info');
                 }
             } catch (err) {
-                freeSslShowMessage('❌ ' + err.message, 'error');
-            } finally {
-                freeSslSetLoading(false);
+                freeSslSetActionState('invalid');
+                freeSslLog(err.message, 'error');
+                freeSslShowMessage(err.message, 'error');
             }
         }
 
         async function freeSslFinalize() {
-            if (!freeSslSessionId) { alert('Chưa có session!'); return; }
+            if (!freeSslSessionId) {
+                freeSslLog('Chưa có session để finalize', 'error');
+                return;
+            }
+            freeSslClearLog();
+            freeSslLog('Đang finalize order...', 'loading');
             freeSslSetLoading(true, '🔐 Đang yêu cầu Let\'s Encrypt xác thực & cấp chứng chỉ...');
             document.getElementById('freesslFinalizeBtn').disabled = true;
             freeSslSetStep(4);
+            freeSslSetActionState('finalizing');
+            freeSslStartStatusMonitor();
 
             try {
                 const { ok, data, errorText } = await freeSslFetch('/api/ssl-free/finalize', { session_id: freeSslSessionId });
                 if (!ok) {
-                    freeSslShowMessage('❌ ' + errorText, 'error');
+                    freeSslSetActionState('invalid');
+                    freeSslLog(errorText, 'error');
+                    freeSslShowMessage(errorText, 'error');
                     document.getElementById('freesslFinalizeBtn').disabled = false;
                     return;
                 }
 
                 freeSslResultData = data;
                 freeSslRememberActiveStorageId(data.storage_id || freeSslStorageId || null);
+                freeSslStopStatusMonitor();
                 document.getElementById('freesslCert').value = data.certificate || '';
                 document.getElementById('freesslPrivKey').value = data.private_key || '';
                 document.getElementById('freesslCaBundle').value = data.ca_bundle || '';
@@ -2361,10 +2647,14 @@
                 document.getElementById('freesslChallengeCard').style.display = 'none';
                 document.getElementById('freesslFinalizeCard').style.display = 'none';
                 freeSslSetStep(5);
-                freeSslShowMessage('🎉 Chứng chỉ SSL đã được cấp thành công! Có hiệu lực 90 ngày.', 'success');
+                freeSslSetActionState('issued');
+                freeSslLog('Finalize thành công và đã tải cert', 'success');
+                freeSslShowMessage('Chứng chỉ SSL đã được cấp thành công! Có hiệu lực 90 ngày.', 'success');
                 await freeSslLoadStoredList();
             } catch (err) {
-                freeSslShowMessage('❌ ' + err.message, 'error');
+                freeSslSetActionState('invalid');
+                freeSslLog(err.message, 'error');
+                freeSslShowMessage(err.message, 'error');
                 document.getElementById('freesslFinalizeBtn').disabled = false;
             } finally {
                 freeSslSetLoading(false);
@@ -2375,14 +2665,14 @@
             const el = document.getElementById(elementId);
             el.select();
             document.execCommand('copy');
-            freeSslShowMessage('✅ Đã copy vào clipboard!', 'success');
+            freeSslShowMessage('Đã copy vào clipboard.', 'success');
         }
 
         function freeSslCopyText(elementId) {
             const el = document.getElementById(elementId);
             const text = el.textContent || el.innerText;
             navigator.clipboard.writeText(text).then(() => {
-                freeSslShowMessage('✅ Đã copy!', 'success');
+                freeSslShowMessage('Đã copy.', 'success');
             }).catch(() => {
                 const tmp = document.createElement('textarea');
                 tmp.value = text;
@@ -2390,7 +2680,7 @@
                 tmp.select();
                 document.execCommand('copy');
                 document.body.removeChild(tmp);
-                freeSslShowMessage('✅ Đã copy!', 'success');
+                freeSslShowMessage('Đã copy.', 'success');
             });
         }
 
@@ -2405,12 +2695,12 @@
             const fullchain = (freeSslResultData.full_chain || '').trim();
 
             if (!cert || !privateKey) {
-                freeSslShowMessage('❌ Thiếu cert hoặc private key, không thể tạo gói tải xuống.', 'error');
+                freeSslShowMessage('Thiếu cert hoặc private key, không thể tạo gói tải xuống.', 'error');
                 return;
             }
 
             if (typeof forge === 'undefined') {
-                freeSslShowMessage('❌ Chưa tải xong thư viện tạo PFX, vui lòng thử lại sau vài giây.', 'error');
+                freeSslShowMessage('Chưa tải xong thư viện tạo PFX, vui lòng thử lại sau vài giây.', 'error');
                 return;
             }
 
@@ -2436,19 +2726,23 @@
                 document.body.removeChild(a);
                 URL.revokeObjectURL(url);
 
-                freeSslShowMessage('✅ Đã tạo ZIP gồm 6 file: cert, key, ca-bundle, fullchain, PEM, PFX (password PFX: 123456).', 'success');
+                freeSslShowMessage('Đã tạo ZIP gồm 6 file: cert, key, ca-bundle, fullchain, PEM, PFX (password PFX: 123456).', 'success');
             } catch (err) {
-                freeSslShowMessage('❌ Không thể tạo PEM/PFX: ' + (err.message || err), 'error');
+                freeSslShowMessage('Không thể tạo PEM/PFX: ' + (err.message || err), 'error');
             }
         }
 
         function freeSslReset() {
             freeSslSessionId = null;
+            freeSslStopStatusMonitor();
             freeSslRememberActiveStorageId(null);
             freeSslSans = [];
             freeSslChallengeType = 'dns-01';
             freeSslProvider = 'letsencrypt';
             freeSslResultData = null;
+            freeSslStatus = 'pending';
+            freeSslCurrentRunId = null;
+            freeSslCurrentOrderId = null;
             document.getElementById('freesslDomain').value = '';
             document.getElementById('freesslSansTags').innerHTML = '';
             document.getElementById('freesslChallengeCard').style.display = 'none';
@@ -2456,14 +2750,28 @@
             document.getElementById('freesslResultArea').classList.remove('show');
             document.getElementById('freesslCheckResults').innerHTML = '';
             document.getElementById('freesslMessage').innerHTML = '';
+            freeSslClearLog();
             freeSslSelectChallenge('dns-01');
             freeSslSelectProvider('letsencrypt');
             freeSslSetStep(1);
+            freeSslSetActionState('pending');
             freeSslLoadStoredList();
+        }
+
+        function freeSslNewOrder() {
+            freeSslToggleStorage(false);
+            freeSslReset();
+            freeSslShowMessage('Sẵn sàng tạo order mới.', 'info');
+            const input = document.getElementById('freesslDomain');
+            if (input) {
+                input.focus();
+                input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
         }
 
         freeSslLoadStoredList();
         freeSslRestoreActiveFromStorage();
+        freeSslSetActionState('pending');
         freeSslUpdateProviderNote();
     </script>
 </body>

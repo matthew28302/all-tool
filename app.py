@@ -583,11 +583,20 @@ ISSUED_SSL_STORE_PATH = os.path.join(app.root_path, 'acme', 'issued_ssl_store.js
 _ssl_sessions: Dict[str, dict] = {}
 _ssl_sessions_lock = threading.Lock()
 _issued_ssl_store_lock = threading.Lock()
+_acme_worker_pool = ThreadPoolExecutor(max_workers=4)
+
+SSL_SESSION_TTL_SECONDS = 2 * 60 * 60
+SSL_SESSION_MAX_COUNT = 300
+SSL_STORE_SYNC_MIN_INTERVAL_SECONDS = 1.5
 
 
 def _gen_session_id() -> str:
     import uuid
     return str(uuid.uuid4())
+
+
+def _gen_run_id(prefix: str = 'run') -> str:
+    return f"{prefix}-{int(time.time() * 1000)}"
 
 
 def _get_acme_client(email: str, provider: str = 'letsencrypt') -> tuple:
@@ -622,10 +631,10 @@ def _get_acme_client(email: str, provider: str = 'letsencrypt') -> tuple:
             directory=directory,
         )
         new_reg_kwargs['external_account_binding'] = eab
-    regr = client.new_account(
+    client.new_account(
         acme_messages.NewRegistration.from_data(**new_reg_kwargs)
     )
-    return client, account_key_pem_bytes, regr
+    return client, account_key_pem_bytes
 
 
 def _generate_rsa_private_key_pem(key_size: int = 2048) -> bytes:
@@ -795,6 +804,13 @@ def _save_issued_ssl_store(items: List[dict]) -> None:
         json.dump(items, f, ensure_ascii=False, indent=2)
 
 
+def _ensure_ssl_store_writable() -> None:
+    target_dir = os.path.dirname(ISSUED_SSL_STORE_PATH)
+    os.makedirs(target_dir, exist_ok=True)
+    if not os.access(target_dir, os.W_OK):
+        raise PermissionError(f"Không có quyền ghi file tại: {target_dir}")
+
+
 def _extract_cert_summary(cert_pem: str) -> dict:
     summary = {
         "subject": None,
@@ -880,6 +896,333 @@ def _request_public_dns_cache_clear(dns_name: str) -> List[dict]:
     return results
 
 
+def _extract_acme_error_payload(err: Exception) -> dict:
+    payload = {
+        "type": "acme:error:unknown",
+        "detail": str(err),
+    }
+
+    for attr_name in ("problem", "error"):
+        obj = getattr(err, attr_name, None)
+        if obj is None:
+            continue
+        typ = getattr(obj, "typ", None) or getattr(obj, "type", None)
+        detail = getattr(obj, "detail", None)
+        if typ:
+            payload["type"] = str(typ)
+        if detail:
+            payload["detail"] = str(detail)
+
+    text = str(err)
+    if payload["detail"] == text:
+        json_match = re.search(r'\{.*\}', text)
+        if json_match:
+            try:
+                parsed = json.loads(json_match.group(0))
+                payload["type"] = str(parsed.get("type") or payload["type"])
+                payload["detail"] = str(parsed.get("detail") or payload["detail"])
+            except Exception:
+                pass
+    return payload
+
+
+def _map_acme_error_message(acme_error: dict) -> str:
+    err_type = (acme_error or {}).get("type", "").lower()
+    detail = (acme_error or {}).get("detail", "Lỗi ACME").strip()
+
+    if "caa" in err_type or "caa" in detail.lower():
+        return "Domain chặn SSL (CAA). Kiểm tra lại CAA record."
+    if "dns" in err_type or "nxdomain" in detail.lower():
+        return "DNS chưa đúng hoặc chưa propagate."
+    if "rate" in err_type or "rate" in detail.lower():
+        return "Vượt giới hạn cấp phát. Hãy thử lại sau."
+    if "malformed" in err_type:
+        return "Request không hợp lệ (malformed). Kiểm tra lại trạng thái challenge/order."
+    return detail
+
+
+def _resolve_caa_records(domain: str) -> List[str]:
+    records: List[str] = []
+    for resolver_ip in ('8.8.8.8', '1.1.1.1'):
+        try:
+            resolver = dns.resolver.Resolver(configure=False)
+            resolver.cache = None
+            resolver.nameservers = [resolver_ip]
+            resolver.timeout = 3
+            resolver.lifetime = 3
+            answers = resolver.resolve(domain, 'CAA')
+            for rdata in answers:
+                records.append(str(rdata))
+            if records:
+                break
+        except Exception:
+            continue
+    return list(dict.fromkeys(records))
+
+
+def _check_caa_policy(domains: List[str], provider: str) -> dict:
+    allowed_issue_map = {
+        'letsencrypt': ['letsencrypt.org'],
+        'zerossl': ['sectigo.com', 'zerossl.com'],
+        'sslcom': ['ssl.com'],
+    }
+    allowed = allowed_issue_map.get(provider, allowed_issue_map['letsencrypt'])
+
+    checked_domains = []
+    for d in domains:
+        host = (d or '').replace('*.', '', 1)
+        if not host:
+            continue
+        checked_domains.append(host)
+
+    for host in list(dict.fromkeys(checked_domains)):
+        caa_records = _resolve_caa_records(host)
+        if not caa_records:
+            continue
+
+        normalized = [r.lower() for r in caa_records]
+        if any(' issue "' in r or ' issuewild "' in r for r in normalized):
+            if not any(any(issuer in r for issuer in allowed) for r in normalized):
+                return {
+                    "ok": False,
+                    "domain": host,
+                    "records": caa_records,
+                    "message": f"CAA record không cho phép nhà cung cấp {provider}",
+                }
+
+    return {"ok": True, "message": "CAA check passed"}
+
+
+def _set_session_status(session_id: str, status: str, extra: Optional[dict] = None) -> Optional[dict]:
+    with _ssl_sessions_lock:
+        sess = _ssl_sessions.get(session_id)
+        if not sess:
+            return None
+        sess['status'] = status
+        if extra:
+            sess.update(extra)
+        _ssl_sessions[session_id] = sess
+        return sess
+
+
+def _cleanup_expired_ssl_sessions() -> None:
+    now = time.time()
+    with _ssl_sessions_lock:
+        if not _ssl_sessions:
+            return
+
+        to_delete = []
+        for sid, sess in _ssl_sessions.items():
+            created_at = float(sess.get('created_at', now))
+            status = sess.get('status', 'pending')
+            if now - created_at > SSL_SESSION_TTL_SECONDS and status != 'finalizing':
+                to_delete.append(sid)
+
+        for sid in to_delete:
+            _ssl_sessions.pop(sid, None)
+
+        # Hard cap to avoid memory growth on high traffic.
+        if len(_ssl_sessions) > SSL_SESSION_MAX_COUNT:
+            ordered = sorted(_ssl_sessions.items(), key=lambda kv: float(kv[1].get('created_at', now)))
+            overflow = len(_ssl_sessions) - SSL_SESSION_MAX_COUNT
+            for sid, _ in ordered[:overflow]:
+                _ssl_sessions.pop(sid, None)
+
+
+def _query_txt_values(dns_name: str, resolvers: Optional[List[str]] = None) -> List[str]:
+    values: List[str] = []
+    resolver_ips = resolvers or ['8.8.8.8', '1.1.1.1']
+    for resolver_ip in resolver_ips:
+        try:
+            resolver = dns.resolver.Resolver(configure=False)
+            resolver.cache = None
+            resolver.nameservers = [resolver_ip]
+            resolver.timeout = 5
+            resolver.lifetime = 5
+            answers = resolver.resolve(dns_name, 'TXT')
+            for rdata in answers:
+                for s in rdata.strings:
+                    values.append(s.decode() if isinstance(s, bytes) else str(s))
+        except Exception:
+            continue
+    return list(dict.fromkeys(values))
+
+
+def _acme_status_to_str(status_obj) -> str:
+    if status_obj is None:
+        return 'pending'
+    for attr in ('name', 'value'):
+        value = getattr(status_obj, attr, None)
+        if value:
+            return str(value).lower()
+    raw = str(status_obj).strip().lower()
+    if raw.startswith('status(') and raw.endswith(')'):
+        raw = raw[len('status('):-1]
+    return raw
+
+
+def _poll_authorizations_until_done(sess: dict, timeout_seconds: int = 90) -> tuple:
+    acme_cl: acme_client.ClientV2 = sess['acme_client']
+    authz_list = sess.get('authz_list', [])
+    deadline = time.time() + timeout_seconds
+
+    while time.time() < deadline:
+        all_valid = True
+        any_invalid = False
+        updated_authz_list = []
+        domain_statuses = []
+
+        for authz in authz_list:
+            updated = acme_cl.poll(authz)
+            if isinstance(updated, tuple):
+                updated_auth = updated[0]
+            else:
+                updated_auth = updated
+            updated_authz_list.append(updated_auth)
+
+            auth_status = _acme_status_to_str(getattr(updated_auth.body, 'status', 'pending'))
+            auth_domain = updated_auth.body.identifier.value
+            domain_statuses.append({"domain": auth_domain, "status": auth_status})
+
+            if auth_status == 'invalid':
+                any_invalid = True
+                all_valid = False
+            elif auth_status != 'valid':
+                all_valid = False
+
+        sess['authz_list'] = updated_authz_list
+        sess['domains'] = [
+            {
+                **d,
+                "status": next((x['status'] for x in domain_statuses if x['domain'] == d.get('domain')), d.get('status', 'pending')),
+            }
+            for d in sess.get('domains', [])
+        ]
+
+        if any_invalid:
+            return False, "invalid", domain_statuses
+        if all_valid:
+            return True, "valid", domain_statuses
+        time.sleep(2)
+
+    return False, "timeout", [{"domain": d.get('domain'), "status": d.get('status', 'pending')} for d in sess.get('domains', [])]
+
+
+def _finalize_order_and_collect_cert(session_id: str, sess: dict) -> tuple:
+    acme_cl: acme_client.ClientV2 = sess['acme_client']
+    order = sess['order']
+
+    _set_session_status(session_id, 'finalizing')
+    _append_session_log(session_id, 'Đang finalize order và chờ cấp chứng chỉ...', 'loading', force_sync=True)
+    _patch_issued_ssl_record_by_session(session_id, {"status": "finalizing"})
+
+    deadline = time.time() + 90
+    finalized_order = None
+    while time.time() < deadline:
+        try:
+            order_resource = acme_cl.poll_and_finalize(order)
+            if order_resource.fullchain_pem:
+                finalized_order = order_resource
+                break
+        except Exception as poll_err:
+            acme_error = _extract_acme_error_payload(poll_err)
+            _set_session_status(session_id, 'invalid', {"last_error": acme_error})
+            _append_session_log(session_id, _map_acme_error_message(acme_error), 'error', force_sync=True)
+            _patch_issued_ssl_record_by_session(session_id, {
+                "status": "invalid",
+                "last_error": acme_error,
+            })
+            return None, acme_error
+        time.sleep(2)
+
+    if not finalized_order:
+        acme_error = {
+            "type": "acme:error:timeout",
+            "detail": "Timeout while waiting order status to become valid",
+        }
+        _set_session_status(session_id, 'pending', {"last_error": acme_error})
+        _append_session_log(session_id, 'Timeout khi chờ cấp chứng chỉ. Có thể retry.', 'error', force_sync=True)
+        _patch_issued_ssl_record_by_session(session_id, {
+            "status": "pending",
+            "last_error": acme_error,
+        })
+        return None, acme_error
+
+    fullchain = finalized_order.fullchain_pem
+    cert_blocks = re.findall(
+        r'(-----BEGIN CERTIFICATE-----.*?-----END CERTIFICATE-----)',
+        fullchain, re.DOTALL
+    )
+    leaf_cert = cert_blocks[0] if cert_blocks else ''
+    ca_bundle = '\n'.join(cert_blocks[1:]) if len(cert_blocks) > 1 else ''
+
+    result = {
+        "certificate": leaf_cert,
+        "private_key": sess['domain_key_pem'],
+        "ca_bundle": ca_bundle,
+        "full_chain": fullchain,
+        "domain": sess['domain'],
+    }
+    return result, None
+
+
+def _run_acme_background_flow(session_id: str) -> None:
+    try:
+        with _ssl_sessions_lock:
+            sess = _ssl_sessions.get(session_id)
+            if not sess:
+                return
+        _append_session_log(session_id, 'Đã gửi challenge tới ACME. Đang polling authorization...', 'loading')
+
+        auth_ok, auth_status, auth_domains = _poll_authorizations_until_done(sess, timeout_seconds=90)
+        sess['domains'] = [
+            {
+                **d,
+                "status": next((x['status'] for x in auth_domains if x['domain'] == d.get('domain')), d.get('status', 'pending')),
+            }
+            for d in sess.get('domains', [])
+        ]
+
+        if not auth_ok:
+            next_status = 'invalid' if auth_status == 'invalid' else 'pending'
+            _set_session_status(session_id, next_status, {"domains": sess.get('domains', [])})
+            if auth_status == 'invalid':
+                _append_session_log(session_id, 'Authorization invalid. Kiểm tra lại DNS/CAA rồi retry.', 'error')
+            else:
+                _append_session_log(session_id, 'Authorization chưa hoàn tất. Bạn có thể bấm Verify lại.', 'info')
+            _sync_session_to_store(session_id)
+            return
+
+        _set_session_status(session_id, 'valid', {"domains": sess.get('domains', [])})
+        _append_session_log(session_id, 'Tất cả authorization đã valid.', 'success', force_sync=True)
+        _sync_session_to_store(session_id, force=True)
+
+        finalize_result, finalize_error = _finalize_order_and_collect_cert(session_id, sess)
+        if finalize_error:
+            _set_session_status(session_id, 'invalid', {"last_error": finalize_error})
+            _sync_session_to_store(session_id, force=True)
+            return
+
+        with _ssl_sessions_lock:
+            if session_id in _ssl_sessions:
+                _ssl_sessions[session_id]['status'] = 'issued'
+                _ssl_sessions[session_id]['result'] = finalize_result
+
+        _ensure_ssl_store_writable()
+        _upsert_issued_ssl_record(_build_issued_ssl_record(sess, finalize_result))
+        _append_session_log(session_id, 'Đã cấp cert thành công.', 'success', force_sync=True)
+        _sync_session_to_store(session_id, force=True)
+    except Exception as e:
+        acme_error = _extract_acme_error_payload(e)
+        _set_session_status(session_id, 'invalid', {"last_error": acme_error})
+        _append_session_log(session_id, _map_acme_error_message(acme_error), 'error', force_sync=True)
+        _sync_session_to_store(session_id, force=True)
+    finally:
+        with _ssl_sessions_lock:
+            if session_id in _ssl_sessions:
+                _ssl_sessions[session_id]['worker_running'] = False
+
+
 def _upsert_issued_ssl_record(record: dict) -> dict:
     with _issued_ssl_store_lock:
         items = _load_issued_ssl_store()
@@ -894,15 +1237,6 @@ def _upsert_issued_ssl_record(record: dict) -> dict:
         if existing_idx is None and record.get('session_id'):
             sess_id = record.get('session_id')
             existing_idx = next((i for i, item in enumerate(items) if item.get('session_id') == sess_id), None)
-
-        # Priority 3: backwards-compatible key (domain + provider)
-        if existing_idx is None:
-            existing_idx = next(
-                (i for i, item in enumerate(items)
-                 if item.get('domain') == record.get('domain')
-                 and item.get('provider', 'letsencrypt') == record.get('provider', 'letsencrypt')),
-                None
-            )
 
         if existing_idx is not None:
             existing_id = items[existing_idx].get('id')
@@ -931,6 +1265,47 @@ def _patch_issued_ssl_record_by_session(session_id: str, updates: dict) -> Optio
         return item
 
 
+def _sync_session_to_store(session_id: str, force: bool = False) -> None:
+    with _ssl_sessions_lock:
+        sess = _ssl_sessions.get(session_id)
+        if not sess:
+            return
+        now = time.time()
+        last_sync = float(sess.get("last_store_sync_at", 0.0) or 0.0)
+        if not force and (now - last_sync) < SSL_STORE_SYNC_MIN_INTERVAL_SECONDS:
+            return
+        sess["last_store_sync_at"] = now
+        _ssl_sessions[session_id] = sess
+        updates = {
+            "status": sess.get("status", "pending"),
+            "domains": sess.get("domains", []),
+            "last_error": sess.get("last_error"),
+            "progress_logs": sess.get("progress_logs", []),
+            "progress_text": sess.get("progress_text"),
+        }
+    _patch_issued_ssl_record_by_session(session_id, updates)
+
+
+def _append_session_log(session_id: str, message: str, level: str = "info", force_sync: bool = False, run_id: Optional[str] = None) -> None:
+    log_item = {
+        "time": datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+        "level": level,
+        "message": message,
+    }
+    with _ssl_sessions_lock:
+        sess = _ssl_sessions.get(session_id)
+        if not sess:
+            return
+        active_run_id = run_id or sess.get("current_run_id") or "default"
+        log_item["run_id"] = active_run_id
+        logs = list(sess.get("progress_logs", []))
+        logs.append(log_item)
+        sess["progress_logs"] = logs[-80:]
+        sess["progress_text"] = message
+        _ssl_sessions[session_id] = sess
+    _sync_session_to_store(session_id, force=force_sync)
+
+
 def _build_pending_ssl_record(sess: dict, session_id: str) -> dict:
     return {
         "id": sess.get('storage_id'),
@@ -939,7 +1314,7 @@ def _build_pending_ssl_record(sess: dict, session_id: str) -> dict:
         "sans": sess.get('sans', []),
         "challenge_type": sess.get('challenge_type'),
         "issued_at": None,
-        "status": "processing",
+        "status": "pending",
         "certificate": "",
         "private_key": "",
         "ca_bundle": "",
@@ -952,10 +1327,18 @@ def _build_pending_ssl_record(sess: dict, session_id: str) -> dict:
         "provider": sess.get('provider', 'letsencrypt'),
         "email": sess.get('email'),
         "challenges": sess.get('challenges', []),
+        "order_url": sess.get('order_url') or sess.get('order_uri'),
+        "finalize_url": sess.get('finalize_url'),
+        "auth_urls": sess.get('auth_urls', []),
+        "domains": sess.get('domains', []),
         "created_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
         "last_check_at": None,
         "last_check_results": [],
         "dns_cache_clear": [],
+        "progress_logs": sess.get('progress_logs', []),
+        "progress_text": sess.get('progress_text', 'Đang chờ xác thực'),
+        "last_error": sess.get('last_error'),
+        "current_run_id": sess.get('current_run_id'),
     }
 
 
@@ -980,6 +1363,14 @@ def _build_issued_ssl_record(sess: dict, result: dict) -> dict:
         "serial_number": cert_summary.get('serial_number'),
         "provider": sess.get('provider', 'letsencrypt'),
         "email": sess.get('email'),
+        "order_url": sess.get('order_url') or sess.get('order_uri'),
+        "finalize_url": sess.get('finalize_url'),
+        "auth_urls": sess.get('auth_urls', []),
+        "domains": sess.get('domains', []),
+        "progress_logs": sess.get('progress_logs', []),
+        "progress_text": 'Đã cấp chứng chỉ thành công',
+        "last_error": sess.get('last_error'),
+        "current_run_id": sess.get('current_run_id'),
     }
 
 
@@ -991,6 +1382,7 @@ def api_ssl_free_start():
     Returns: { session_id, challenges: [{type, domain, token, key_auth, dns_name, dns_value, file_path, file_content}] }
     """
     try:
+        _cleanup_expired_ssl_sessions()
         data = request.json or {}
         domain_input = data.get('domain', '')
         sans_raw = data.get('sans', [])
@@ -1032,6 +1424,17 @@ def api_ssl_free_start():
             non_wildcard = next((d for d in [domain] + sans if not d.startswith('*.')), domain)
             email = 'admin@' + non_wildcard.replace('www.', '', 1).replace('*.', '', 1)
 
+        caa_check = _check_caa_policy([domain] + sans, provider)
+        if not caa_check.get("ok"):
+            return jsonify({
+                "error": caa_check.get("message") or "CAA check failed",
+                "acme_error": {
+                    "type": "acme:error:caa",
+                    "detail": caa_check.get("message") or "CAA policy blocks issuance",
+                },
+                "caa": caa_check,
+            }), 400
+
         logger.info(f"[ACME] start: domain={domain} sans={sans} type={challenge_type} provider={provider}")
 
         # 1. Generate domain private key
@@ -1041,13 +1444,13 @@ def api_ssl_free_start():
         csr_pem = _generate_csr_pem(domain, sans, domain_key_pem)
 
         # 3. Create ACME client + place order
-        acme_cl, account_key_pem, regr = _get_acme_client(email, provider=provider)
-        all_domains = list(dict.fromkeys([domain] + [s for s in sans if s]))
+        acme_cl, account_key_pem = _get_acme_client(email, provider=provider)
         order = acme_cl.new_order(csr_pem)
 
         # 4. Extract challenges
         challenge_infos = []
         authz_list = list(order.authorizations)
+        domain_states = []
 
         for authz in authz_list:
             authz_domain = authz.body.identifier.value
@@ -1062,6 +1465,7 @@ def api_ssl_free_start():
                     # SHA256 of key_auth, base64url
                     digest = hashlib.sha256(key_auth.encode()).digest()
                     dns_value = _b64_jose(digest)
+                    challenge_url = getattr(ch, 'uri', None)
                     challenge_infos.append({
                         "type": "dns-01",
                         "domain": authz_domain,
@@ -1069,9 +1473,13 @@ def api_ssl_free_start():
                         "key_auth": key_auth,
                         "dns_name": f"_acme-challenge.{authz_domain}",
                         "dns_value": dns_value,
+                        "auth_url": getattr(authz, 'uri', None),
+                        "challenge_url": challenge_url,
+                        "status": "pending",
                     })
                 else:  # http-01
                     token_str = _b64_jose(token)
+                    challenge_url = getattr(ch, 'uri', None)
                     challenge_infos.append({
                         "type": "http-01",
                         "domain": authz_domain,
@@ -1079,7 +1487,18 @@ def api_ssl_free_start():
                         "key_auth": key_auth,
                         "file_path": f"/.well-known/acme-challenge/{token_str}",
                         "file_content": key_auth,
+                        "auth_url": getattr(authz, 'uri', None),
+                        "challenge_url": challenge_url,
+                        "status": "pending",
                     })
+                    
+                domain_states.append({
+                    "domain": authz_domain,
+                    "auth_url": getattr(authz, 'uri', None),
+                    "challenge_url": challenge_url,
+                    "status": "pending",
+                    "last_error": None,
+                })
                 break  # one challenge per authz
 
         if not challenge_infos:
@@ -1089,6 +1508,7 @@ def api_ssl_free_start():
         session_id = _gen_session_id()
         with _ssl_sessions_lock:
             _ssl_sessions[session_id] = {
+                "session_id": session_id,
                 "domain": domain,
                 "sans": sans,
                 "email": email,
@@ -1097,19 +1517,27 @@ def api_ssl_free_start():
                 "domain_key_pem": domain_key_pem.decode(),
                 "csr_pem": csr_pem.decode(),
                 "account_key_pem": account_key_pem.decode(),
+                "order_url": order.uri,
                 "order_uri": order.uri,
+                "finalize_url": str(getattr(order.body, 'finalize', '') or ''),
+                "auth_urls": [getattr(a, 'uri', None) for a in authz_list],
                 "authz_list": authz_list,
                 "acme_client": acme_cl,
                 "order": order,
+                "domains": domain_states,
                 "challenges": challenge_infos,
                 "created_at": time.time(),
                 "status": "pending",
+                "worker_running": False,
+                "progress_logs": [],
+                "progress_text": "Đang chờ bạn cấu hình bản ghi xác thực",
+                "current_run_id": _gen_run_id('init'),
             }
 
-        # Persist in-progress session so UI can recover after F5
         with _ssl_sessions_lock:
             pending_sess = _ssl_sessions.get(session_id)
-            pending_sess["session_id"] = session_id
+
+        _append_session_log(session_id, 'Order ACME đã tạo. Vui lòng thêm bản ghi xác thực.', 'success', force_sync=True)
 
         pending_record = _upsert_issued_ssl_record(_build_pending_ssl_record(pending_sess, session_id))
 
@@ -1122,6 +1550,10 @@ def api_ssl_free_start():
             "storage_id": pending_record.get('id'),
             "domain": domain,
             "challenge_type": challenge_type,
+            "order_url": order.uri,
+            "finalize_url": str(getattr(order.body, 'finalize', '') or ''),
+            "auth_urls": [getattr(a, 'uri', None) for a in authz_list],
+            "domains": domain_states,
             "challenges": challenge_infos,
             "csr_pem": csr_pem.decode(),
         }), 200
@@ -1141,6 +1573,7 @@ def api_ssl_free_check_challenge():
     Returns: { results: [{domain, type, ok, detail}] }
     """
     try:
+        _cleanup_expired_ssl_sessions()
         data = request.json or {}
         session_id = data.get('session_id', '')
 
@@ -1149,11 +1582,32 @@ def api_ssl_free_check_challenge():
         if not sess:
             return jsonify({"error": "Session not found or expired"}), 404
 
+        if sess.get('status') in ('processing', 'finalizing'):
+            return jsonify({
+                "status": sess.get('status'),
+                "message": "Session đang xử lý ở background.",
+                "domains": sess.get('domains', []),
+                "progress_logs": sess.get('progress_logs', []),
+                "current_run_id": sess.get('current_run_id'),
+            }), 200
+
+        new_run_id = _gen_run_id('verify')
+        with _ssl_sessions_lock:
+            if session_id in _ssl_sessions:
+                _ssl_sessions[session_id]['current_run_id'] = new_run_id
+
         challenges = sess['challenges']
         challenge_type = sess['challenge_type']
         results = []
         dns_cache_clear_results = []
 
+        _set_session_status(session_id, 'processing')
+        _append_session_log(session_id, 'Đang pre-check bản ghi xác thực...', 'loading')
+        _patch_issued_ssl_record_by_session(session_id, {
+            "status": "processing",
+        })
+
+        dns_lookup_cache: Dict[str, List[str]] = {}
         if challenge_type == 'dns-01':
             dns_names = sorted(set(ch.get('dns_name') for ch in challenges if ch.get('dns_name')))
             for dns_name in dns_names:
@@ -1161,6 +1615,7 @@ def api_ssl_free_check_challenge():
                     "dns_name": dns_name,
                     "targets": _request_public_dns_cache_clear(dns_name),
                 })
+                dns_lookup_cache[dns_name] = _query_txt_values(dns_name)
 
         for ch in challenges:
             ch_domain = ch['domain']
@@ -1171,67 +1626,123 @@ def api_ssl_free_check_challenge():
                 expected_value = ch['dns_value']
                 dns_name = ch['dns_name']
                 try:
-                    resolver = dns.resolver.Resolver()
-                    resolver.nameservers = ['8.8.8.8', '1.1.1.1']
-                    resolver.timeout = 5
-                    resolver.lifetime = 5
-                    answers = resolver.resolve(dns_name, 'TXT')
-                    found_values = []
-                    for rdata in answers:
-                        for s in rdata.strings:
-                            found_values.append(s.decode() if isinstance(s, bytes) else s)
+                    found_values = dns_lookup_cache.get(dns_name, [])
                     if expected_value in found_values:
                         ok = True
-                        detail = f"✅ Tìm thấy TXT record đúng: {expected_value}"
+                        detail = f"Tìm thấy TXT record đúng: {expected_value}"
                     else:
-                        detail = f"❌ Chưa thấy giá trị đúng. Tìm được: {found_values or 'Không có'} | Cần: {expected_value}"
-                except dns.resolver.NXDOMAIN:
-                    detail = f"❌ Record {dns_name} chưa tồn tại (NXDOMAIN)"
-                except dns.resolver.NoAnswer:
-                    detail = f"❌ Không có TXT record tại {dns_name}"
+                        detail = f"Chưa thấy giá trị đúng. Tìm được: {found_values or 'Không có'} | Cần: {expected_value}"
                 except Exception as e:
-                    detail = f"❌ Lỗi DNS: {str(e)}"
+                    detail = f"Lỗi DNS: {str(e)}"
 
             else:  # http-01
                 file_url = f"http://{ch_domain}{ch['file_path']}"
                 expected_content = ch['key_auth']
                 try:
                     resp = requests.get(file_url, timeout=8, allow_redirects=True)
-                    actual = resp.text.strip()
-                    if actual == expected_content.strip():
-                        ok = True
-                        detail = f"✅ File truy cập được và nội dung đúng"
+                    if resp.status_code == 404:
+                        detail = f"File xác thực không tồn tại (HTTP 404): {file_url}"
+                    elif resp.status_code >= 400:
+                        detail = f"Truy cập file xác thực lỗi HTTP {resp.status_code}: {file_url}"
                     else:
-                        detail = f"❌ File tồn tại nhưng nội dung sai. Nhận được: {actual[:80]} | Cần: {expected_content[:80]}"
+                        actual = (resp.text or '').strip()
+                        if actual == expected_content.strip():
+                            ok = True
+                            detail = "File truy cập được và nội dung đúng"
+                        else:
+                            snippet = actual[:120] if actual else '(rỗng)'
+                            detail = f"File truy cập được nhưng nội dung sai. Nhận được: {snippet} | Cần: {expected_content[:80]}"
                 except requests.exceptions.ConnectionError:
-                    detail = f"❌ Không kết nối được tới {file_url}"
+                    detail = f"Không kết nối được tới {file_url}"
                 except requests.exceptions.Timeout:
-                    detail = f"❌ Timeout khi truy cập {file_url}"
+                    detail = f"Timeout khi truy cập {file_url}"
                 except Exception as e:
-                    detail = f"❌ Lỗi HTTP: {str(e)}"
+                    detail = f"Lỗi HTTP: {str(e)}"
 
             results.append({"domain": ch_domain, "type": challenge_type, "ok": ok, "detail": detail})
 
         all_ok = all(r['ok'] for r in results)
-        check_status = 'ready' if all_ok else 'processing'
+        if not all_ok:
+            _append_session_log(session_id, f'Pre-check chưa đạt ({sum(1 for x in results if x.get("ok"))}/{len(results)}).', 'error')
+            _set_session_status(session_id, 'pending', {
+                "last_check_results": results,
+                "dns_cache_clear": dns_cache_clear_results,
+            })
+            _patch_issued_ssl_record_by_session(session_id, {
+                "status": "pending",
+                "last_check_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                "last_check_results": results,
+                "dns_cache_clear": dns_cache_clear_results,
+            })
+            return jsonify({
+                "results": results,
+                "all_ok": False,
+                "dns_cache_clear": dns_cache_clear_results,
+                "status": "pending",
+            }), 200
 
-        with _ssl_sessions_lock:
-            if session_id in _ssl_sessions:
-                _ssl_sessions[session_id]['status'] = check_status
-                _ssl_sessions[session_id]['last_check_results'] = results
-                _ssl_sessions[session_id]['dns_cache_clear'] = dns_cache_clear_results
+        # Step 3b: call challenge only for pending authorizations to avoid malformed
+        acme_cl: acme_client.ClientV2 = sess['acme_client']
+        authz_list = sess['authz_list']
+        account_key = jose.JWKRSA.load(sess['account_key_pem'].encode())
 
+        for authz in authz_list:
+            authz_domain = authz.body.identifier.value
+            domain_state = next((d for d in sess.get('domains', []) if d.get('domain') == authz_domain), None)
+            if domain_state and domain_state.get('status') != 'pending':
+                continue
+            for ch in authz.body.challenges:
+                if ch.chall.typ != challenge_type:
+                    continue
+                try:
+                    acme_cl.answer_challenge(ch, ch.chall.response(account_key))
+                except Exception as e:
+                    acme_error = _extract_acme_error_payload(e)
+                    user_msg = _map_acme_error_message(acme_error)
+                    _set_session_status(session_id, 'invalid', {"last_error": acme_error})
+                    _append_session_log(session_id, user_msg, 'error')
+                    _patch_issued_ssl_record_by_session(session_id, {
+                        "status": "invalid",
+                        "last_error": acme_error,
+                        "last_check_results": results,
+                        "dns_cache_clear": dns_cache_clear_results,
+                    })
+                    return jsonify({
+                        "error": user_msg,
+                        "acme_error": acme_error,
+                        "results": results,
+                        "all_ok": False,
+                        "status": "invalid",
+                    }), 400
+                break
+        _append_session_log(session_id, 'Pre-check đạt. Đã gửi challenge, bắt đầu xác thực tự động...', 'success')
+        _set_session_status(session_id, 'processing', {
+            "last_check_results": results,
+            "dns_cache_clear": dns_cache_clear_results,
+        })
         _patch_issued_ssl_record_by_session(session_id, {
-            "status": check_status,
+            "status": "processing",
             "last_check_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
             "last_check_results": results,
             "dns_cache_clear": dns_cache_clear_results,
         })
 
+        with _ssl_sessions_lock:
+            if session_id in _ssl_sessions:
+                if not _ssl_sessions[session_id].get('worker_running'):
+                    _ssl_sessions[session_id]['worker_running'] = True
+                    _acme_worker_pool.submit(_run_acme_background_flow, session_id)
+
         return jsonify({
             "results": results,
-            "all_ok": all_ok,
+            "all_ok": True,
+            "auth_ok": False,
+            "auto_finalized": False,
+            "status": "processing",
+            "domains": sess.get('domains', []),
             "dns_cache_clear": dns_cache_clear_results,
+            "progress_logs": sess.get('progress_logs', []),
+            "current_run_id": new_run_id,
         }), 200
 
     except Exception as e:
@@ -1289,6 +1800,7 @@ def api_ssl_free_finalize():
     Returns: { certificate, private_key, ca_bundle, full_chain }
     """
     try:
+        _cleanup_expired_ssl_sessions()
         data = request.json or {}
         session_id = data.get('session_id', '')
 
@@ -1297,69 +1809,21 @@ def api_ssl_free_finalize():
         if not sess:
             return jsonify({"error": "Session not found or expired"}), 404
 
-        acme_cl: acme_client.ClientV2 = sess['acme_client']
-        order = sess['order']
-        authz_list = sess['authz_list']
-        challenge_type = sess['challenge_type']
-        challenges_info = sess['challenges']
-
-        # Build a map: authz_domain -> challenge object
-        ch_map = {c['domain']: c for c in challenges_info}
-
-        # Respond to each challenge
-        for authz in authz_list:
-            authz_domain = authz.body.identifier.value
-            for ch in authz.body.challenges:
-                if ch.chall.typ != challenge_type:
-                    continue
-                # Tell ACME we're ready
-                acme_cl.answer_challenge(ch, ch.chall.response(jose.JWKRSA.load(sess['account_key_pem'].encode())))
-                break
-
-        # Poll order until valid or invalid
-        deadline = time.time() + 120  # wait up to 2 min
-        finalized_order = None
-        poll_status = "processing"
-
-        while time.time() < deadline:
-            try:
-                order_resource = acme_cl.poll_and_finalize(order)
-                if order_resource.fullchain_pem:
-                    finalized_order = order_resource
-                    poll_status = "valid"
-                    break
-            except Exception as poll_err:
-                err_str = str(poll_err)
-                if 'invalid' in err_str.lower():
-                    poll_status = "invalid"
-                    return jsonify({"error": f"Let's Encrypt validation failed: {err_str}"}), 400
-            time.sleep(3)
-
-        if not finalized_order:
-            return jsonify({"error": f"Timeout waiting for certificate. Last status: {poll_status}"}), 408
-
-        # Split fullchain into leaf cert + CA bundle
-        fullchain = finalized_order.fullchain_pem
-        cert_blocks = re.findall(
-            r'(-----BEGIN CERTIFICATE-----.*?-----END CERTIFICATE-----)',
-            fullchain, re.DOTALL
-        )
-        leaf_cert = cert_blocks[0] if cert_blocks else ''
-        ca_bundle = '\n'.join(cert_blocks[1:]) if len(cert_blocks) > 1 else ''
-
-        result = {
-            "certificate": leaf_cert,
-            "private_key": sess['domain_key_pem'],
-            "ca_bundle": ca_bundle,
-            "full_chain": fullchain,
-            "domain": sess['domain'],
-        }
+        result, finalize_error = _finalize_order_and_collect_cert(session_id, sess)
+        if finalize_error:
+            mapped_msg = _map_acme_error_message(finalize_error)
+            code = 408 if finalize_error.get('type') == 'acme:error:timeout' else 400
+            return jsonify({
+                "error": mapped_msg,
+                "acme_error": finalize_error,
+            }), code
 
         with _ssl_sessions_lock:
             if session_id in _ssl_sessions:
                 _ssl_sessions[session_id]['status'] = 'issued'
                 _ssl_sessions[session_id]['result'] = result
 
+        _ensure_ssl_store_writable()
         stored_record = _upsert_issued_ssl_record(_build_issued_ssl_record(sess, result))
         result["storage_id"] = stored_record["id"]
 
@@ -1431,6 +1895,32 @@ def api_ssl_free_delete_item(item_id):
         return jsonify({"message": "Deleted successfully"}), 200
     except Exception as e:
         logger.error(f"[ACME] delete-item error: {e}", exc_info=True)
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/ssl-free/session/<session_id>/status', methods=['GET'])
+def api_ssl_free_session_status(session_id):
+    try:
+        _cleanup_expired_ssl_sessions()
+        with _ssl_sessions_lock:
+            sess = _ssl_sessions.get(session_id)
+        if not sess:
+            return jsonify({"error": "Session not found or expired"}), 404
+
+        payload = {
+            "session_id": session_id,
+            "storage_id": sess.get('storage_id'),
+            "status": sess.get('status', 'pending'),
+            "domains": sess.get('domains', []),
+            "progress_logs": sess.get('progress_logs', []),
+            "progress_text": sess.get('progress_text'),
+            "last_error": sess.get('last_error'),
+            "current_run_id": sess.get('current_run_id'),
+            "result": sess.get('result') if sess.get('status') == 'issued' else None,
+        }
+        return jsonify(payload), 200
+    except Exception as e:
+        logger.error(f"[ACME] session-status error: {e}", exc_info=True)
         return jsonify({"error": str(e)}), 500
 
 
