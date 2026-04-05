@@ -1415,85 +1415,181 @@
         }
 
         function processFullBundle(files) {
-            // Hỗ trợ mọi định dạng file chứng chỉ phổ biến
-            // Hỗ trợ mọi file text, không cần đuôi, chỉ cần có BEGIN CERTIFICATE
-            let certFiles = Object.entries(files)
-                .filter(([name, content]) => typeof content === 'string' && content.trim().includes('BEGIN CERTIFICATE'));
+            const certFiles = Object.entries(files)
+                .filter(([_, content]) => typeof content === 'string' && content.includes('BEGIN CERTIFICATE'));
             console.log('Tất cả file chứng chỉ:', certFiles.map(([n]) => n));
 
-            // Tách tất cả các đoạn PEM từ mọi file hợp lệ
-            let allCerts = [];
             const certRegex = /-----BEGIN CERTIFICATE-----[\s\S]*?-----END CERTIFICATE-----/g;
+            const extracted = [];
+
             for (const [filename, content] of certFiles) {
-                const matches = content.match(certRegex);
-                if (matches) {
-                    matches.forEach(cert => {
-                        allCerts.push({pem: cert.trim(), filename});
-                    });
-                }
+                const matches = content.match(certRegex) || [];
+                matches.forEach(pem => extracted.push({ pem: pem.trim(), filename }));
             }
-            console.log('Tổng số đoạn cert tách được:', allCerts.length);
-            allCerts.forEach((c, i) => console.log(`Cert[${i+1}] (${c.filename}):`, c.pem.substring(0, 100)));
 
-            // Xác định domain cert dựa trên nội dung cert (Subject CN), không phụ thuộc filename
-            let domainCert = null;
-            const bundleCerts = [];
-            for (let cert of allCerts) {
+            console.log('Tổng số đoạn cert tách được:', extracted.length);
+
+            // Parse + dedupe theo fingerprint DER để tránh trùng giữa .crt và .txt
+            const parsedCerts = [];
+            const seenFp = new Set();
+
+            for (const item of extracted) {
                 try {
-                    const parsed = forge.pki.certificateFromPem(cert.pem);
-                    const subjectCN = parsed.subject.getField('CN')?.value || '';
-                    const subjectDN = parsed.subject.attributes.map(a => `${a.shortName}=${a.value}`).join(',');
-                    const issuerDN = parsed.issuer.attributes.map(a => `${a.shortName}=${a.value}`).join(',');
+                    const cert = forge.pki.certificateFromPem(item.pem);
+                    const der = forge.asn1.toDer(forge.pki.certificateToAsn1(cert)).getBytes();
+                    const fp = forge.md.sha256.create().update(der).digest().toHex();
+                    if (seenFp.has(fp)) continue;
+                    seenFp.add(fp);
+
+                    const subjectDN = cert.subject.attributes.map(a => `${a.shortName}=${a.value}`).join(',');
+                    const issuerDN = cert.issuer.attributes.map(a => `${a.shortName}=${a.value}`).join(',');
+                    const basicConstraints = (cert.extensions || []).find(ext => ext.name === 'basicConstraints');
+                    const keyUsage = (cert.extensions || []).find(ext => ext.name === 'keyUsage');
+                    const isCA = !!((basicConstraints && basicConstraints.cA) || (keyUsage && keyUsage.keyCertSign));
                     const isSelfSigned = subjectDN === issuerDN;
+                    const subjectCN = cert.subject.getField('CN')?.value || '';
 
-                    // Check nếu là CA cert (có BasicConstraints CA:TRUE)
-                    let isCA = false;
-                    const basicConstraints = parsed.extensions.find(ext => ext.name === 'basicConstraints');
-                    if (basicConstraints && basicConstraints.cA === true) {
-                        isCA = true;
-                    }
-
-                    // Domain cert: không self-signed, KHÔNG phải CA cert, và CN không chứa keywords CA
-                    if (!isSelfSigned && !isCA && !/authority|certification|root|ca cert|intermediate|sectigo|usertrust|digicert|comodo|globalsign|godaddy|entrust|rapidssl/i.test(subjectCN) && !domainCert) {
-                        domainCert = cert;
-                        console.log('Domain cert found:', subjectCN);
-                    } else {
-                        bundleCerts.push(cert);
-                        console.log('Bundle cert:', subjectCN, '(isCA:', isCA, ', isSelfSigned:', isSelfSigned + ')');
-                    }
+                    parsedCerts.push({
+                        pem: item.pem,
+                        filename: item.filename,
+                        cert,
+                        fp,
+                        subjectDN,
+                        issuerDN,
+                        subjectCN,
+                        isCA,
+                        isSelfSigned,
+                    });
                 } catch (e) {
-                    bundleCerts.push(cert);
+                    // Skip invalid certificate blocks
                 }
             }
 
-            // Nếu không tìm được domain cert, lấy cert đầu tiên
-            if (!domainCert && allCerts.length > 0) {
-                domainCert = allCerts[0];
-                bundleCerts.splice(0, bundleCerts.length);
-                bundleCerts.push(...allCerts.slice(1));
+            if (parsedCerts.length === 0) return '';
+
+            function normalizeHost(v) {
+                return (v || '').toLowerCase().trim().replace(/^\*\./, '').replace(/^www\./, '').replace(/\.$/, '');
             }
 
-            // Loại trùng bundleCerts (chỉ loại đoạn giống hệt nhau)
-            let seen = new Set();
-            let uniqueBundle = [];
-            for (let c of bundleCerts) {
-                let norm = c.pem.replace(/\r/g, '').replace(/\n+/g, '\n').trim();
-                if (!seen.has(norm)) {
-                    seen.add(norm);
-                    uniqueBundle.push(c.pem);
+            function wildcardMatches(pattern, host) {
+                const p = (pattern || '').toLowerCase().trim();
+                const h = (host || '').toLowerCase().trim();
+                if (!p || !h) return false;
+                if (p.startsWith('*.')) {
+                    const suffix = p.slice(2);
+                    return h === suffix || h.endsWith('.' + suffix);
+                }
+                return h === p;
+            }
+
+            function certNames(certObj) {
+                const names = new Set();
+                if (certObj.subjectCN) names.add(certObj.subjectCN.toLowerCase());
+                const sanExt = (certObj.cert.extensions || []).find(ext => ext.name === 'subjectAltName');
+                if (sanExt && Array.isArray(sanExt.altNames)) {
+                    sanExt.altNames
+                        .filter(alt => alt && alt.type === 2 && alt.value)
+                        .forEach(alt => names.add(String(alt.value).toLowerCase()));
+                }
+                return Array.from(names);
+            }
+
+            const preferredHosts = new Set();
+            if (currentDomain) {
+                const base = normalizeHost(currentDomain.replace(/\.zip$/i, ''));
+                if (base) {
+                    preferredHosts.add(base);
+                    preferredHosts.add('www.' + base);
                 }
             }
 
-            // Gộp: cert (domain) + bundle (2-3 đoạn còn lại)
-            let bundle = '';
-            if (domainCert) {
-                bundle = domainCert.pem + '\n' + uniqueBundle.join('\n');
-            } else {
-                bundle = uniqueBundle.join('\n');
+            const issuerSet = new Set(parsedCerts.map(c => c.issuerDN));
+            const subjectSet = new Set(parsedCerts.map(c => c.subjectDN));
+
+            // Chọn leaf cert theo đặc tính chain thay vì regex CN theo hãng CA.
+            const scored = parsedCerts.map(c => {
+                let score = 0;
+                if (!c.isCA) score += 6;
+                if (!c.isSelfSigned) score += 4;
+                if (!issuerSet.has(c.subjectDN)) score += 2; // không phát hành cert khác
+                if (subjectSet.has(c.issuerDN) && c.subjectDN !== c.issuerDN) score += 1; // có parent trong tập cert
+
+                const names = certNames(c);
+                if (preferredHosts.size > 0) {
+                    const hasPreferredName = Array.from(preferredHosts).some(host => names.some(name => wildcardMatches(name, host) || wildcardMatches(host, name)));
+                    if (hasPreferredName) score += 8;
+                }
+
+                const filenameHint = c.filename || '';
+                if (/bundle|chain|root|ca|intermediate|trust/i.test(filenameHint)) score -= 2;
+                if (/star|wildcard|domain|server|cert/i.test(filenameHint)) score += 1;
+
+                // Ưu tiên cert có thời hạn kết thúc xa hơn nếu điểm tương đương
+                let notAfterTs = 0;
+                try {
+                    notAfterTs = new Date(c.cert.validity.notAfter).getTime() || 0;
+                } catch (e) {}
+
+                return { certObj: c, score, notAfterTs };
+            });
+
+            scored.sort((a, b) => {
+                if (b.score !== a.score) return b.score - a.score;
+                return b.notAfterTs - a.notAfterTs;
+            });
+
+            let leaf = scored[0].certObj;
+
+            // Chốt an toàn: nếu leaf bị CA, thử chọn cert non-CA tốt nhất
+            if (leaf.isCA) {
+                const nonCa = scored.find(x => !x.certObj.isCA && !x.certObj.isSelfSigned);
+                if (nonCa) leaf = nonCa.certObj;
             }
-            console.log('Domain cert selected:', domainCert ? domainCert.filename : 'none');
-            console.log('Bundle có', (domainCert ? 1 : 0) + uniqueBundle.length, 'đoạn cert');
-            return bundle.trim();
+
+            const bySubject = new Map();
+            parsedCerts.forEach(c => {
+                if (!bySubject.has(c.subjectDN)) bySubject.set(c.subjectDN, []);
+                bySubject.get(c.subjectDN).push(c);
+            });
+
+            const chain = [leaf];
+            const used = new Set([leaf.fp]);
+            let current = leaf;
+
+            while (current && current.issuerDN && current.subjectDN !== current.issuerDN) {
+                const candidates = (bySubject.get(current.issuerDN) || []).filter(c => !used.has(c.fp));
+                if (candidates.length === 0) break;
+
+                candidates.sort((a, b) => {
+                    if (a.isSelfSigned !== b.isSelfSigned) return a.isSelfSigned ? 1 : -1;
+                    if (a.isCA !== b.isCA) return a.isCA ? -1 : 1;
+                    return 0;
+                });
+
+                const issuerCert = candidates[0];
+                chain.push(issuerCert);
+                used.add(issuerCert.fp);
+                current = issuerCert;
+            }
+
+            // Bổ sung CA còn thiếu (nếu có) để tránh mất chain khi file bundle chứa nhiều đoạn.
+            const extraCAs = parsedCerts
+                .filter(c => c.fp !== leaf.fp)
+                .filter(c => c.isCA)
+                .filter(c => !used.has(c.fp))
+                .sort((a, b) => {
+                    // ưu tiên intermediate trước root self-signed
+                    if (a.isSelfSigned !== b.isSelfSigned) return a.isSelfSigned ? 1 : -1;
+                    return a.subjectDN.localeCompare(b.subjectDN);
+                });
+
+            const finalList = [...chain, ...extraCAs];
+
+            console.log('Domain cert selected:', leaf.filename, '| CN:', leaf.subjectCN || leaf.subjectDN);
+            console.log('Bundle certs selected:', finalList.slice(1).map(c => c.subjectCN || c.subjectDN));
+            console.log('Bundle có', finalList.length, 'đoạn cert');
+
+            return finalList.map(c => c.pem).join('\n').trim();
         }
 
         function removeDuplicateCerts(bundle) {
