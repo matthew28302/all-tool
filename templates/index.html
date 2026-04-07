@@ -296,24 +296,25 @@
             align-items: center;
             flex-wrap: wrap;
         }
-        .ssldecoder-switch label {
-            font-size: 0.92rem;
-            font-weight: 600;
-            color: #475569;
-        }
-        .ssldecoder-select {
-            min-width: 240px;
-            padding: 10px 12px;
+        .ssldecoder-mode-btn {
             border: 2px solid #e2e8f0;
-            border-radius: 8px;
             background: #fff;
-            color: #1e293b;
-            font-size: 0.9rem;
-            font-weight: 600;
+            color: #475569;
+            border-radius: 10px;
+            padding: 10px 14px;
+            font-size: 0.88rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
         }
-        .ssldecoder-select:focus {
-            outline: none;
+        .ssldecoder-mode-btn:hover {
             border-color: #ec4899;
+            color: #be185d;
+        }
+        .ssldecoder-mode-btn.active {
+            background: #fce7f3;
+            border-color: #ec4899;
+            color: #be185d;
         }
         .decoder-panel { display: none; }
         .decoder-panel.active { display: block; }
@@ -867,12 +868,9 @@
             </div>
 
             <div class="ssldecoder-switch">
-                <label for="ssldecoderMode">Chọn chức năng:</label>
-                <select id="ssldecoderMode" class="ssldecoder-select" onchange="setSSLDecoderMode(this.value)">
-                    <option value="match">🔗 Cert & Key Match Checker</option>
-                    <option value="cert">📜 Certificate Decoder</option>
-                    <option value="csr">📝 CSR Decoder</option>
-                </select>
+                <button id="ssldecoderBtnMatch" class="ssldecoder-mode-btn active" onclick="setSSLDecoderMode('match')">🔗 Match Checker</button>
+                <button id="ssldecoderBtnCert" class="ssldecoder-mode-btn" onclick="setSSLDecoderMode('cert')">📜 Certificate Decoder</button>
+                <button id="ssldecoderBtnCsr" class="ssldecoder-mode-btn" onclick="setSSLDecoderMode('csr')">📝 CSR Decoder</button>
             </div>
             
             <!-- Cert + Key Match Checker -->
@@ -889,7 +887,6 @@
                             <textarea id="matchKeyInput" placeholder="-----BEGIN PRIVATE KEY-----&#10;or&#10;-----BEGIN RSA PRIVATE KEY-----&#10;...&#10;-----END PRIVATE KEY-----"></textarea>
                         </div>
                     </div>
-                    <button class="btn btn-primary" onclick="checkCertKeyMatch()" style="background: #ec4899;">🔍 Kiểm tra Match</button>
                     <div id="matchResult" class="match-result pending">Nhập Certificate và Private Key để kiểm tra</div>
                 </div>
             </div>
@@ -902,7 +899,6 @@
                         <label>Certificate (PEM)</label>
                         <textarea id="decodeCertInput" placeholder="-----BEGIN CERTIFICATE-----&#10;...&#10;-----END CERTIFICATE-----"></textarea>
                     </div>
-                    <button class="btn btn-primary" onclick="decodeCertificate()" style="background: #4338ca;">🔓 Decode Certificate</button>
                     <div id="certDecodeResult" class="decode-result"></div>
                 </div>
             </div>
@@ -915,7 +911,6 @@
                         <label>CSR (Certificate Signing Request)</label>
                         <textarea id="decodeCSRInput" placeholder="-----BEGIN CERTIFICATE REQUEST-----&#10;...&#10;-----END CERTIFICATE REQUEST-----"></textarea>
                     </div>
-                    <button class="btn btn-primary" onclick="decodeCSR()" style="background: #4338ca;">🔓 Decode CSR</button>
                     <div id="csrDecodeResult" class="decode-result"></div>
                 </div>
             </div>
@@ -1849,15 +1844,87 @@
                 cert: 'decoderPanelCert',
                 csr: 'decoderPanelCsr'
             };
+            const buttonMap = {
+                match: 'ssldecoderBtnMatch',
+                cert: 'ssldecoderBtnCert',
+                csr: 'ssldecoderBtnCsr'
+            };
 
             Object.entries(panelMap).forEach(([key, id]) => {
                 const panel = document.getElementById(id);
                 if (panel) panel.classList.toggle('active', key === target);
             });
+            Object.entries(buttonMap).forEach(([key, id]) => {
+                const btn = document.getElementById(id);
+                if (btn) btn.classList.toggle('active', key === target);
+            });
+        }
 
-            const select = document.getElementById('ssldecoderMode');
-            if (select && select.value !== target) {
-                select.value = target;
+        const sslDecoderDebounceTimers = {
+            match: null,
+            cert: null,
+            csr: null,
+        };
+
+        function debounceSSLDecoder(key, fn, delay = 400) {
+            if (sslDecoderDebounceTimers[key]) clearTimeout(sslDecoderDebounceTimers[key]);
+            sslDecoderDebounceTimers[key] = setTimeout(fn, delay);
+        }
+
+        function setupSSLDecoderAutoRun() {
+            const matchCertInput = document.getElementById('matchCertInput');
+            const matchKeyInput = document.getElementById('matchKeyInput');
+            const decodeCertInput = document.getElementById('decodeCertInput');
+            const decodeCSRInput = document.getElementById('decodeCSRInput');
+            const matchResult = document.getElementById('matchResult');
+            const certResult = document.getElementById('certDecodeResult');
+            const csrResult = document.getElementById('csrDecodeResult');
+
+            if (matchCertInput && matchKeyInput && matchResult) {
+                const triggerMatch = () => {
+                    const certVal = matchCertInput.value.trim();
+                    const keyVal = matchKeyInput.value.trim();
+                    if (!certVal && !keyVal) {
+                        matchResult.className = 'match-result pending';
+                        matchResult.innerHTML = 'Nhập Certificate và Private Key để kiểm tra';
+                        return;
+                    }
+                    if (!certVal || !keyVal) {
+                        matchResult.className = 'match-result pending';
+                        matchResult.innerHTML = '⚠️ Vui lòng nhập cả Certificate và Private Key';
+                        return;
+                    }
+                    checkCertKeyMatch();
+                };
+
+                matchCertInput.addEventListener('input', () => debounceSSLDecoder('match', triggerMatch));
+                matchKeyInput.addEventListener('input', () => debounceSSLDecoder('match', triggerMatch));
+            }
+
+            if (decodeCertInput && certResult) {
+                decodeCertInput.addEventListener('input', () => {
+                    debounceSSLDecoder('cert', () => {
+                        const certVal = decodeCertInput.value.trim();
+                        if (!certVal) {
+                            certResult.innerHTML = '';
+                            return;
+                        }
+                        decodeCertificate();
+                    });
+                });
+            }
+
+            if (decodeCSRInput && csrResult) {
+                decodeCSRInput.addEventListener('input', () => {
+                    debounceSSLDecoder('csr', () => {
+                        const csrVal = decodeCSRInput.value.trim();
+                        if (!csrVal) {
+                            csrResult.innerHTML = '';
+                            return;
+                        }
+                        decodeCSR();
+                    });
+                });
             }
         }
 
@@ -2937,6 +3004,7 @@
         freeSslSetActionState('pending');
         freeSslUpdateProviderNote();
         setSSLDecoderMode('match');
+        setupSSLDecoderAutoRun();
     </script>
 </body>
 </html>
