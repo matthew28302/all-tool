@@ -18,7 +18,7 @@ from cryptography.x509.oid import NameOID
 from flask_cors import CORS
 import dns.resolver
 import dns.rdatatype
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, List, Optional
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import threading
@@ -121,18 +121,37 @@ def add_header(response):
 
 # DNS Servers configuration
 DNS_SERVERS = {
-    "Google": "8.8.8.8",
-    "Cloudflare": "1.1.1.1",
-    "Quad9": "9.9.9.9",
+    "Google Public DNS": "8.8.8.8",
+    "Google Public DNS Secondary": "8.8.4.4",
+    "Cloudflare DNS": "1.1.1.1",
+    "Cloudflare DNS Secondary": "1.0.0.1",
     "OpenDNS": "208.67.222.222",
-    "Verisign": "64.6.64.6",
-    "Level3": "209.244.0.3",
+    "OpenDNS Secondary": "208.67.220.220",
+    "Quad9": "9.9.9.9",
+    "Quad9 Secondary": "149.112.112.112",
+    "AdGuard DNS": "94.140.14.14",
+    "AdGuard DNS Secondary": "94.140.15.15",
+    "CleanBrowsing": "185.228.168.9",
+    "CleanBrowsing Secondary": "185.228.169.9",
+    "Comodo Secure DNS": "8.26.56.26",
+    "Neustar UltraDNS": "156.154.70.1",
+    "Verisign Public DNS": "64.6.64.6",
+    "Verisign Public DNS Secondary": "64.6.65.6",
+    "Level3 DNS": "209.244.0.3",
+    "Level3 DNS Secondary": "209.244.0.4",
+    "Gcore Public DNS": "95.85.95.85",
+    "Oracle Cloud DNS": "216.146.35.35",
+    "Yandex DNS": "77.88.8.8",
+    "Yandex DNS Secondary": "77.88.8.1",
+    "Hurricane Electric": "74.82.42.42",
+    "CIRA Canadian Shield": "149.112.121.10",
+    "NextDNS": "45.90.28.0",
 }
 
 RECORD_TYPES = ["A", "AAAA", "MX", "NS", "TXT", "CNAME", "SOA", "CAA"]
 
 # Thread pool for parallel queries
-executor = ThreadPoolExecutor(max_workers=20)
+executor = ThreadPoolExecutor(max_workers=32)
 
 
 def query_dns_record(domain: str, record_type: str, dns_server: str, server_name: str) -> Dict:
@@ -141,8 +160,9 @@ def query_dns_record(domain: str, record_type: str, dns_server: str, server_name
         resolver = dns.resolver.Resolver()
         resolver.cache = None
         resolver.nameservers = [dns_server]
-        resolver.timeout = 1  # Ultra fast timeout
-        resolver.lifetime = 1
+        # Keep fast checks, but avoid overly aggressive timeouts that create false negatives.
+        resolver.timeout = 3
+        resolver.lifetime = 3
         
         answers = resolver.resolve(domain, record_type)
         results = []
@@ -181,8 +201,8 @@ def check_dnssec_fast(domain: str) -> Dict:
     try:
         resolver = dns.resolver.Resolver()
         resolver.cache = None
-        resolver.timeout = 1
-        resolver.lifetime = 1
+        resolver.timeout = 3
+        resolver.lifetime = 3
         resolver.use_edns(0, dns.flags.DO, 4096)
         
         # Check DNSKEY and DS in parallel
@@ -244,8 +264,14 @@ def check_dns_fast(domain: str, record_types: List[str]) -> Dict:
     for record_type in record_types:
         results["dns_records"][record_type] = {
             "servers": {},
-            "success_rate": "0/6"
+            "success_rate": f"0/{len(DNS_SERVERS)}"
         }
+        for server_name, server_ip in DNS_SERVERS.items():
+            results["dns_records"][record_type]["servers"][server_name] = {
+                "ip": server_ip,
+                "status": "pending",
+                "records": []
+            }
     
     # Create all tasks for parallel execution
     futures = []
@@ -273,6 +299,11 @@ def check_dns_fast(domain: str, record_types: List[str]) -> Dict:
             }
         except:
             pass
+
+    for record_type in record_types:
+        for server_data in results["dns_records"][record_type]["servers"].values():
+            if server_data["status"] == "pending":
+                server_data["status"] = "no_records"
     
     # Get DNSSEC result
     results["dnssec"] = dnssec_future.result()
@@ -284,12 +315,9 @@ def check_dns_fast(domain: str, record_types: List[str]) -> Dict:
         results["dns_records"][record_type]["success_rate"] = f"{success_count}/{len(DNS_SERVERS)}"
     
     # Summary
-    a_records = results["dns_records"].get("A", {}).get("servers", {})
-    success_a = sum(1 for s in a_records.values() if s["status"] == "success")
-    
     results["summary"] = {
-        "propagation": f"{success_a}/{len(DNS_SERVERS)}" if "A" in record_types else "N/A",
-        "dnssec_enabled": results["dnssec"]["enabled"]
+        "dnssec_enabled": results["dnssec"]["enabled"],
+        "resolver_count": len(DNS_SERVERS)
     }
     
     return results
@@ -346,7 +374,7 @@ def api_clear_cache():
 def api_check_ssl():
     """Check SSL certificate for a domain"""
     try:
-        data = request.json
+        data = request.get_json(silent=True) or {}
         domain = data.get('domain', '').strip().lower()
         
         if not domain:
@@ -357,72 +385,198 @@ def api_check_ssl():
         
         result = {
             "domain": domain,
+            "requested_domain": domain,
             "valid": False,
             "issuer": None,
             "issuer_org": None,
             "subject": None,
             "subject_alt_names": [],
+            "presented_names": [],
+            "matched_name": None,
             "valid_from": None,
             "valid_to": None,
             "days_remaining": None,
             "serial_number": None,
             "signature_algorithm": None,
             "version": None,
+            "redirect_detected": False,
+            "redirect_chain": [],
+            "final_url": None,
+            "final_host": None,
             "error": None
         }
         
         try:
-            # Create SSL context
-            context = ssl.create_default_context()
+            def _collect_redirect_info(host: str) -> dict:
+                urls = [f"https://{host}", f"http://{host}"]
+                for url in urls:
+                    try:
+                        resp = requests.get(
+                            url,
+                            timeout=8,
+                            allow_redirects=True,
+                            verify=False,
+                            headers={"User-Agent": "SSLTool/1.0"}
+                        )
+                        chain = []
+                        for r in resp.history:
+                            if r.url and (not chain or chain[-1] != r.url):
+                                chain.append(r.url)
+                        if resp.url and (not chain or chain[-1] != resp.url):
+                            chain.append(resp.url)
+
+                        final_url = chain[-1] if chain else resp.url or url
+                        final_host = (urlparse(final_url).hostname or '').lower() if final_url else None
+
+                        return {
+                            "redirect_chain": chain,
+                            "final_url": final_url,
+                            "final_host": final_host,
+                        }
+                    except Exception:
+                        continue
+                return {
+                    "redirect_chain": [],
+                    "final_url": None,
+                    "final_host": None,
+                }
+
+            # Use multiple TLS context profiles to support both modern and legacy endpoints.
+            def _build_tls_contexts() -> List[tuple]:
+                contexts: List[tuple] = []
+
+                modern_ctx = ssl.create_default_context()
+                modern_ctx.check_hostname = False
+                modern_ctx.verify_mode = ssl.CERT_NONE
+                contexts.append((modern_ctx, "modern"))
+
+                legacy_ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+                legacy_ctx.check_hostname = False
+                legacy_ctx.verify_mode = ssl.CERT_NONE
+                try:
+                    legacy_ctx.minimum_version = ssl.TLSVersion.TLSv1
+                except Exception:
+                    pass
+                try:
+                    legacy_ctx.set_ciphers('DEFAULT:@SECLEVEL=1')
+                except Exception:
+                    pass
+                if hasattr(ssl, 'OP_LEGACY_SERVER_CONNECT'):
+                    try:
+                        legacy_ctx.options |= ssl.OP_LEGACY_SERVER_CONNECT
+                    except Exception:
+                        pass
+                contexts.append((legacy_ctx, "legacy"))
+
+                compat_ctx = ssl.SSLContext(ssl.PROTOCOL_TLS)
+                compat_ctx.check_hostname = False
+                compat_ctx.verify_mode = ssl.CERT_NONE
+                try:
+                    compat_ctx.set_ciphers('ALL:@SECLEVEL=0')
+                except Exception:
+                    pass
+                contexts.append((compat_ctx, "compat"))
+
+                return contexts
+
+            cert_der = None
+            last_handshake_error = None
+            tls_profile = None
+
+            for context, profile in _build_tls_contexts():
+                try:
+                    with socket.create_connection((domain, 443), timeout=7) as sock:
+                        with context.wrap_socket(sock, server_hostname=domain) as ssock:
+                            cert_der = ssock.getpeercert(binary_form=True)
+                            tls_profile = profile
+                            break
+                except ssl.SSLError as handshake_err:
+                    last_handshake_error = handshake_err
+                    continue
+
+            if not cert_der:
+                if last_handshake_error:
+                    raise last_handshake_error
+                raise ValueError("Cannot complete TLS handshake")
+
+            def _hostname_matches(pattern: str, host: str) -> bool:
+                p = (pattern or '').strip().lower()
+                h = (host or '').strip().lower()
+                if not p or not h:
+                    return False
+                if p.startswith('*.'):
+                    suffix = p[1:]
+                    return h.endswith(suffix) and h.count('.') >= p.count('.')
+                return h == p
             
-            # Connect and get certificate
-            with socket.create_connection((domain, 443), timeout=5) as sock:
-                with context.wrap_socket(sock, server_hostname=domain) as ssock:
-                    cert = ssock.getpeercert()
-                    
-                    result["valid"] = True
-                    
-                    # Parse issuer
-                    issuer = dict(x[0] for x in cert.get('issuer', []))
-                    result["issuer"] = issuer.get('commonName', issuer.get('organizationName', 'Unknown'))
-                    result["issuer_org"] = issuer.get('organizationName', '')
-                    result["issuer_country"] = issuer.get('countryName', '')
-                    
-                    # Parse subject
-                    subject = dict(x[0] for x in cert.get('subject', []))
-                    result["subject"] = subject.get('commonName', domain)
-                    result["subject_org"] = subject.get('organizationName', '')
-                    
-                    # Parse SAN (Subject Alternative Names)
-                    san = cert.get('subjectAltName', [])
-                    result["subject_alt_names"] = [name for type_, name in san if type_ == 'DNS'][:10]
-                    
-                    # Parse dates
-                    not_before = cert.get('notBefore', '')
-                    not_after = cert.get('notAfter', '')
-                    
-                    if not_before:
-                        dt = datetime.strptime(not_before, '%b %d %H:%M:%S %Y %Z')
-                        result["valid_from"] = dt.strftime('%Y-%m-%d %H:%M:%S')
-                    
-                    if not_after:
-                        dt = datetime.strptime(not_after, '%b %d %H:%M:%S %Y %Z')
-                        result["valid_to"] = dt.strftime('%Y-%m-%d %H:%M:%S')
-                        result["days_remaining"] = (dt - datetime.now()).days
-                    
-                    # Serial number
-                    sn = cert.get('serialNumber')
-                    if sn:
-                        if isinstance(sn, int):
-                            result["serial_number"] = format(sn, 'X')
-                        else:
-                            result["serial_number"] = str(sn)
-                    
-                    # Version
-                    result["version"] = cert.get('version', 0) + 1
-                    
-        except ssl.SSLCertVerificationError as e:
-            result["error"] = f"SSL verification failed: {str(e)}"
+            cert_obj = x509.load_der_x509_certificate(cert_der, default_backend())
+
+            valid_from = getattr(cert_obj, 'not_valid_before_utc', cert_obj.not_valid_before.replace(tzinfo=timezone.utc))
+            valid_to = getattr(cert_obj, 'not_valid_after_utc', cert_obj.not_valid_after.replace(tzinfo=timezone.utc))
+            now_utc = datetime.now(timezone.utc)
+
+            issuer_cn = cert_obj.issuer.get_attributes_for_oid(NameOID.COMMON_NAME)
+            issuer_org = cert_obj.issuer.get_attributes_for_oid(NameOID.ORGANIZATION_NAME)
+            subject_cn = cert_obj.subject.get_attributes_for_oid(NameOID.COMMON_NAME)
+            subject_org = cert_obj.subject.get_attributes_for_oid(NameOID.ORGANIZATION_NAME)
+
+            san_names: List[str] = []
+            try:
+                san_ext = cert_obj.extensions.get_extension_for_class(x509.SubjectAlternativeName)
+                san_names = list(san_ext.value.get_values_for_type(x509.DNSName))
+            except x509.ExtensionNotFound:
+                san_names = []
+
+            candidate_names = san_names or [subject_cn[0].value] if subject_cn else san_names
+            hostname_ok = any(_hostname_matches(name, domain) for name in candidate_names)
+            matched_name = next((name for name in candidate_names if _hostname_matches(name, domain)), None)
+
+            redirect_info = _collect_redirect_info(domain)
+            redirect_chain = redirect_info.get("redirect_chain", [])
+            final_url = redirect_info.get("final_url")
+            final_host = redirect_info.get("final_host")
+
+            result["redirect_chain"] = redirect_chain
+            result["final_url"] = final_url
+            result["final_host"] = final_host
+            result["redirect_detected"] = bool(redirect_chain and len(redirect_chain) > 1)
+
+            result["issuer"] = issuer_cn[0].value if issuer_cn else (issuer_org[0].value if issuer_org else 'Unknown')
+            result["issuer_org"] = issuer_org[0].value if issuer_org else ''
+            result["subject"] = subject_cn[0].value if subject_cn else domain
+            result["subject_org"] = subject_org[0].value if subject_org else ''
+            result["subject_alt_names"] = san_names[:20]
+            result["presented_names"] = candidate_names[:20]
+            result["matched_name"] = matched_name
+            result["valid_from"] = valid_from.isoformat()
+            result["valid_to"] = valid_to.isoformat()
+            result["days_remaining"] = int((valid_to - now_utc).total_seconds() // 86400)
+            result["serial_number"] = format(cert_obj.serial_number, 'X')
+            result["signature_algorithm"] = cert_obj.signature_hash_algorithm.name if cert_obj.signature_hash_algorithm else None
+            result["version"] = cert_obj.version.value + 1
+
+            time_ok = valid_from <= now_utc <= valid_to
+            result["valid"] = bool(time_ok and hostname_ok)
+
+            if not time_ok:
+                if now_utc > valid_to:
+                    result["error"] = "Certificate has expired"
+                else:
+                    result["error"] = "Certificate is not valid yet"
+            elif not hostname_ok:
+                cert_names_preview = ', '.join(candidate_names[:5]) if candidate_names else '(no SAN/CN)'
+                result["error"] = f"Certificate hostname mismatch (requested: {domain}; cert: {cert_names_preview})"
+
+                if final_host and final_host != domain:
+                    redirect_match = any(_hostname_matches(name, final_host) for name in candidate_names)
+                    if redirect_match:
+                        result["error"] = (
+                            f"Certificate hostname mismatch for {domain}. "
+                            f"Domain appears to redirect to {final_host}, and certificate matches redirect target."
+                        )
+            elif tls_profile and tls_profile != "modern":
+                result["error"] = f"Connected with fallback TLS profile: {tls_profile}"
+
         except socket.timeout:
             result["error"] = "Connection timed out"
         except socket.gaierror:
@@ -442,7 +596,7 @@ def api_check_ssl():
 def api_check_host():
     """Check hosting information for IP or domain"""
     try:
-        data = request.json
+        data = request.get_json(silent=True) or {}
         host = data.get('host', '').strip()
         
         if not host:
@@ -468,6 +622,20 @@ def api_check_host():
         # Check if input is IP or domain
         ip_pattern = re.compile(r'^(\d{1,3}\.){3}\d{1,3}$')
         is_ip = ip_pattern.match(host)
+
+        def _reverse_dns_lookup(ip_value: str) -> Optional[str]:
+            try:
+                rev_name = dns.reversename.from_address(ip_value)
+                resolver = dns.resolver.Resolver(configure=False)
+                resolver.cache = None
+                resolver.nameservers = ['8.8.8.8', '1.1.1.1']
+                resolver.timeout = 3
+                resolver.lifetime = 3
+                answers = resolver.resolve(rev_name, 'PTR')
+                ptr = str(answers[0]).rstrip('.') if answers else None
+                return ptr or None
+            except Exception:
+                return None
         
         try:
             if is_ip:
@@ -487,26 +655,26 @@ def api_check_host():
                     result["error"] = "Cannot resolve domain"
                     return jsonify(result), 200
             
-            # Get ALL info from ip-api.com (including reverse DNS)
+            # Get hosting details via HTTPS endpoint.
             if result["ip"]:
                 try:
                     resp = requests.get(
-                        f"http://ip-api.com/json/{result['ip']}?fields=status,country,regionName,city,isp,org,as,reverse",
+                        f"https://ipwho.is/{result['ip']}",
                         timeout=3
                     )
                     if resp.status_code == 200:
                         ip_data = resp.json()
-                        if ip_data.get('status') == 'success':
-                            result["provider"] = ip_data.get('isp', '')
-                            result["org"] = ip_data.get('org', '')
-                            result["asn"] = ip_data.get('as', '')
+                        if ip_data.get('success') is True:
+                            conn = ip_data.get('connection', {}) or {}
+                            result["provider"] = conn.get('isp', '')
+                            result["org"] = conn.get('org', '')
+                            result["asn"] = conn.get('asn', '')
                             result["country"] = ip_data.get('country', '')
                             result["city"] = ip_data.get('city', '')
-                            result["region"] = ip_data.get('regionName', '')
-                            # Reverse DNS from ip-api.com (not local)
-                            reverse = ip_data.get('reverse', '')
-                            result["reverse_dns"] = reverse if reverse else None
-                            # If input was IP, use reverse DNS as hostname
+                            result["region"] = ip_data.get('region', '')
+
+                            reverse = _reverse_dns_lookup(result["ip"])
+                            result["reverse_dns"] = reverse
                             if is_ip and reverse:
                                 result["hostname"] = reverse
                 except:

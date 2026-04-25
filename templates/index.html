@@ -5,6 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Network Tools</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%23000'/><rect x='2' y='2' width='13' height='13' fill='%23fff'/><rect x='17' y='2' width='13' height='13' fill='%23000' stroke='%23fff' stroke-width='2'/><rect x='2' y='17' width='13' height='13' fill='%23000' stroke='%23fff' stroke-width='2'/><rect x='17' y='17' width='13' height='13' fill='%23fff'/></svg>">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -99,12 +102,12 @@
         .btn-info:hover { background: #0891b2; }
         .btn:disabled { opacity: 0.5; cursor: not-allowed; }
         
-        .record-types { display: flex; flex-wrap: wrap; gap: 10px; }
+        .record-types { display: flex; flex-wrap: wrap; gap: 8px; }
         .record-types label {
-            display: flex; align-items: center; gap: 8px;
-            padding: 10px 16px; background: #fff; border-radius: 8px;
-            cursor: pointer; font-size: 0.9rem; font-weight: 500;
-            color: #475569; border: 2px solid #e2e8f0; transition: all 0.2s;
+            display: flex; align-items: center; gap: 6px;
+            padding: 7px 12px; background: #fff; border-radius: 7px;
+            cursor: pointer; font-size: 0.82rem; font-weight: 600;
+            color: #475569; border: 1.5px solid #e2e8f0; transition: all 0.2s;
         }
         .record-types label:hover { border-color: #0ea5e9; }
         .record-types label:has(input:checked) { background: #e0f2fe; border-color: #0ea5e9; color: #0ea5e9; }
@@ -184,6 +187,390 @@
         @keyframes spin { to { transform: rotate(360deg); } }
         .results-container { display: none; }
         .results-container.show { display: block; }
+
+        /* DNS Checker Refresh */
+        .dns-shell {
+            display: grid;
+            gap: 18px;
+        }
+        .dns-hero {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) 320px;
+            gap: 16px;
+            align-items: stretch;
+        }
+        .dns-card {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 18px;
+            box-shadow: 0 14px 32px rgba(15, 23, 42, 0.06);
+        }
+        .dns-search-card {
+            padding: 22px;
+            background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+        }
+        .dns-panel-header {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            align-items: flex-start;
+            margin-bottom: 18px;
+        }
+        .dns-panel-title {
+            font-size: 1.75rem;
+            line-height: 1.1;
+            font-weight: 800;
+            color: #0f172a;
+            letter-spacing: -0.03em;
+        }
+        .dns-panel-subtitle {
+            margin-top: 8px;
+            color: #64748b;
+            font-size: 0.95rem;
+            max-width: 56ch;
+        }
+        .dns-badge-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 12px;
+        }
+        .dns-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 7px 11px;
+            border-radius: 999px;
+            font-size: 0.78rem;
+            font-weight: 700;
+            background: #eff6ff;
+            color: #0369a1;
+            border: 1px solid #dbeafe;
+        }
+        .dns-search-row {
+            display: flex;
+            gap: 16px;
+            align-items: center;
+            flex-wrap: wrap;
+            margin-bottom: 12px;
+        }
+        .dns-input {
+            flex: 1;
+            min-width: 240px;
+            padding: 12px 14px;
+            border: 1px solid #cbd5e1;
+            border-radius: 12px;
+            background: #ffffff;
+            color: #1e293b;
+            font-size: 0.95rem;
+            transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
+            box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.04);
+        }
+        .dns-input:focus {
+            outline: none;
+            border-color: #0ea5e9;
+            box-shadow: 0 0 0 4px rgba(14, 165, 233, 0.12);
+        }
+        .dns-input::placeholder { color: #94a3b8; }
+        .dns-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            flex-shrink: 0;
+        }
+        .dns-actions .btn,
+        .dns-search-row .btn {
+            border-radius: 12px;
+            padding: 12px 18px;
+            font-size: 0.92rem;
+        }
+        .dns-query-note {
+            margin-top: 12px;
+            color: #64748b;
+            font-size: 0.82rem;
+        }
+        .dns-stats-card {
+            padding: 22px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            gap: 2px;
+            background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+        }
+        .dns-stat-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+            padding: 13px 0;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        .dns-stat-row:last-child { border-bottom: none; }
+        .dns-stat-label {
+            color: #64748b;
+            font-size: 0.76rem;
+            font-weight: 800;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+        .dns-stat-value {
+            color: #0f172a;
+            font-size: 0.96rem;
+            font-weight: 800;
+            text-align: right;
+            overflow-wrap: anywhere;
+        }
+        .dns-stat-value.accent { color: #0ea5e9; }
+        .dns-stat-value.success { color: #16a34a; }
+        .dns-stat-value.warning { color: #d97706; }
+        .dns-stat-value.error { color: #dc2626; }
+        .dns-results-panel {
+            padding: 20px;
+        }
+        .dns-section-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 14px;
+        }
+        .dns-section-head .section-title {
+            margin-bottom: 0;
+        }
+        .dns-section-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 7px 10px;
+            border-radius: 999px;
+            background: #f8fafc;
+            color: #475569;
+            border: 1px solid #e2e8f0;
+            font-size: 0.78rem;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+        .dns-record-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 16px;
+        }
+        .dns-record-card {
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            border: 1px solid #e2e8f0;
+            border-radius: 18px;
+            background: #ffffff;
+            box-shadow: 0 10px 24px rgba(15, 23, 42, 0.05);
+            min-height: 100%;
+        }
+        .dns-record-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 12px;
+            padding: 16px 16px 14px;
+            border-bottom: 1px solid #e2e8f0;
+            background: linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
+        }
+        .dns-record-title {
+            font-size: 1rem;
+            font-weight: 800;
+            color: #0f172a;
+        }
+        .dns-record-subtitle {
+            margin-top: 4px;
+            font-size: 0.8rem;
+            color: #64748b;
+        }
+        .dns-rate {
+            display: inline-flex;
+            align-items: center;
+            padding: 5px 10px;
+            border-radius: 999px;
+            font-size: 0.78rem;
+            font-weight: 800;
+            white-space: nowrap;
+        }
+        .dns-rate.full { background: #dcfce7; color: #15803d; }
+        .dns-rate.partial { background: #fef3c7; color: #b45309; }
+        .dns-rate.none { background: #fee2e2; color: #b91c1c; }
+        .dns-record-body {
+            padding: 14px;
+            flex: 1;
+        }
+        .dns-resolver-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px;
+        }
+        .dns-resolver-card {
+            border-radius: 14px;
+            border: 1px solid #e2e8f0;
+            background: #f8fafc;
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .dns-resolver-card.success {
+            background: #f0fdf4;
+            border-color: #dcfce7;
+        }
+        .dns-resolver-card.error {
+            background: #fef2f2;
+            border-color: #fee2e2;
+        }
+        .dns-resolver-top {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            align-items: flex-start;
+        }
+        .dns-resolver-name {
+            font-size: 0.8rem;
+            font-weight: 800;
+            color: #0f172a;
+            line-height: 1.2;
+        }
+        .dns-resolver-ip {
+            font-size: 0.75rem;
+            color: #64748b;
+            font-family: monospace;
+        }
+        .dns-resolver-status {
+            width: 20px;
+            height: 20px;
+            border-radius: 999px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            flex: 0 0 auto;
+            font-size: 0.72rem;
+            font-weight: 900;
+        }
+        .dns-resolver-status.success {
+            background: #dcfce7;
+            color: #15803d;
+        }
+        .dns-resolver-status.error {
+            background: #fee2e2;
+            color: #b91c1c;
+        }
+        .dns-resolver-values {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+        .dns-record-value {
+            display: inline-flex;
+            align-items: center;
+            padding: 5px 8px;
+            border-radius: 999px;
+            background: #dcfce7;
+            color: #166534;
+            font-size: 0.74rem;
+            font-family: monospace;
+            word-break: break-all;
+        }
+        .dns-empty-value {
+            display: inline-flex;
+            align-items: center;
+            padding: 5px 8px;
+            border-radius: 999px;
+            background: #fee2e2;
+            color: #991b1b;
+            font-size: 0.74rem;
+        }
+        .dnssec-card {
+            padding: 20px;
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 18px;
+            box-shadow: 0 10px 24px rgba(15, 23, 42, 0.05);
+        }
+        .dnssec-state {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 16px;
+            border-radius: 16px;
+            margin-bottom: 16px;
+        }
+        .dnssec-state.enabled {
+            background: #f0fdf4;
+            border: 1px solid #dcfce7;
+        }
+        .dnssec-state.disabled {
+            background: #fef2f2;
+            border: 1px solid #fee2e2;
+        }
+        .dnssec-state-icon {
+            width: 42px;
+            height: 42px;
+            border-radius: 999px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.15rem;
+            flex: 0 0 auto;
+        }
+        .dnssec-state.enabled .dnssec-state-icon { background: #dcfce7; }
+        .dnssec-state.disabled .dnssec-state-icon { background: #fee2e2; }
+        .dnssec-state-copy .title {
+            font-size: 1rem;
+            font-weight: 800;
+            color: #0f172a;
+        }
+        .dnssec-state.enabled .dnssec-state-copy .title { color: #15803d; }
+        .dnssec-state.disabled .dnssec-state-copy .title { color: #b91c1c; }
+        .dnssec-state-copy .desc {
+            font-size: 0.85rem;
+            color: #64748b;
+            margin-top: 4px;
+        }
+        .dnssec-details {
+            display: grid;
+            gap: 10px;
+        }
+        .dnssec-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 14px;
+            border-radius: 14px;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            font-size: 0.9rem;
+        }
+        .dnssec-row .label {
+            color: #475569;
+            font-weight: 700;
+        }
+        .dnssec-row .value {
+            font-weight: 800;
+        }
+        .dnssec-row .value.success { color: #15803d; }
+        .dnssec-row .value.error { color: #b91c1c; }
+        .dns-loading-note {
+            color: #64748b;
+            font-size: 0.9rem;
+            text-align: center;
+        }
+        @media (max-width: 1024px) {
+            .dns-hero { grid-template-columns: 1fr; }
+        }
+        @media (max-width: 768px) {
+            .dns-panel-header { flex-direction: column; }
+            .dns-panel-title { font-size: 1.45rem; }
+            .dns-resolver-grid { grid-template-columns: 1fr; }
+            .dns-search-row { align-items: stretch; }
+            .dns-search-row .btn { width: 100%; }
+            .dns-actions { width: 100%; }
+            .dns-actions .btn { flex: 1; }
+        }
         
         /* SSL Tool Styles */
         .ssl-header { text-align: center; padding: 20px 0 30px; }
@@ -256,6 +643,24 @@
         .ssl-info-card .card-value.warning { color: #f59e0b; }
         .ssl-info-card .card-value.error { color: #ef4444; }
         .ssl-info-card .card-sub { font-size: 0.85rem; color: #64748b; margin-top: 4px; }
+
+        .cert-date-grid {
+            display: grid;
+            grid-template-columns: 140px 1fr;
+            gap: 10px 14px;
+            margin-top: 4px;
+        }
+        .cert-date-label {
+            color: #64748b;
+            font-size: 0.85rem;
+            font-weight: 700;
+        }
+        .cert-date-value {
+            color: #1e293b;
+            font-size: 0.95rem;
+            font-weight: 600;
+            word-break: break-word;
+        }
         
         .ssl-status-badge { display: inline-flex; align-items: center; gap: 8px; padding: 8px 16px; border-radius: 20px; font-weight: 600; font-size: 0.9rem; }
         .ssl-status-badge.valid { background: #dcfce7; color: #16a34a; }
@@ -326,7 +731,6 @@
         .decoder-section h3 .badge-decode { background: #e0e7ff; color: #4338ca; }
         
         .decoder-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
-        .decoder-col { }
         .decoder-col label { display: block; font-weight: 600; color: #475569; margin-bottom: 8px; font-size: 0.9rem; }
         .decoder-col textarea { width: 100%; min-height: 150px; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px; font-family: monospace; font-size: 12px; resize: vertical; background: #fff; }
         .decoder-col textarea:focus { outline: none; border-color: #ec4899; }
@@ -616,20 +1020,30 @@
         .freessl-hamburger-btn:hover { background:#1e293b; }
 
         .freessl-storage-sidebar {
+            --storage-modal-top: 94px;
             position: fixed;
-            top: 0;
-            left: -460px;
-            width: min(440px, 92vw);
-            height: 100vh;
+            top: var(--storage-modal-top);
+            left: 50%;
+            width: min(980px, calc(100vw - 44px));
+            max-height: calc(100vh - var(--storage-modal-top) - 18px);
             background: #f8fafc;
-            border-right: 1px solid #e2e8f0;
-            box-shadow: 6px 0 24px rgba(15, 23, 42, 0.18);
+            border: 1px solid #e2e8f0;
+            border-radius: 16px;
+            box-shadow: 0 14px 38px rgba(15, 23, 42, 0.24);
             z-index: 9999;
-            transition: left 0.25s ease;
+            transform: translate(-50%, -16px) scale(0.985);
+            opacity: 0;
+            pointer-events: none;
+            transition: transform 0.22s ease, opacity 0.22s ease;
             display: flex;
             flex-direction: column;
+            overflow: hidden;
         }
-        .freessl-storage-sidebar.show { left: 0; }
+        .freessl-storage-sidebar.show {
+            transform: translate(-50%, 0) scale(1);
+            opacity: 1;
+            pointer-events: auto;
+        }
         .freessl-storage-sidebar-header {
             padding: 16px;
             border-bottom: 1px solid #e2e8f0;
@@ -652,94 +1066,676 @@
             display: none;
         }
         .freessl-storage-backdrop.show { display: block; }
+
+        /* ========== Refined UX/UI Theme (visual only, no flow changes) ========== */
+        :root {
+            --ui-bg: #edf4f8;
+            --ui-surface: #ffffff;
+            --ui-surface-soft: #f5f9fc;
+            --ui-line: #d5e0eb;
+            --ui-line-strong: #bdccdb;
+            --ui-text: #0f2138;
+            --ui-text-sub: #4e647c;
+            --ui-accent: #0f766e;
+            --ui-accent-strong: #0b5e58;
+            --ui-accent-soft: #e2f4f2;
+            --ui-accent-warm: #f59e0b;
+            --ui-radius-lg: 18px;
+            --ui-radius-md: 13px;
+            --ui-shadow-soft: 0 10px 24px rgba(15, 23, 42, 0.06);
+            --ui-shadow: 0 14px 30px rgba(15, 23, 42, 0.09);
+        }
+
+        html { font-size: 16px; }
+
+        body {
+            font-family: 'Be Vietnam Pro', 'Segoe UI', sans-serif;
+            color: var(--ui-text);
+            background:
+                radial-gradient(1000px 440px at 8% -8%, rgba(15, 118, 110, 0.14), transparent 64%),
+                radial-gradient(900px 420px at 92% -14%, rgba(245, 158, 11, 0.12), transparent 58%),
+                linear-gradient(180deg, #f8fbff 0%, var(--ui-bg) 100%);
+        }
+        body.no-scroll { overflow: hidden; }
+
+        .container {
+            width: min(1240px, calc(100% - 34px));
+            margin-inline: auto;
+            padding: 22px 0 38px;
+        }
+
+        .tab-nav {
+            display: grid;
+            grid-template-columns: repeat(6, minmax(0, 1fr));
+            gap: 8px;
+            padding: 9px;
+            border-radius: var(--ui-radius-lg);
+            border: 1px solid var(--ui-line);
+            background: rgba(255, 255, 255, 0.92);
+            box-shadow: var(--ui-shadow-soft);
+            backdrop-filter: blur(8px);
+            position: sticky;
+            top: 10px;
+            z-index: 30;
+            overflow: visible;
+        }
+        .tab-nav::before,
+        .tab-nav::after {
+            content: "";
+            position: absolute;
+            top: 8px;
+            bottom: 8px;
+            width: 18px;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        }
+        .tab-nav::before {
+            left: 8px;
+            background: linear-gradient(90deg, rgba(255, 255, 255, 0.94) 0%, rgba(255, 255, 255, 0) 100%);
+        }
+        .tab-nav::after {
+            right: 8px;
+            background: linear-gradient(270deg, rgba(255, 255, 255, 0.94) 0%, rgba(255, 255, 255, 0) 100%);
+        }
+        .tab-nav.is-scrollable::before,
+        .tab-nav.is-scrollable::after {
+            opacity: 1;
+        }
+
+        .tab-btn {
+            min-width: 0;
+            width: 100%;
+            padding: 12px 10px;
+            border-radius: 11px;
+            border: 1px solid transparent;
+            background: #f5f8fb;
+            color: #41556d;
+            font-size: 0.88rem;
+            font-weight: 700;
+            gap: 7px;
+            justify-content: center;
+            transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+        .tab-btn .icon { font-size: 1.02rem; }
+        .tab-btn:hover {
+            background: #eef4fa;
+            border-color: #d7e1eb;
+            color: #1d324d;
+            box-shadow: 0 4px 10px rgba(15, 23, 42, 0.07);
+        }
+        .tab-btn.active {
+            color: #fff;
+            border-color: var(--ui-accent);
+            background: linear-gradient(140deg, var(--ui-accent) 0%, var(--ui-accent-strong) 100%);
+            box-shadow: 0 8px 18px rgba(15, 118, 110, 0.3);
+        }
+
+        .tab-content {
+            margin-top: 14px;
+            padding: 24px;
+            border-radius: var(--ui-radius-lg);
+            border: 1px solid var(--ui-line);
+            background: rgba(255, 255, 255, 0.96);
+            box-shadow: var(--ui-shadow);
+        }
+
+        .dns-head-actions {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+        }
+        .dns-view-switch {
+            display: inline-flex;
+            background: #f2f6fb;
+            border: 1px solid var(--ui-line);
+            border-radius: 999px;
+            padding: 3px;
+            gap: 4px;
+        }
+        .dns-view-btn {
+            border: none;
+            border-radius: 999px;
+            padding: 5px 11px;
+            font-size: 0.74rem;
+            font-weight: 700;
+            color: #4b5f74;
+            background: transparent;
+            cursor: pointer;
+        }
+        .dns-view-btn.active {
+            background: var(--ui-accent);
+            color: #fff;
+            box-shadow: 0 3px 8px rgba(31, 134, 197, 0.25);
+        }
+        #dnsRecords.compact-view {
+            grid-template-columns: 1fr;
+        }
+        #dnsRecords.compact-view .dns-resolver-grid {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+        #dnsRecords.compact-view .dns-record-body {
+            padding: 12px;
+        }
+        #dnsRecords.compact-view .dns-record-header {
+            padding: 12px 14px;
+        }
+
+        .btn {
+            font-family: inherit;
+            border: 1px solid transparent;
+            box-shadow: 0 2px 6px rgba(15, 23, 42, 0.08);
+            transition: box-shadow 0.2s ease, filter 0.2s ease;
+        }
+        .btn:hover {
+            box-shadow: 0 8px 14px rgba(15, 23, 42, 0.12);
+            filter: saturate(1.03);
+        }
+        .btn:active {
+            box-shadow: 0 3px 7px rgba(15, 23, 42, 0.12);
+        }
+        .btn-primary { background: var(--ui-accent); }
+        .btn-primary:hover { background: var(--ui-accent-strong); }
+        .btn-secondary {
+            background: #f2f6fa;
+            border-color: var(--ui-line);
+            color: #4d6278;
+        }
+        .btn-secondary:hover {
+            background: #e9f0f7;
+            border-color: var(--ui-line-strong);
+        }
+
+        .tab-btn:focus-visible,
+        .btn:focus-visible,
+        .search-input:focus-visible,
+        .dns-input:focus-visible,
+        .freessl-input:focus-visible,
+        textarea:focus-visible,
+        button:focus-visible {
+            outline: 3px solid rgba(31, 134, 197, 0.24);
+            outline-offset: 2px;
+        }
+
+        .search-box,
+        .result-box,
+        .decoder-section,
+        .ssl-info-card,
+        .host-info-card,
+        .freessl-card,
+        .dns-card,
+        .dns-record-card,
+        .dnssec-card {
+            border: 1px solid var(--ui-line);
+            border-radius: var(--ui-radius-md);
+            box-shadow: var(--ui-shadow-soft);
+            background: var(--ui-surface);
+        }
+
+        .search-input,
+        .dns-input,
+        .freessl-input,
+        .decoder-col textarea,
+        .result-box textarea,
+        .freessl-cert-box textarea {
+            border-radius: 12px;
+            border-color: var(--ui-line-strong);
+        }
+        .search-input:focus,
+        .dns-input:focus,
+        .freessl-input:focus,
+        .decoder-col textarea:focus,
+        .result-box textarea:focus,
+        .freessl-cert-box textarea:focus {
+            border-color: var(--ui-accent);
+            box-shadow: 0 0 0 4px rgba(31, 134, 197, 0.12);
+        }
+
+        .ssl-header,
+        .sslcheck-header,
+        .hostcheck-header,
+        .ssldecoder-header,
+        .freessl-header {
+            padding: 8px 0 22px;
+        }
+        .ssl-header h2,
+        .sslcheck-header h2,
+        .hostcheck-header h2,
+        .ssldecoder-header h2,
+        .freessl-header h2 {
+            color: var(--ui-text);
+            letter-spacing: -0.02em;
+            font-size: clamp(1.6rem, 2vw + 0.8rem, 2.1rem);
+            line-height: 1.15;
+        }
+        .ssl-header p,
+        .sslcheck-header p,
+        .hostcheck-header p,
+        .ssldecoder-header p,
+        .freessl-header p {
+            max-width: 70ch;
+            margin: 0 auto;
+            line-height: 1.55;
+            color: var(--ui-text-sub);
+        }
+
+        #tab-sslcheck .btn.btn-primary,
+        #tab-hostcheck .btn.btn-primary {
+            background: var(--ui-accent) !important;
+        }
+        #tab-sslcheck .btn.btn-primary:hover,
+        #tab-hostcheck .btn.btn-primary:hover {
+            background: var(--ui-accent-strong) !important;
+        }
+        #sslLoading .spinner,
+        #hostLoading .spinner {
+            border-top-color: var(--ui-accent) !important;
+        }
+
+        .ssl-info-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: stretch; }
+        .host-info-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: stretch; }
+        .ssl-info-card, .host-info-card { min-height: 124px; }
+        .ssl-info-card .card-title, .host-info-card .card-title {
+            font-size: 0.74rem;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+        }
+
+        .decoder-col textarea,
+        .result-box textarea,
+        .freessl-cert-box textarea,
+        .dns-record-value,
+        .dns-empty-value,
+        .server-ip,
+        .san-item,
+        .host-info-card .card-value.mono {
+            font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, monospace;
+        }
+
+        .loading {
+            border: 1px dashed var(--ui-line-strong);
+            border-radius: 12px;
+            background: var(--ui-surface-soft);
+            margin-bottom: 16px;
+        }
+        .message-error, .message-success, .message-info {
+            border-radius: 10px;
+            border-left-width: 5px;
+            line-height: 1.46;
+        }
+        .message-info {
+            background: var(--ui-accent-soft);
+            border-left-color: var(--ui-accent);
+            color: #134061;
+        }
+
+        .dns-panel-title,
+        .section-title,
+        .card-title {
+            letter-spacing: -0.01em;
+        }
+
+        .dns-rate.partial,
+        .summary-card.warning .value,
+        .ssl-info-card .card-value.warning,
+        .dns-stat-value.warning {
+            color: var(--ui-accent-warm);
+        }
+
+        /* Intentional entrance motion for better visual hierarchy */
+        @keyframes pageFadeSlide {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+
+        @keyframes cardLiftIn {
+            from {
+                opacity: 0;
+                transform: translateY(14px) scale(0.995);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        .tab-content.active {
+            animation: pageFadeSlide 320ms ease-out both;
+        }
+
+        .tab-content.active .search-box,
+        .tab-content.active .dns-card,
+        .tab-content.active .ssl-info-card,
+        .tab-content.active .host-info-card,
+        .tab-content.active .decoder-section,
+        .tab-content.active .freessl-card,
+        .tab-content.active .result-box {
+            animation: cardLiftIn 420ms ease-out both;
+        }
+
+        .tab-content.active .ssl-info-card:nth-child(2),
+        .tab-content.active .host-info-card:nth-child(2),
+        .tab-content.active .freessl-card:nth-child(2),
+        .tab-content.active .dns-card:nth-child(2) {
+            animation-delay: 70ms;
+        }
+
+        .tab-content.active .ssl-info-card:nth-child(3),
+        .tab-content.active .host-info-card:nth-child(3),
+        .tab-content.active .freessl-card:nth-child(3),
+        .tab-content.active .dns-card:nth-child(3) {
+            animation-delay: 120ms;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .tab-content.active,
+            .tab-content.active .search-box,
+            .tab-content.active .dns-card,
+            .tab-content.active .ssl-info-card,
+            .tab-content.active .host-info-card,
+            .tab-content.active .decoder-section,
+            .tab-content.active .freessl-card,
+            .tab-content.active .result-box {
+                animation: none !important;
+            }
+        }
+
+        .is-hidden { display: none !important; }
+        .mb-16 { margin-bottom: 16px; }
+        .mt-10 { margin-top: 10px; }
+        .mt-12 { margin-top: 12px; }
+        .mb-10 { margin-bottom: 10px; }
+        .text-muted { color: #64748b; }
+        .text-center { text-align: center; }
+        .mono-sm {
+            font-size: 0.85rem;
+            font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, monospace;
+        }
+        .field-block { margin-bottom: 14px; }
+        .field-block.tight { margin-bottom: 12px; }
+        .field-block.loose { margin-bottom: 16px; }
+        .field-label {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #475569;
+            display: block;
+            margin-bottom: 6px;
+        }
+        .field-help {
+            margin-top: 6px;
+            font-size: 0.82rem;
+            color: #64748b;
+        }
+        .inline-input-row {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 6px;
+            flex-wrap: wrap;
+        }
+        .provider-caption {
+            font-size: 0.75rem;
+            font-weight: 400;
+            color: #64748b;
+            margin-top: 3px;
+        }
+        .provider-badge {
+            background: #e0f2fe;
+            color: #0369a1;
+        }
+        .code-chip {
+            background: #f1f5f9;
+            padding: 1px 6px;
+            border-radius: 3px;
+            font-size: 0.85em;
+        }
+        .btn-compact {
+            padding: 6px 10px;
+        }
+        .freessl-action-row {
+            margin-top: 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .btn-download-all {
+            font-size: 0.85rem;
+            padding: 8px 16px;
+        }
+        .cert-stack {
+            display: grid;
+            gap: 14px;
+        }
+        .cert-label {
+            font-size: 0.78rem;
+            color: #64748b;
+            font-weight: 700;
+            text-transform: uppercase;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 4px;
+        }
+        .input-note {
+            color: #64748b;
+            font-size: 0.9rem;
+            margin-bottom: 10px;
+        }
+        .center-reset {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .small-line { font-size: 0.88rem; }
+        .challenge-note {
+            margin-top: 10px;
+            font-size: 0.85rem;
+        }
+        .required-star { color: #dc2626; }
+
+        .freessl-steps {
+            box-shadow: inset 0 0 0 1px var(--ui-line);
+            background: #f5f8fb;
+        }
+        .freessl-step { min-height: 68px; justify-content: center; }
+        .challenge-type-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+            gap: 10px;
+        }
+        .challenge-type-btn {
+            min-height: 70px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            gap: 3px;
+        }
+        .freessl-storage-sidebar {
+            width: min(980px, calc(100vw - 44px));
+            border: 1px solid var(--ui-line);
+        }
+
+        @media (max-width: 1120px) {
+            .tab-nav {
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+            }
+            .ssl-info-grid,
+            .host-info-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
+
+        @media (max-width: 980px) {
+            .container {
+                width: calc(100% - 22px);
+                padding: 14px 0 22px;
+            }
+            .tab-nav {
+                display: flex;
+                flex-wrap: nowrap;
+                gap: 8px;
+                justify-content: flex-start;
+                overflow-x: auto;
+                overflow-y: hidden;
+            }
+            .tab-nav::before,
+            .tab-nav::after {
+                display: block;
+            }
+            .tab-btn {
+                flex: 0 0 auto;
+                min-width: 138px;
+                max-width: none;
+                padding: 10px 12px;
+                font-size: 0.86rem;
+            }
+            .tab-content { padding: 16px; }
+            .freessl-toolbar-row { align-items: stretch; }
+            .freessl-toolbar-actions { width: 100%; }
+            .freessl-toolbar-actions .btn { width: 100%; }
+            #dnsRecords.compact-view .dns-resolver-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
+
+        @media (max-width: 768px) {
+            .tab-content {
+                border-radius: 14px;
+                padding: 14px;
+            }
+            .ssl-info-grid,
+            .host-info-grid {
+                grid-template-columns: 1fr;
+            }
+            .freessl-steps {
+                overflow-x: auto;
+                flex-wrap: nowrap;
+                white-space: nowrap;
+            }
+            .freessl-step {
+                flex: 0 0 auto;
+                min-width: 122px;
+                border-right: 1px solid #e2e8f0;
+            }
+            .freessl-step:last-child { border-right: none; }
+            .freessl-storage-sidebar {
+                width: calc(100vw - 16px);
+            }
+            .challenge-type-row { grid-template-columns: 1fr; }
+            .result-box h3 { align-items: flex-start; }
+            .btn-group { width: 100%; }
+            .btn-group .btn { flex: 1; }
+            #dnsRecords.compact-view .dns-resolver-grid {
+                grid-template-columns: 1fr;
+            }
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <!-- Tab Navigation -->
-        <div class="tab-nav">
-            <button class="tab-btn active" onclick="switchTab('dns')">
+        <div class="tab-nav" role="tablist" aria-label="Network tool tabs">
+            <button class="tab-btn active" data-tab="dns" id="tabbtn-dns" role="tab" aria-selected="true" aria-controls="tab-dns" tabindex="0" onclick="switchTab('dns')">
                 <span class="icon">🔍</span> DNS
             </button>
-            <button class="tab-btn" onclick="switchTab('sslcheck')">
+            <button class="tab-btn" data-tab="sslcheck" id="tabbtn-sslcheck" role="tab" aria-selected="false" aria-controls="tab-sslcheck" tabindex="-1" onclick="switchTab('sslcheck')">
                 <span class="icon">🛡️</span> SSL Check
             </button>
-            <button class="tab-btn" onclick="switchTab('hostcheck')">
+            <button class="tab-btn" data-tab="hostcheck" id="tabbtn-hostcheck" role="tab" aria-selected="false" aria-controls="tab-hostcheck" tabindex="-1" onclick="switchTab('hostcheck')">
                 <span class="icon">🖥️</span> Host Check
             </button>
-            <button class="tab-btn" onclick="switchTab('ssl')">
+            <button class="tab-btn" data-tab="ssl" id="tabbtn-ssl" role="tab" aria-selected="false" aria-controls="tab-ssl" tabindex="-1" onclick="switchTab('ssl')">
                 <span class="icon">🔒</span> SSL Bundle
             </button>
-            <button class="tab-btn" onclick="switchTab('ssldecoder')">
+            <button class="tab-btn" data-tab="ssldecoder" id="tabbtn-ssldecoder" role="tab" aria-selected="false" aria-controls="tab-ssldecoder" tabindex="-1" onclick="switchTab('ssldecoder')">
                 <span class="icon">🔐</span> SSL Decoder
             </button>
-            <button class="tab-btn" onclick="switchTab('freessl')">
+            <button class="tab-btn" data-tab="freessl" id="tabbtn-freessl" role="tab" aria-selected="false" aria-controls="tab-freessl" tabindex="-1" onclick="switchTab('freessl')">
                 <span class="icon">🎁</span> SSL Miễn Phí
             </button>
         </div>
         
         <!-- DNS Checker Tab -->
-        <div id="tab-dns" class="tab-content active">
-            <div class="dns-header">
-                <h2>🔍 DNS Checker</h2>
-                <p>Kiểm tra DNS Records & DNSSEC cho mọi tên miền</p>
-            </div>
+        <div id="tab-dns" class="tab-content active" role="tabpanel" aria-labelledby="tabbtn-dns">
+            <div class="dns-shell">
+                <div class="dns-hero">
+                    <div class="dns-card dns-search-card">
+                        <div class="dns-panel-header">
+                            <div>
+                                <div class="dns-panel-title">DNS Checker</div>
+                            </div>
+                        </div>
 
-            <div class="search-box">
-                <div class="search-row">
-                    <input type="text" class="search-input" id="domainInput" 
-                           placeholder="Nhập tên miền (vd: google.com)" 
-                           onkeypress="if(event.key==='Enter')checkDNS()">
-                    <button class="btn btn-primary" onclick="checkDNS()">🔍 Kiểm tra</button>
-                    <button class="btn btn-secondary" onclick="clearCache()">🗑️ Clear</button>
-                </div>
-                <div class="record-types" id="recordTypes">
-                    <label><input type="checkbox" value="A" checked><span>A</span></label>
-                    <label><input type="checkbox" value="AAAA"><span>AAAA</span></label>
-                    <label><input type="checkbox" value="MX"><span>MX</span></label>
-                    <label><input type="checkbox" value="NS"><span>NS</span></label>
-                    <label><input type="checkbox" value="TXT"><span>TXT</span></label>
-                    <label><input type="checkbox" value="CNAME"><span>CNAME</span></label>
-                    <label><input type="checkbox" value="SOA"><span>SOA</span></label>
-                    <label><input type="checkbox" value="CAA"><span>CAA</span></label>
-                </div>
-            </div>
+                        <div class="dns-search-row">
+                            <input type="text" class="dns-input" id="domainInput"
+                                   placeholder="Nhập tên miền (vd: google.com)"
+                                   onkeypress="if(event.key==='Enter')checkDNS()">
+                            <div class="dns-actions">
+                                <button class="btn btn-primary" onclick="checkDNS()">🔍 Kiểm tra</button>
+                                <button class="btn btn-secondary" onclick="clearCache()">🗑️ Clear</button>
+                            </div>
+                        </div>
 
-            <div class="loading" id="loading">
-                <div class="spinner"></div>
-                <p>Đang kiểm tra DNS...</p>
-            </div>
+                        <div class="record-types" id="recordTypes">
+                            <label><input type="checkbox" value="A" checked><span>A</span></label>
+                            <label><input type="checkbox" value="AAAA"><span>AAAA</span></label>
+                            <label><input type="checkbox" value="CNAME" checked><span>CNAME</span></label>
+                            <label><input type="checkbox" value="MX"><span>MX</span></label>
+                            <label><input type="checkbox" value="TXT"><span>TXT</span></label>
+                            <label><input type="checkbox" value="NS"><span>NS</span></label>
+                            <label><input type="checkbox" value="SOA"><span>SOA</span></label>
+                            <label><input type="checkbox" value="CAA"><span>CAA</span></label>
+                        </div>
 
-            <div class="results-container" id="results">
-                <div class="summary-grid">
-                    <div class="summary-card info">
-                        <div class="label">Domain</div>
-                        <div class="value" id="summaryDomain">-</div>
                     </div>
-                    <div class="summary-card" id="cardPropagation">
-                        <div class="label">Propagation</div>
-                        <div class="value" id="summaryPropagation">-</div>
-                    </div>
-                    <div class="summary-card" id="cardDNSSEC">
-                        <div class="label">DNSSEC</div>
-                        <div class="value" id="summaryDNSSEC">-</div>
+
+                    <div class="dns-card dns-stats-card">
+                        <div class="dns-stat-row">
+                            <span class="dns-stat-label">Domain</span>
+                            <span class="dns-stat-value accent" id="summaryDomain">-</span>
+                        </div>
+                        <div class="dns-stat-row">
+                            <span class="dns-stat-label">DNSSEC</span>
+                            <span class="dns-stat-value error" id="summaryDNSSEC">-</span>
+                        </div>
+                        <div class="dns-stat-row">
+                            <span class="dns-stat-label">Resolvers</span>
+                            <span class="dns-stat-value accent" id="summaryResolvers">-</span>
+                        </div>
                     </div>
                 </div>
 
-                <div class="dns-results">
-                    <div class="section-title">📋 DNS Records</div>
-                    <div id="dnsRecords"></div>
+                <div class="loading" id="loading">
+                    <div class="spinner"></div>
+                    <p class="dns-loading-note">Đang kiểm tra DNS trên nhiều public resolver...</p>
                 </div>
 
-                <div class="dnssec-card">
-                    <div class="section-title">🔐 DNSSEC Status</div>
-                    <div id="dnssecContent"></div>
+                <div class="results-container" id="results">
+                    <div class="dns-card dns-results-panel">
+                        <div class="dns-section-head">
+                            <div class="section-title">📋 DNS Records</div>
+                            <div class="dns-head-actions">
+                                <div class="dns-section-chip" id="dnsRecordCountChip">0 record types</div>
+                                <div class="dns-view-switch" role="group" aria-label="DNS view mode">
+                                    <button type="button" id="dnsViewCardBtn" class="dns-view-btn active" onclick="setDnsView('card')">Card</button>
+                                    <button type="button" id="dnsViewCompactBtn" class="dns-view-btn" onclick="setDnsView('compact')">Compact</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="dnsRecords" class="dns-record-grid"></div>
+                    </div>
                 </div>
             </div>
         </div>
         
         <!-- SSL Check Tab -->
-        <div id="tab-sslcheck" class="tab-content">
+        <div id="tab-sslcheck" class="tab-content" role="tabpanel" aria-labelledby="tabbtn-sslcheck" hidden>
             <div class="sslcheck-header">
                 <h2>🛡️ SSL Certificate Check</h2>
                 <p>Kiểm tra thông tin chứng chỉ SSL của domain</p>
@@ -750,12 +1746,12 @@
                     <input type="text" class="search-input" id="sslDomainInput" 
                            placeholder="Nhập tên miền (vd: google.com)" 
                            onkeypress="if(event.key==='Enter')checkSSL()">
-                    <button class="btn btn-primary" style="background: #10b981;" onclick="checkSSL()">🛡️ Kiểm tra SSL</button>
+                    <button class="btn btn-primary" onclick="checkSSL()">🛡️ Kiểm tra SSL</button>
                 </div>
             </div>
 
             <div class="loading" id="sslLoading">
-                <div class="spinner" style="border-top-color: #10b981;"></div>
+                <div class="spinner"></div>
                 <p>Đang kiểm tra SSL...</p>
             </div>
 
@@ -772,13 +1768,14 @@
                         <div class="card-value large" id="sslDaysRemaining">-</div>
                         <div class="card-sub">ngày</div>
                     </div>
-                    <div class="ssl-info-card">
-                        <div class="card-title">Ngày bắt đầu</div>
-                        <div class="card-value" id="sslValidFrom">-</div>
-                    </div>
-                    <div class="ssl-info-card">
-                        <div class="card-title">Ngày hết hạn</div>
-                        <div class="card-value" id="sslValidTo">-</div>
+                    <div class="ssl-info-card full">
+                        <div class="card-title">DATE CERT</div>
+                        <div class="cert-date-grid">
+                            <div class="cert-date-label">Issued On</div>
+                            <div class="cert-date-value" id="sslValidFrom">-</div>
+                            <div class="cert-date-label">Expires On</div>
+                            <div class="cert-date-value" id="sslValidTo">-</div>
+                        </div>
                     </div>
                     <div class="ssl-info-card full">
                         <div class="card-title">Nhà cung cấp SSL (Issuer)</div>
@@ -791,12 +1788,17 @@
                         <div class="card-sub" id="sslSubjectOrg">-</div>
                     </div>
                     <div class="ssl-info-card full">
+                        <div class="card-title">HTTP Redirect</div>
+                        <div class="card-value" id="sslRedirectFinal">-</div>
+                        <div class="card-sub" id="sslRedirectChain">-</div>
+                    </div>
+                    <div class="ssl-info-card full">
                         <div class="card-title">Subject Alternative Names (SAN)</div>
                         <div id="sslSAN" class="san-list">-</div>
                     </div>
                     <div class="ssl-info-card">
                         <div class="card-title">Serial Number</div>
-                        <div class="card-value" style="font-size: 0.85rem; font-family: monospace;" id="sslSerial">-</div>
+                        <div class="card-value mono-sm" id="sslSerial">-</div>
                     </div>
                     <div class="ssl-info-card">
                         <div class="card-title">Version</div>
@@ -807,7 +1809,7 @@
         </div>
         
         <!-- Host Check Tab -->
-        <div id="tab-hostcheck" class="tab-content">
+        <div id="tab-hostcheck" class="tab-content" role="tabpanel" aria-labelledby="tabbtn-hostcheck" hidden>
             <div class="hostcheck-header">
                 <h2>🖥️ Host Check</h2>
                 <p>Kiểm tra thông tin hosting từ IP hoặc Domain</p>
@@ -818,12 +1820,12 @@
                     <input type="text" class="search-input" id="hostInput" 
                            placeholder="Nhập IP hoặc Domain (vd: 8.8.8.8 hoặc google.com)" 
                            onkeypress="if(event.key==='Enter')checkHost()">
-                    <button class="btn btn-primary" style="background: #f59e0b;" onclick="checkHost()">🖥️ Kiểm tra</button>
+                    <button class="btn btn-primary" onclick="checkHost()">🖥️ Kiểm tra</button>
                 </div>
             </div>
 
             <div class="loading" id="hostLoading">
-                <div class="spinner" style="border-top-color: #f59e0b;"></div>
+                <div class="spinner"></div>
                 <p>Đang kiểm tra host...</p>
             </div>
 
@@ -850,7 +1852,7 @@
                     </div>
                     <div class="host-info-card">
                         <div class="card-title">Reverse DNS</div>
-                        <div class="card-value mono" style="font-size: 0.9rem;" id="hostReverseDNS">-</div>
+                        <div class="card-value mono mono-sm" id="hostReverseDNS">-</div>
                     </div>
                     <div class="host-info-card">
                         <div class="card-title">Vị trí</div>
@@ -861,7 +1863,7 @@
         </div>
         
         <!-- SSL Decoder Tab -->
-        <div id="tab-ssldecoder" class="tab-content">
+        <div id="tab-ssldecoder" class="tab-content" role="tabpanel" aria-labelledby="tabbtn-ssldecoder" hidden>
             <div class="ssldecoder-header">
                 <h2>🔐 SSL Decoder & Matcher</h2>
                 <p>Kiểm tra Cert/Key có khớp & Decode thông tin Certificate, CSR</p>
@@ -895,7 +1897,7 @@
             <div id="decoderPanelCert" class="decoder-panel">
                 <div class="decoder-section">
                     <h3>📜 Certificate Decoder <span class="badge badge-decode">DECODE</span></h3>
-                    <div class="decoder-col" style="margin-bottom: 16px;">
+                    <div class="decoder-col mb-16">
                         <label>Certificate (PEM)</label>
                         <textarea id="decodeCertInput" placeholder="-----BEGIN CERTIFICATE-----&#10;...&#10;-----END CERTIFICATE-----"></textarea>
                     </div>
@@ -907,7 +1909,7 @@
             <div id="decoderPanelCsr" class="decoder-panel">
                 <div class="decoder-section">
                     <h3>📝 CSR Decoder <span class="badge badge-decode">DECODE</span></h3>
-                    <div class="decoder-col" style="margin-bottom: 16px;">
+                    <div class="decoder-col mb-16">
                         <label>CSR (Certificate Signing Request)</label>
                         <textarea id="decodeCSRInput" placeholder="-----BEGIN CERTIFICATE REQUEST-----&#10;...&#10;-----END CERTIFICATE REQUEST-----"></textarea>
                     </div>
@@ -917,7 +1919,7 @@
         </div>
         
         <!-- SSL Bundle Tool Tab -->
-        <div id="tab-ssl" class="tab-content">
+        <div id="tab-ssl" class="tab-content" role="tabpanel" aria-labelledby="tabbtn-ssl" hidden>
             <div class="ssl-header">
                 <h2>🔒 SSL Certificate Bundle Tool</h2>
                 <p>Công cụ gộp chứng chỉ SSL tự động</p>
@@ -926,11 +1928,11 @@
             <div class="upload-area" id="uploadArea">
                 <div class="upload-icon">📁</div>
                 <p><strong>Kéo thả file ZIP vào đây</strong></p>
-                <p style="color: #64748b; margin-top: 10px;">hoặc</p>
-                <button class="btn btn-primary" style="margin-top: 10px;" onclick="document.getElementById('fileInput').click()">
+                <p class="text-muted mt-10">hoặc</p>
+                <button class="btn btn-primary mt-10" onclick="document.getElementById('fileInput').click()">
                     Chọn file ZIP
                 </button>
-                <input type="file" id="fileInput" accept=".zip" style="display:none">
+                <input type="file" id="fileInput" accept=".zip" class="is-hidden">
             </div>
 
             <div id="sslMessage" class="message"></div>
@@ -949,9 +1951,9 @@
 
                 <div class="result-box">
                     <h3>🔑 Private Key (Optional)</h3>
-                    <p style="color: #64748b; font-size: 0.9rem; margin-bottom: 10px;">Dán private key để tạo PEM và PFX files</p>
+                    <p class="input-note">Dán private key để tạo PEM và PFX files</p>
                     <textarea id="privateKeyInput" placeholder="-----BEGIN PRIVATE KEY-----&#10;...&#10;-----END PRIVATE KEY-----"></textarea>
-                    <div style="margin-top: 12px;">
+                    <div class="mt-12">
                         <button class="btn btn-primary" onclick="generatePemAndPfx()" id="generateBtn" disabled>
                             🔧 Generate PEM, PFX & ZIP Package
                         </button>
@@ -963,7 +1965,7 @@
         </div>
 
         <!-- Free SSL Tab -->
-        <div id="tab-freessl" class="tab-content">
+        <div id="tab-freessl" class="tab-content" role="tabpanel" aria-labelledby="tabbtn-freessl" hidden>
             <div class="freessl-header">
                 <h2>🎁 Nhận SSL Miễn Phí (ACME)</h2>
                 <p>Tự động tạo CSR/Key & xác thực để cấp chứng chỉ SSL 90 ngày</p>
@@ -973,7 +1975,7 @@
                 <div class="freessl-toolbar-actions">
                     <button class="btn btn-green" onclick="freeSslNewOrder()">+ Thêm order mới</button>
                 </div>
-                <button class="freessl-hamburger-btn" onclick="freeSslToggleStorage(true)">☰ Danh sách SSL đã cấp</button>
+                <button id="freesslOpenSidebarBtn" class="freessl-hamburger-btn" onclick="freeSslToggleStorage(true)">☰ Danh sách SSL đã cấp</button>
             </div>
 
             <!-- Progress Steps -->
@@ -1004,23 +2006,23 @@
             <div class="freessl-card" id="freesslInputCard">
                 <h3>⚙️ Bước 1: Cấu hình tên miền</h3>
 
-                <div style="margin-bottom:14px;">
-                    <label style="font-size:0.85rem;font-weight:600;color:#475569;display:block;margin-bottom:6px;">
-                        Tên miền <span style="color:#dc2626;">*</span>
+                <div class="field-block">
+                    <label class="field-label">
+                        Tên miền <span class="required-star">*</span>
                     </label>
                     <input type="text" class="freessl-input" id="freesslDomain"
                            placeholder="vd: example.com hoặc example.com, *.example.com"
                            oninput="freeSslUpdateSANsPreview()">
-                    <div style="margin-top:6px;font-size:0.82rem;color:#64748b;">
-                        💡 Để cấp SSL cho wildcard, nhập cả hai: <code style="background:#f1f5f9;padding:1px 6px;border-radius:3px;font-size:0.85em;">example.com, *.example.com</code>
+                    <div class="field-help">
+                        💡 Để cấp SSL cho wildcard, nhập cả hai: <code class="code-chip">example.com, *.example.com</code>
                     </div>
                 </div>
 
-                <div style="margin-bottom: 12px;">
-                    <label style="font-size:0.85rem;font-weight:600;color:#475569;display:block;margin-bottom:6px;">
+                <div class="field-block tight">
+                    <label class="field-label">
                         Tên miền phụ (SANs) — nhấn Enter để thêm
                     </label>
-                    <div style="display:flex;gap:8px;margin-bottom:6px;">
+                    <div class="inline-input-row">
                         <input type="text" class="freessl-input" id="freesslSanInput"
                                placeholder="vd: www.example.com"
                                onkeydown="if(event.key==='Enter'){freeSslAddSan();event.preventDefault();}">
@@ -1029,41 +2031,41 @@
                     <div class="sans-tags" id="freesslSansTags"></div>
                 </div>
 
-                <div style="margin-bottom:16px;">
-                    <label style="font-size:0.85rem;font-weight:600;color:#475569;display:block;margin-bottom:8px;">
-                        Nhà cung cấp SSL <span style="color:#dc2626;">*</span>
+                <div class="field-block loose">
+                    <label class="field-label">
+                        Nhà cung cấp SSL <span class="required-star">*</span>
                     </label>
                     <div class="challenge-type-row">
                         <div class="challenge-type-btn selected" id="btnProvLe" onclick="freeSslSelectProvider('letsencrypt')">
                             🔒 Let's Encrypt
-                            <div style="font-size:0.75rem;font-weight:400;color:#64748b;margin-top:3px;">Miễn phí, phổ biến nhất</div>
+                            <div class="provider-caption">Miễn phí, phổ biến nhất</div>
                         </div>
                         <div class="challenge-type-btn" id="btnProvZero" onclick="freeSslSelectProvider('zerossl')">
                             🌐 ZeroSSL
-                            <div style="font-size:0.75rem;font-weight:400;color:#64748b;margin-top:3px;">Miễn phí, có dashboard quản lý</div>
+                            <div class="provider-caption">Miễn phí, có dashboard quản lý</div>
                         </div>
                         <div class="challenge-type-btn" id="btnProvSslcom" onclick="freeSslSelectProvider('sslcom')">
                             🛡️ SSL.com
-                            <div style="font-size:0.75rem;font-weight:400;color:#64748b;margin-top:3px;">Yêu cầu EAB</div>
+                            <div class="provider-caption">Yêu cầu EAB</div>
                         </div>
                     </div>
-                    <div id="freesslProviderNote" class="message-info" style="margin-top:8px;font-size:0.85rem;">
+                    <div id="freesslProviderNote" class="message-info field-help">
                         🔎 <strong>Let's Encrypt:</strong> hỗ trợ wildcard + multi-domain. Nếu chỉ nhập domain gốc, hệ thống tự thêm <strong>www</strong>.
                     </div>
                 </div>
 
-                <div style="margin-bottom:16px;">
-                    <label style="font-size:0.85rem;font-weight:600;color:#475569;display:block;margin-bottom:8px;">
+                <div class="field-block loose">
+                    <label class="field-label">
                         Phương thức xác thực
                     </label>
                     <div class="challenge-type-row">
                         <div class="challenge-type-btn selected" id="btnDns01" onclick="freeSslSelectChallenge('dns-01')">
                             🌐 DNS-01
-                            <div style="font-size:0.75rem;font-weight:400;color:#64748b;margin-top:3px;">Thêm TXT record vào DNS</div>
+                            <div class="provider-caption">Thêm TXT record vào DNS</div>
                         </div>
                         <div class="challenge-type-btn" id="btnHttp01" onclick="freeSslSelectChallenge('http-01')">
                             📁 HTTP-01 (File-based)
-                            <div style="font-size:0.75rem;font-weight:400;color:#64748b;margin-top:3px;">Upload file lên webserver</div>
+                            <div class="provider-caption">Upload file lên webserver</div>
                         </div>
                     </div>
                 </div>
@@ -1074,11 +2076,11 @@
                 </button>
             </div>
 
-            <div id="freesslStorageBackdrop" class="freessl-storage-backdrop" onclick="freeSslToggleStorage(false)"></div>
-            <aside id="freesslStorageSidebar" class="freessl-storage-sidebar" aria-label="Danh sách SSL đã lưu">
+            <div id="freesslStorageBackdrop" class="freessl-storage-backdrop" aria-hidden="true" onclick="freeSslToggleStorage(false)"></div>
+            <aside id="freesslStorageSidebar" class="freessl-storage-sidebar" aria-label="Danh sách SSL đã lưu" aria-hidden="true">
                 <div class="freessl-storage-sidebar-header">
                     <h3>🗂️ Danh sách SSL đã lưu</h3>
-                    <button class="btn btn-secondary" style="padding:6px 10px;" onclick="freeSslToggleStorage(false)">✕</button>
+                    <button class="btn btn-secondary btn-compact" onclick="freeSslToggleStorage(false)">✕</button>
                 </div>
                 <div class="freessl-storage-sidebar-body">
                     <div class="freessl-storage-toolbar">
@@ -1094,15 +2096,15 @@
             <!-- Step 2: Show Challenges -->
             <div class="freessl-card" id="freesslChallengeCard" style="display:none;">
                 <h3>📋 Bước 2: Thực hiện xác thực</h3>
-                <div class="message-info" style="margin-bottom:16px;">
+                <div class="message-info mb-16">
                     ⚠️ Vui lòng thực hiện cấu hình bên dưới trước khi nhấn <strong>Check</strong>.
                     Hệ thống sẽ kiểm tra trước khi gửi yêu cầu xác thực đến nhà cung cấp ACME.
                 </div>
                 <div id="freesslChallengeList"></div>
 
                 <!-- Step 3: Pre-check -->
-                <div style="margin-top: 16px; display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
-                    <button class="btn btn-primary" id="freesslVerifyBtn" style="background:#0ea5e9;" onclick="freeSslCheck()">
+                <div class="freessl-action-row">
+                    <button class="btn btn-primary" id="freesslVerifyBtn" onclick="freeSslCheck()">
                         🔎 Bước 3: Kiểm tra xác thực (Pre-check)
                     </button>
                     <button class="btn btn-orange" id="freesslRetryBtn" style="display:none;" onclick="freeSslRetryCurrentStep()">
@@ -1110,13 +2112,13 @@
                     </button>
                 </div>
                 <div id="freesslLogBox" class="freessl-log-box" style="display:none;"></div>
-                <div id="freesslCheckResults" style="margin-top:14px;"></div>
+                <div id="freesslCheckResults" class="mt-12"></div>
             </div>
 
             <!-- Step 4: Finalize -->
             <div class="freessl-card" id="freesslFinalizeCard" style="display:none;">
                 <h3>🏁 Bước 4: Nhận chứng chỉ</h3>
-                <div class="message-success" style="margin-bottom:16px;">
+                <div class="message-success mb-16">
                     ✅ Xác thực đã sẵn sàng! Nhấn nút bên dưới để nhà cung cấp ACME cấp chứng chỉ.
                     Quá trình có thể mất 10–60 giây.
                 </div>
@@ -1138,34 +2140,34 @@
                 <div class="freessl-cert-box">
                     <h4>
                         🎉 Chứng chỉ đã được cấp thành công!
-                        <button class="btn btn-green" style="font-size:0.85rem;padding:8px 16px;" onclick="freeSslDownloadAll()">
+                        <button class="btn btn-green btn-download-all" onclick="freeSslDownloadAll()">
                             ⬇️ Tải Tất Cả (ZIP)
                         </button>
                     </h4>
-                    <div style="display:grid;gap:14px;">
+                    <div class="cert-stack">
                         <div>
-                            <label style="font-size:0.78rem;color:#64748b;font-weight:700;text-transform:uppercase;display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+                            <label class="cert-label">
                                 Certificate (cert.crt)
                                 <button class="copy-btn-small" onclick="freeSslCopy('freesslCert')">📋 Copy</button>
                             </label>
                             <textarea id="freesslCert" readonly></textarea>
                         </div>
                         <div>
-                            <label style="font-size:0.78rem;color:#64748b;font-weight:700;text-transform:uppercase;display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+                            <label class="cert-label">
                                 Private Key (private.key)
                                 <button class="copy-btn-small" onclick="freeSslCopy('freesslPrivKey')">📋 Copy</button>
                             </label>
                             <textarea id="freesslPrivKey" readonly></textarea>
                         </div>
                         <div>
-                            <label style="font-size:0.78rem;color:#64748b;font-weight:700;text-transform:uppercase;display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+                            <label class="cert-label">
                                 CA Bundle (ca-bundle.crt)
                                 <button class="copy-btn-small" onclick="freeSslCopy('freesslCaBundle')">📋 Copy</button>
                             </label>
                             <textarea id="freesslCaBundle" readonly></textarea>
                         </div>
                         <div>
-                            <label style="font-size:0.78rem;color:#64748b;font-weight:700;text-transform:uppercase;display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+                            <label class="cert-label">
                                 Full Chain (fullchain.pem)
                                 <button class="copy-btn-small" onclick="freeSslCopy('freesslFullChain')">📋 Copy</button>
                             </label>
@@ -1173,7 +2175,7 @@
                         </div>
                     </div>
                 </div>
-                <div style="text-align:center;margin-bottom:20px;">
+                <div class="center-reset">
                     <button class="btn btn-green" onclick="freeSslReset()">🔄 Cấp chứng chỉ mới</button>
                 </div>
             </div>
@@ -1184,13 +2186,99 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/forge/0.10.0/forge.min.js"></script>
     <script>
         // ========== Tab Switching ==========
-        function switchTab(tab) {
-            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
-            
-            const tabMap = { 'dns': 1, 'sslcheck': 2, 'hostcheck': 3, 'ssl': 4, 'ssldecoder': 5, 'freessl': 6 };
-            document.querySelector(`.tab-btn:nth-child(${tabMap[tab]})`).classList.add('active');
-            document.getElementById('tab-' + tab).classList.add('active');
+        const tabIds = ['dns', 'sslcheck', 'hostcheck', 'ssl', 'ssldecoder', 'freessl'];
+
+        function switchTab(tab, options = {}) {
+            const nextTab = tabIds.includes(tab) ? tab : 'dns';
+            const tabButtons = Array.from(document.querySelectorAll('.tab-btn[data-tab]'));
+            const panels = Array.from(document.querySelectorAll('.tab-content[id^="tab-"]'));
+
+            tabButtons.forEach(btn => {
+                const isActive = btn.dataset.tab === nextTab;
+                btn.classList.toggle('active', isActive);
+                btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
+                btn.setAttribute('tabindex', isActive ? '0' : '-1');
+            });
+
+            panels.forEach(panel => {
+                const isActive = panel.id === 'tab-' + nextTab;
+                panel.classList.toggle('active', isActive);
+                panel.hidden = !isActive;
+            });
+
+            if (options.focusTab) {
+                const activeBtn = document.querySelector(`.tab-btn[data-tab="${nextTab}"]`);
+                if (activeBtn) activeBtn.focus();
+            }
+        }
+
+        function updateTabScrollHint() {
+            const nav = document.querySelector('.tab-nav');
+            if (!nav) return;
+            const scrollable = nav.scrollWidth > nav.clientWidth + 4;
+            nav.classList.toggle('is-scrollable', scrollable);
+        }
+
+        function initTabNavigationA11y() {
+            const tabButtons = Array.from(document.querySelectorAll('.tab-btn[data-tab]'));
+            if (tabButtons.length === 0) return;
+
+            tabButtons.forEach((btn, index) => {
+                btn.addEventListener('keydown', (event) => {
+                    const key = event.key;
+                    if (!['ArrowRight', 'ArrowLeft', 'Home', 'End'].includes(key)) return;
+                    event.preventDefault();
+
+                    let nextIndex = index;
+                    if (key === 'ArrowRight') nextIndex = (index + 1) % tabButtons.length;
+                    if (key === 'ArrowLeft') nextIndex = (index - 1 + tabButtons.length) % tabButtons.length;
+                    if (key === 'Home') nextIndex = 0;
+                    if (key === 'End') nextIndex = tabButtons.length - 1;
+
+                    const nextTab = tabButtons[nextIndex];
+                    if (nextTab && nextTab.dataset.tab) {
+                        switchTab(nextTab.dataset.tab, { focusTab: true });
+                    }
+                });
+            });
+
+            const nav = document.querySelector('.tab-nav');
+            if (nav) nav.addEventListener('scroll', updateTabScrollHint, { passive: true });
+            window.addEventListener('resize', updateTabScrollHint);
+            updateTabScrollHint();
+        }
+
+        function clearMessage(elementId) {
+            const box = document.getElementById(elementId);
+            if (!box) return;
+            box.textContent = '';
+        }
+
+        function setMessage(elementId, type, text) {
+            const box = document.getElementById(elementId);
+            if (!box) return;
+            box.textContent = '';
+            if (!text) return;
+            const row = document.createElement('div');
+            row.className = 'message-' + type;
+            row.textContent = text;
+            box.appendChild(row);
+        }
+
+        function formatCertDate(value) {
+            if (!value) return '-';
+            const dt = new Date(value);
+            if (Number.isNaN(dt.getTime())) return value;
+            return dt.toLocaleString('en-US', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+                hour: 'numeric',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: true
+            });
         }
         
         // ========== SSL Check ==========
@@ -1200,7 +2288,7 @@
 
             document.getElementById('sslLoading').classList.add('show');
             document.getElementById('sslCheckResults').classList.remove('show');
-            document.getElementById('sslCheckMessage').innerHTML = '';
+            clearMessage('sslCheckMessage');
 
             try {
                 const response = await fetch('/api/check-ssl', {
@@ -1209,15 +2297,19 @@
                     body: JSON.stringify({ domain: domain })
                 });
                 const data = await response.json();
-                
-                if (data.error && !data.valid) {
-                    document.getElementById('sslCheckMessage').innerHTML = '<div class="message-error">❌ ' + data.error + '</div>';
+
+                const hasCertDates = Boolean(data.valid_from || data.valid_to);
+                if (data.error && !hasCertDates) {
+                    setMessage('sslCheckMessage', 'error', '❌ ' + data.error);
                     document.getElementById('sslCheckResults').classList.remove('show');
                 } else {
                     renderSSLResults(data);
+                    if (data.error) {
+                        setMessage('sslCheckMessage', 'info', 'ℹ️ ' + data.error);
+                    }
                 }
             } catch (err) {
-                document.getElementById('sslCheckMessage').innerHTML = '<div class="message-error">❌ Lỗi kết nối: ' + err.message + '</div>';
+                setMessage('sslCheckMessage', 'error', '❌ Lỗi kết nối: ' + err.message);
             } finally {
                 document.getElementById('sslLoading').classList.remove('show');
             }
@@ -1244,8 +2336,8 @@
             }
             
             // Dates
-            document.getElementById('sslValidFrom').textContent = data.valid_from || '-';
-            document.getElementById('sslValidTo').textContent = data.valid_to || '-';
+            document.getElementById('sslValidFrom').textContent = formatCertDate(data.valid_from);
+            document.getElementById('sslValidTo').textContent = formatCertDate(data.valid_to);
             
             // Issuer
             document.getElementById('sslIssuer').textContent = data.issuer || '-';
@@ -1254,13 +2346,34 @@
             // Subject
             document.getElementById('sslSubject').textContent = data.subject || '-';
             document.getElementById('sslSubjectOrg').textContent = data.subject_org ? `Tổ chức: ${data.subject_org}` : '';
+
+            // Redirect diagnostics
+            const finalHost = data.final_host || '';
+            const finalUrl = data.final_url || '';
+            document.getElementById('sslRedirectFinal').textContent = finalHost
+                ? `Final host: ${finalHost}${finalUrl ? ' (' + finalUrl + ')' : ''}`
+                : 'Không phát hiện redirect hoặc không truy vấn được';
+
+            const chain = Array.isArray(data.redirect_chain) ? data.redirect_chain : [];
+            document.getElementById('sslRedirectChain').textContent = chain.length > 1
+                ? 'Chain: ' + chain.join(' -> ')
+                : 'Chain: -';
             
             // SAN
             const sanEl = document.getElementById('sslSAN');
+            sanEl.textContent = '';
             if (data.subject_alt_names && data.subject_alt_names.length > 0) {
-                sanEl.innerHTML = data.subject_alt_names.map(san => `<span class="san-item">${san}</span>`).join('');
+                data.subject_alt_names.forEach(san => {
+                    const tag = document.createElement('span');
+                    tag.className = 'san-item';
+                    tag.textContent = san;
+                    sanEl.appendChild(tag);
+                });
             } else {
-                sanEl.innerHTML = '<span style="color: #64748b;">Không có SAN</span>';
+                const empty = document.createElement('span');
+                empty.className = 'text-muted';
+                empty.textContent = 'Không có SAN';
+                sanEl.appendChild(empty);
             }
             
             // Serial & Version
@@ -1277,7 +2390,7 @@
 
             document.getElementById('hostLoading').classList.add('show');
             document.getElementById('hostCheckResults').classList.remove('show');
-            document.getElementById('hostCheckMessage').innerHTML = '';
+            clearMessage('hostCheckMessage');
 
             try {
                 const response = await fetch('/api/check-host', {
@@ -1286,14 +2399,17 @@
                     body: JSON.stringify({ host: host })
                 });
                 const data = await response.json();
-                
+
                 if (data.error && !data.ip) {
-                    document.getElementById('hostCheckMessage').innerHTML = '<div class="message-error">❌ ' + data.error + '</div>';
+                    setMessage('hostCheckMessage', 'error', '❌ ' + data.error);
                 } else {
                     renderHostResults(data);
+                    if (data.error) {
+                        setMessage('hostCheckMessage', 'info', 'ℹ️ ' + data.error);
+                    }
                 }
             } catch (err) {
-                document.getElementById('hostCheckMessage').innerHTML = '<div class="message-error">❌ Lỗi kết nối: ' + err.message + '</div>';
+                setMessage('hostCheckMessage', 'error', '❌ Lỗi kết nối: ' + err.message);
             } finally {
                 document.getElementById('hostLoading').classList.remove('show');
             }
@@ -1309,9 +2425,13 @@
             
             // Location
             const locEl = document.getElementById('hostLocation');
+            locEl.textContent = '';
             if (data.city || data.country) {
                 const parts = [data.city, data.region, data.country].filter(Boolean);
-                locEl.innerHTML = `<span class="location-badge">📍 ${parts.join(', ')}</span>`;
+                const badge = document.createElement('span');
+                badge.className = 'location-badge';
+                badge.textContent = '📍 ' + parts.join(', ');
+                locEl.appendChild(badge);
             } else {
                 locEl.textContent = '-';
             }
@@ -1320,6 +2440,23 @@
         }
         
         // ========== DNS Checker ==========
+        let dnsViewMode = localStorage.getItem('dns_view_mode') || 'card';
+
+        function setDnsView(mode) {
+            dnsViewMode = mode === 'compact' ? 'compact' : 'card';
+            localStorage.setItem('dns_view_mode', dnsViewMode);
+
+            const records = document.getElementById('dnsRecords');
+            if (records) {
+                records.classList.toggle('compact-view', dnsViewMode === 'compact');
+            }
+
+            const cardBtn = document.getElementById('dnsViewCardBtn');
+            const compactBtn = document.getElementById('dnsViewCompactBtn');
+            if (cardBtn) cardBtn.classList.toggle('active', dnsViewMode === 'card');
+            if (compactBtn) compactBtn.classList.toggle('active', dnsViewMode === 'compact');
+        }
+
         async function checkDNS() {
             var domain = document.getElementById('domainInput').value.trim();
             if (!domain) { alert('Vui lòng nhập tên miền'); return; }
@@ -1349,47 +2486,48 @@
 
         function renderResults(data) {
             document.getElementById('summaryDomain').textContent = data.domain;
-            
-            var prop = data.summary.propagation;
-            document.getElementById('summaryPropagation').textContent = prop;
-            if (prop !== 'N/A') {
-                var parts = prop.split('/');
-                var success = parseInt(parts[0]), total = parseInt(parts[1]);
-                document.getElementById('cardPropagation').className = 'summary-card ' + (success === total ? 'success' : (success > 0 ? 'warning' : 'error'));
-            }
+            var resolverCount = data.summary && data.summary.resolver_count ? data.summary.resolver_count : Object.keys((data.dns_records && data.dns_records.A && data.dns_records.A.servers) || {}).length;
+            document.getElementById('summaryResolvers').textContent = resolverCount + ' public resolvers';
 
             var dnssecEnabled = data.summary.dnssec_enabled;
-            document.getElementById('summaryDNSSEC').textContent = dnssecEnabled ? '✓ Enabled' : '✗ Disabled';
-            document.getElementById('cardDNSSEC').className = 'summary-card ' + (dnssecEnabled ? 'success' : 'error');
+            var summaryDNSSEC = document.getElementById('summaryDNSSEC');
+            summaryDNSSEC.textContent = dnssecEnabled ? 'Enabled' : 'Disabled';
+            summaryDNSSEC.className = 'dns-stat-value ' + (dnssecEnabled ? 'success' : 'error');
 
             var recordsHtml = '';
-            for (var type in data.dns_records) {
+            var recordTypes = Object.keys(data.dns_records || {});
+            document.getElementById('dnsRecordCountChip').textContent = recordTypes.length + ' record types';
+
+            recordTypes.forEach(function(type) {
                 var typeData = data.dns_records[type];
                 var rateParts = typeData.success_rate.split('/');
-                var successCount = parseInt(rateParts[0]), totalCount = parseInt(rateParts[1]);
+                var successCount = parseInt(rateParts[0], 10), totalCount = parseInt(rateParts[1], 10);
                 var rateClass = successCount === totalCount ? 'full' : (successCount > 0 ? 'partial' : 'none');
-                
-                var serversHtml = '<div class="record-col-header"><span>DNS Server</span><span>Resolver IP</span><span>Record Value</span></div>';
+
+                var resolverHtml = '';
                 for (var serverName in typeData.servers) {
                     var serverData = typeData.servers[serverName];
-                    var recordsStr = '';
-                    if (serverData.records && serverData.records.length > 0) {
-                        serverData.records.forEach(r => recordsStr += '<span class="record-value">' + escapeHtml(r) + '</span>');
-                    } else {
-                        recordsStr = '<span class="no-record">No record</span>';
-                    }
-                    serversHtml += '<div class="server-row"><span class="server-name">' + serverName + '</span><span class="server-ip">' + serverData.ip + '</span><div class="server-records">' + recordsStr + '</div></div>';
-                }
-                recordsHtml += '<div class="record-block"><div class="record-header"><span class="type">' + type + ' Record</span><span class="rate ' + rateClass + '">' + typeData.success_rate + '</span></div><div class="record-body">' + serversHtml + '</div></div>';
-            }
-            document.getElementById('dnsRecords').innerHTML = recordsHtml;
+                    var hasRecords = serverData.records && serverData.records.length > 0;
+                    var statusClass = serverData.status === 'success' ? 'success' : 'error';
+                    var statusIcon = serverData.status === 'success' ? '✓' : '✕';
+                    var recordsStr = hasRecords
+                        ? serverData.records.map(function(record) { return '<span class="dns-record-value">' + escapeHtml(record) + '</span>'; }).join('')
+                        : '<span class="dns-empty-value">No record</span>';
 
-            var dnssec = data.dnssec;
-            var dnssecHtml = '<div class="dnssec-status ' + (dnssec.enabled ? 'enabled' : 'disabled') + '"><div class="dnssec-icon">' + (dnssec.enabled ? '🔒' : '🔓') + '</div><div class="dnssec-text"><div class="title">' + dnssec.status + '</div><div class="desc">' + (dnssec.enabled ? 'Domain được bảo vệ bởi DNSSEC' : 'DNSSEC chưa được cấu hình') + '</div></div></div>';
-            if (dnssec.details) {
-                dnssecHtml += '<div class="dnssec-details"><div class="dnssec-row"><span class="label">DNSKEY Record</span><span class="value ' + (dnssec.details.dnskey ? 'success' : 'error') + '">' + (dnssec.details.dnskey ? '✓ Found' : '✗ Not found') + '</span></div><div class="dnssec-row"><span class="label">DS Record</span><span class="value ' + (dnssec.details.ds ? 'success' : 'error') + '">' + (dnssec.details.ds ? '✓ Found' : '✗ Not found') + '</span></div></div>';
-            }
-            document.getElementById('dnssecContent').innerHTML = dnssecHtml;
+                    resolverHtml += '<div class="dns-resolver-card ' + statusClass + '">' +
+                        '<div class="dns-resolver-top"><div><div class="dns-resolver-name">' + escapeHtml(serverName) + '</div><div class="dns-resolver-ip">' + escapeHtml(serverData.ip) + '</div></div><span class="dns-resolver-status ' + statusClass + '">' + statusIcon + '</span></div>' +
+                        '<div class="dns-resolver-values">' + recordsStr + '</div>' +
+                    '</div>';
+                }
+
+                recordsHtml += '<div class="dns-record-card">' +
+                    '<div class="dns-record-header"><div><div class="dns-record-title">' + type + ' Record</div><div class="dns-record-subtitle">Parallel lookup on public resolvers</div></div><span class="dns-rate ' + rateClass + '">' + typeData.success_rate + '</span></div>' +
+                    '<div class="dns-record-body"><div class="dns-resolver-grid">' + resolverHtml + '</div></div>' +
+                '</div>';
+            });
+            document.getElementById('dnsRecords').innerHTML = recordsHtml;
+            setDnsView(dnsViewMode);
+
             document.getElementById('results').classList.add('show');
         }
 
@@ -2236,13 +3374,14 @@
         let freeSslLogCursor = 0;
         let freeSslCurrentRunId = null;
         let freeSslCurrentOrderId = null;
+        let freeSslSidebarLastFocus = null;
 
         function freeSslRenderDomainProgress(domains) {
             if (!Array.isArray(domains) || domains.length === 0) return;
             const html = domains.map(d => {
                 const st = (d.status || 'pending').toLowerCase();
                 const cls = st === 'valid' ? 'ok' : (st === 'invalid' ? 'fail' : 'pending');
-                return `<div class="check-result-row ${cls}"><div><strong>${d.domain || '-'}</strong><br><span style="font-size:0.88rem;">Authorization: ${st}</span></div></div>`;
+                return `<div class="check-result-row ${cls}"><div><strong>${d.domain || '-'}</strong><br><span class="small-line">Authorization: ${st}</span></div></div>`;
             }).join('');
             document.getElementById('freesslCheckResults').innerHTML = html;
         }
@@ -2407,9 +3546,85 @@
             freeSslShowMessage('Đã khôi phục SSL ' + statusText + ' sau khi tải lại trang.', 'info');
         }
 
+        function freeSslGetFocusableElements(container) {
+            if (!container) return [];
+            return Array.from(container.querySelectorAll('a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])'))
+                .filter(el => !el.hasAttribute('hidden'));
+        }
+
+        function freeSslHandleSidebarKeydown(event) {
+            const sidebar = document.getElementById('freesslStorageSidebar');
+            if (!sidebar || !sidebar.classList.contains('show')) return;
+
+            if (event.key === 'Escape') {
+                event.preventDefault();
+                freeSslToggleStorage(false);
+                return;
+            }
+
+            if (event.key !== 'Tab') return;
+            const focusables = freeSslGetFocusableElements(sidebar);
+            if (focusables.length === 0) return;
+
+            const first = focusables[0];
+            const last = focusables[focusables.length - 1];
+            const active = document.activeElement;
+
+            if (event.shiftKey && active === first) {
+                event.preventDefault();
+                last.focus();
+            } else if (!event.shiftKey && active === last) {
+                event.preventDefault();
+                first.focus();
+            }
+        }
+
+        function freeSslPositionStorageModal() {
+            const sidebar = document.getElementById('freesslStorageSidebar');
+            if (!sidebar) return;
+
+            const nav = document.querySelector('.tab-nav');
+            let modalTop = 92;
+
+            if (nav) {
+                const rect = nav.getBoundingClientRect();
+                modalTop = Math.max(72, Math.round(rect.bottom + 10));
+            }
+
+            sidebar.style.setProperty('--storage-modal-top', modalTop + 'px');
+        }
+
         function freeSslToggleStorage(show) {
-            document.getElementById('freesslStorageSidebar').classList.toggle('show', !!show);
-            document.getElementById('freesslStorageBackdrop').classList.toggle('show', !!show);
+            const shouldShow = !!show;
+            const sidebar = document.getElementById('freesslStorageSidebar');
+            const backdrop = document.getElementById('freesslStorageBackdrop');
+            const opener = document.getElementById('freesslOpenSidebarBtn');
+            if (!sidebar || !backdrop) return;
+
+            sidebar.classList.toggle('show', shouldShow);
+            backdrop.classList.toggle('show', shouldShow);
+            sidebar.setAttribute('aria-hidden', shouldShow ? 'false' : 'true');
+            backdrop.setAttribute('aria-hidden', shouldShow ? 'false' : 'true');
+            document.body.classList.toggle('no-scroll', shouldShow);
+
+            if (shouldShow) {
+                freeSslPositionStorageModal();
+                freeSslSidebarLastFocus = document.activeElement;
+                document.removeEventListener('keydown', freeSslHandleSidebarKeydown);
+                document.addEventListener('keydown', freeSslHandleSidebarKeydown);
+                const focusables = freeSslGetFocusableElements(sidebar);
+                if (focusables.length > 0) {
+                    setTimeout(() => focusables[0].focus(), 0);
+                }
+            } else {
+                document.removeEventListener('keydown', freeSslHandleSidebarKeydown);
+                const fallback = opener || document.querySelector('.tab-btn.active');
+                const focusTarget = freeSslSidebarLastFocus && document.contains(freeSslSidebarLastFocus)
+                    ? freeSslSidebarLastFocus
+                    : fallback;
+                if (focusTarget) focusTarget.focus();
+                freeSslSidebarLastFocus = null;
+            }
         }
 
         function freeSslUpdateProviderNote() {
@@ -2489,7 +3704,7 @@
             if (checkResults.length > 0) {
                 document.getElementById('freesslCheckResults').innerHTML = checkResults.map(r => `
                     <div class="check-result-row ${r.ok ? 'ok' : 'fail'}">
-                        <div><strong>${r.domain}</strong><br><span style="font-size:0.88rem;">${r.detail}</span></div>
+                        <div><strong>${r.domain}</strong><br><span class="small-line">${r.detail}</span></div>
                     </div>
                 `).join('');
             } else {
@@ -2694,10 +3909,10 @@
             const provName = providerNames[provider] || provider;
             let html = '';
             challenges.forEach((ch, idx) => {
-                html += `<div class="challenge-info-box" style="margin-bottom:12px;">
+                html += `<div class="challenge-info-box">
                     <div class="challenge-info-header">
                         <span>${type === 'dns-01' ? '🌐 DNS Challenge' : '📁 HTTP Challenge'} — <strong>${ch.domain}</strong></span>
-                        <span class="freessl-storage-badge" style="background:#e0f2fe;color:#0369a1;">🏪 ${provName}</span>
+                        <span class="freessl-storage-badge provider-badge">🏪 ${provName}</span>
                     </div>
                     <div class="challenge-info-body">`;
 
@@ -2721,7 +3936,7 @@
                                 <button class="copy-btn-small" onclick="freeSslCopyText('dns_val_${idx}')">📋 Copy</button>
                             </div>
                         </div>
-                        <div class="message-info" style="margin-top:10px;font-size:0.85rem;">
+                        <div class="message-info challenge-note">
                             📌 Vào nhà cung cấp DNS, thêm bản ghi TXT với tên <code>${ch.dns_name}</code> và giá trị trên.
                             DNS có thể mất 1–5 phút để lan truyền.
                         </div>`;
@@ -2741,7 +3956,7 @@
                                 <button class="copy-btn-small" onclick="freeSslCopyText('file_content_${idx}')">📋 Copy</button>
                             </div>
                         </div>
-                        <div class="message-info" style="margin-top:10px;font-size:0.85rem;">
+                        <div class="message-info challenge-note">
                             📌 Tạo file tại đường dẫn trên webserver với đúng nội dung. File phải truy cập được từ internet (HTTP, không redirect sang HTTPS).
                         </div>`;
                 }
@@ -2787,7 +4002,7 @@
                 data.results.forEach(r => {
                     if (r.ok) okCount += 1;
                     html += `<div class="check-result-row ${r.ok ? 'ok' : 'fail'}">
-                        <div><strong>${r.domain}</strong><br><span style="font-size:0.88rem;">${r.detail}</span></div>
+                        <div><strong>${r.domain}</strong><br><span class="small-line">${r.detail}</span></div>
                     </div>`;
                 });
                 document.getElementById('freesslCheckResults').innerHTML = html;
@@ -2998,6 +4213,12 @@
                 input.scrollIntoView({ behavior: 'smooth', block: 'center' });
             }
         }
+
+        switchTab(document.querySelector('.tab-btn.active')?.dataset.tab || 'dns');
+        initTabNavigationA11y();
+        setDnsView(dnsViewMode);
+        freeSslPositionStorageModal();
+        window.addEventListener('resize', freeSslPositionStorageModal);
 
         freeSslLoadStoredList();
         freeSslRestoreActiveFromStorage();
