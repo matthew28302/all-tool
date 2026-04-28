@@ -680,6 +680,8 @@
         .host-info-card .card-title { font-size: 0.8rem; color: #64748b; text-transform: uppercase; margin-bottom: 8px; letter-spacing: 0.5px; }
         .host-info-card .card-value { font-size: 1.1rem; font-weight: 600; color: #1e293b; word-break: break-all; }
         .host-info-card .card-value.highlight { color: #f59e0b; }
+        .host-info-card .card-value.success { color: #16a34a; }
+        .host-info-card .card-value.error { color: #dc2626; }
         .host-info-card .card-value.mono { font-family: monospace; font-size: 1rem; }
         .host-info-card .card-sub { font-size: 0.85rem; color: #64748b; margin-top: 4px; }
         
@@ -916,6 +918,19 @@
             border-radius: 8px;
             margin-bottom: 8px;
             font-size: 0.9rem;
+        }
+        .ssl-basic-row {
+            display: grid;
+            grid-template-columns: 92px minmax(0, 1fr);
+            align-items: center;
+            gap: 12px;
+        }
+        .ssl-basic-row strong {
+            white-space: nowrap;
+        }
+        .ssl-basic-row .ssl-basic-value {
+            font-weight: 600;
+            text-align: left;
         }
         .check-result-row.ok { background: #dcfce7; color: #166534; }
         .check-result-row.fail { background: #fee2e2; color: #991b1b; }
@@ -1676,9 +1691,15 @@
                             <input type="text" class="dns-input" id="domainInput"
                                    placeholder="Nhập tên miền (vd: google.com)"
                                    onkeypress="if(event.key==='Enter')checkDNS()">
-                            <div class="dns-actions">
-                                <button class="btn btn-primary" onclick="checkDNS()">🔍 Kiểm tra</button>
-                                <button class="btn btn-secondary" onclick="clearCache()">🗑️ Clear</button>
+                            <div style="display:flex;gap:8px;align-items:center;">
+                                <div class="dns-view-switch" role="group" aria-label="DNS mode" style="margin-right:6px;">
+                                    <button type="button" id="dnsModeDetailBtnInline" class="dns-view-btn active" onclick="setDnsMode('detail')">Detail</button>
+                                    <button type="button" id="dnsModeBasicBtnInline" class="dns-view-btn" onclick="setDnsMode('basic')">Basic</button>
+                                </div>
+                                <div class="dns-actions">
+                                    <button class="btn btn-primary" onclick="checkDNS()">🔍 Kiểm tra</button>
+                                    <button class="btn btn-secondary" onclick="clearCache()">🗑️ Clear</button>
+                                </div>
                             </div>
                         </div>
 
@@ -1721,7 +1742,8 @@
                         <div class="dns-section-head">
                             <div class="section-title">📋 DNS Records</div>
                             <div class="dns-head-actions">
-                                <div class="dns-section-chip" id="dnsRecordCountChip">0 record types</div>
+                                    <div class="dns-section-chip" id="dnsRecordCountChip">0 record types</div>
+                                    <!-- mode toggle moved inline next to input -->
                                 <div class="dns-view-switch" role="group" aria-label="DNS view mode">
                                     <button type="button" id="dnsViewCardBtn" class="dns-view-btn active" onclick="setDnsView('card')">Card</button>
                                     <button type="button" id="dnsViewCompactBtn" class="dns-view-btn" onclick="setDnsView('compact')">Compact</button>
@@ -1771,9 +1793,9 @@
                     <div class="ssl-info-card full">
                         <div class="card-title">DATE CERT</div>
                         <div class="cert-date-grid">
-                            <div class="cert-date-label">Issued On</div>
+                            <div class="cert-date-label">Valid From :</div>
                             <div class="cert-date-value" id="sslValidFrom">-</div>
-                            <div class="cert-date-label">Expires On</div>
+                            <div class="cert-date-label">Valid To   :</div>
                             <div class="cert-date-value" id="sslValidTo">-</div>
                         </div>
                     </div>
@@ -2269,16 +2291,10 @@
             if (!value) return '-';
             const dt = new Date(value);
             if (Number.isNaN(dt.getTime())) return value;
-            return dt.toLocaleString('en-US', {
-                weekday: 'long',
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric',
-                hour: 'numeric',
-                minute: '2-digit',
-                second: '2-digit',
-                hour12: true
-            });
+            const day = String(dt.getDate()).padStart(2, '0');
+            const month = String(dt.getMonth() + 1).padStart(2, '0');
+            const year = dt.getFullYear();
+            return `${day}/${month}/${year}`;
         }
         
         // ========== SSL Check ==========
@@ -2441,6 +2457,32 @@
         
         // ========== DNS Checker ==========
         let dnsViewMode = localStorage.getItem('dns_view_mode') || 'card';
+        let dnsMode = localStorage.getItem('dns_mode') || 'detail';
+
+        function setDnsMode(mode) {
+            dnsMode = mode === 'basic' ? 'basic' : 'detail';
+            localStorage.setItem('dns_mode', dnsMode);
+            // update any toggle buttons (inline and header versions)
+            const ids = [
+                ['dnsModeDetailBtn', 'dnsModeBasicBtn'],
+                ['dnsModeDetailBtnInline', 'dnsModeBasicBtnInline']
+            ];
+            ids.forEach(pair => {
+                const detailBtn = document.getElementById(pair[0]);
+                const basicBtn = document.getElementById(pair[1]);
+                if (detailBtn) detailBtn.classList.toggle('active', dnsMode === 'detail');
+                if (basicBtn) basicBtn.classList.toggle('active', dnsMode === 'basic');
+            });
+
+            // show/hide record type checkboxes
+            const recordTypesEl = document.getElementById('recordTypes');
+            if (recordTypesEl) {
+                recordTypesEl.style.display = dnsMode === 'basic' ? 'none' : '';
+            }
+        }
+
+        // initialize UI to stored mode
+        setDnsMode(dnsMode);
 
         function setDnsView(mode) {
             dnsViewMode = mode === 'compact' ? 'compact' : 'card';
@@ -2463,25 +2505,84 @@
 
             var recordTypes = [];
             document.querySelectorAll('#recordTypes input:checked').forEach(cb => recordTypes.push(cb.value));
+            // If basic mode is active, override to use a compact set: A, TXT, MX, SOA
+            if (dnsMode === 'basic') {
+                recordTypes = ['A','TXT','MX','SOA','NS'];
+            }
             if (recordTypes.length === 0) { alert('Vui lòng chọn ít nhất 1 loại record'); return; }
 
             document.getElementById('loading').classList.add('show');
             document.getElementById('results').classList.remove('show');
 
             try {
-                var response = await fetch('/api/check-dns', {
+                let endpoint = '/api/check-dns';
+                let body = { domain: domain, record_types: recordTypes };
+                if (dnsMode === 'basic') {
+                    endpoint = '/api/check-dns-basic';
+                    // send only requested types (basic supports subset)
+                    body = { domain: domain, record_types: recordTypes };
+                }
+
+                var response = await fetch(endpoint, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ domain: domain, record_types: recordTypes })
+                    body: JSON.stringify(body)
                 });
                 var data = await response.json();
                 if (data.error) { alert('Lỗi: ' + data.error); return; }
-                renderResults(data);
+                if (dnsMode === 'basic') renderBasicResults(data); else renderResults(data);
             } catch (err) {
                 alert('Lỗi kết nối: ' + err.message);
             } finally {
                 document.getElementById('loading').classList.remove('show');
             }
+        }
+
+        function renderBasicResults(data) {
+            document.getElementById('summaryDomain').textContent = data.domain || '-';
+            document.getElementById('summaryResolvers').textContent = (data.resolver_used && data.resolver_used.ip) ? data.resolver_used.name + ' (' + data.resolver_used.ip + ')' : 'Single resolver';
+
+            var dnssecEnabled = data.dnssec && data.dnssec.enabled;
+            var summaryDNSSEC = document.getElementById('summaryDNSSEC');
+            summaryDNSSEC.textContent = dnssecEnabled ? 'Enabled' : 'Disabled';
+            summaryDNSSEC.className = 'dns-stat-value ' + (dnssecEnabled ? 'success' : 'error');
+
+            // Build cards for each returned record type
+            var records = data.records || {};
+            var recordsHtml = '';
+            var types = Object.keys(records);
+            document.getElementById('dnsRecordCountChip').textContent = types.length + ' record types';
+
+            types.forEach(function(type) {
+                var r = records[type] || { status: 'no_record', record: null };
+                var recList = Array.isArray(r.records) ? r.records : (r.record ? [r.record] : []);
+                var recMarkup = recList.length > 0
+                    ? recList.map(function(item) {
+                        return '<span class="dns-record-value">' + escapeHtml(String(item)) + '</span>';
+                    }).join('')
+                    : '<span class="dns-empty-value">No record</span>';
+
+                recordsHtml += '<div class="dns-record-card">' +
+                    '<div class="dns-record-header"><div><div class="dns-record-title">' + escapeHtml(type) + ' (Basic)</div><div class="dns-record-subtitle">Representative record from single resolver</div></div><span class="dns-rate ' + (r.status === 'success' ? 'full' : 'none') + '">' + (r.status === 'success' ? 'OK' : 'No') + '</span></div>' +
+                    '<div class="dns-record-body"><div style="padding:12px;">' +
+                    '<div class="dns-resolver-values">' + recMarkup + '</div>' +
+                    '</div></div></div>';
+            });
+
+            // SSL summary card (basic)
+            var ssl = data.ssl || {};
+            var sslHtml = '<div class="dns-record-card">' +
+                '<div class="dns-record-header"><div><div class="dns-record-title">SSL (Basic)</div><div class="dns-record-subtitle">Issuer & Expiry (quick probe)</div></div><span class="dns-rate ' + (ssl.days_remaining>0 ? 'full' : 'none') + '">' + (ssl.days_remaining!=null ? ssl.days_remaining + 'd' : '-') + '</span></div>' +
+                '<div class="dns-record-body"><div style="padding:12px;">' +
+                '<div class="check-result-row ssl-basic-row ' + (ssl.issuer ? 'ok' : 'fail') + '"><strong>Issuer:</strong><span class="ssl-basic-value">' + escapeHtml(ssl.issuer || '-') + '</span></div>' +
+                '<div class="check-result-row ssl-basic-row ' + (ssl.valid_from ? 'ok' : 'fail') + '"><strong>Valid From:</strong><span class="ssl-basic-value">' + (ssl.valid_from ? formatCertDate(ssl.valid_from) : '-') + '</span></div>' +
+                '<div class="check-result-row ssl-basic-row ' + (ssl.valid_to ? 'ok' : 'fail') + '"><strong>Valid To:</strong><span class="ssl-basic-value">' + (ssl.valid_to ? formatCertDate(ssl.valid_to) : '-') + '</span></div>' +
+                (ssl.error ? ('<div class="check-result-row fail">Error: ' + escapeHtml(ssl.error) + '</div>') : '') +
+                '</div></div></div>';
+
+            document.getElementById('dnsRecords').innerHTML = recordsHtml + sslHtml;
+            setDnsView(dnsViewMode);
+            document.getElementById('results').classList.add('show');
         }
 
         function renderResults(data) {

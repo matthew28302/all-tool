@@ -351,6 +351,108 @@ def api_check_dns():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route('/api/check-dns-basic', methods=['POST'])
+def api_check_dns_basic():
+    """Quick DNS basic mode: query a single reliable resolver (Google) for A/MX/TXT,
+    include a fast DNSSEC check and a lightweight SSL probe (issuer + validity).
+    Returns only one representative record per type to keep it fast.
+    """
+    try:
+        data = request.get_json(silent=True) or {}
+        domain = data.get('domain', '').strip().lower()
+        # Basic mode default record types: A, TXT, MX, SOA, NS
+        record_types = data.get('record_types', ['A', 'TXT', 'MX', 'SOA', 'NS'])
+
+        if not domain:
+            return jsonify({"error": "Domain is required"}), 400
+
+        domain = domain.replace('http://', '').replace('https://', '').split('/')[0]
+
+        # Limit to allowed record types
+        valid_types = [rt for rt in record_types if rt in RECORD_TYPES]
+        if not valid_types:
+            valid_types = ['A', 'TXT', 'MX', 'SOA', 'NS']
+
+        # Use Google's DNS-over-HTTPS API to fetch a single authoritative-looking answer
+        resolver_ip = '8.8.8.8'
+        records_out = {}
+        for rt in valid_types:
+            try:
+                # Google's DoH endpoint
+                url = 'https://dns.google/resolve'
+                params = {'name': domain, 'type': rt}
+                resp = requests.get(url, params=params, timeout=4)
+                if resp.status_code == 200:
+                    j = resp.json()
+                    answers = []
+                    if 'Answer' in j and isinstance(j['Answer'], list) and len(j['Answer']) > 0:
+                        for answer_item in j['Answer']:
+                            data_value = answer_item.get('data')
+                            if data_value is not None:
+                                answers.append(data_value)
+                    if answers:
+                        records_out[rt] = {"status": "success", "records": answers}
+                    else:
+                        records_out[rt] = {"status": "no_record", "records": []}
+                else:
+                    records_out[rt] = {"status": "no_record", "records": []}
+            except Exception:
+                records_out[rt] = {"status": "no_record", "records": []}
+
+        # Fast DNSSEC check
+        dnssec = check_dnssec_fast(domain)
+
+        # Quick SSL probe (issuer + valid_from/valid_to)
+        ssl_info = {
+            "issuer": None,
+            "valid_from": None,
+            "valid_to": None,
+            "days_remaining": None,
+            "error": None
+        }
+        try:
+            ctx = ssl.create_default_context()
+            ctx.check_hostname = False
+            ctx.verify_mode = ssl.CERT_NONE
+            cert_der = None
+            try:
+                with socket.create_connection((domain, 443), timeout=6) as sock:
+                    with ctx.wrap_socket(sock, server_hostname=domain) as ssock:
+                        cert_der = ssock.getpeercert(binary_form=True)
+            except Exception as e:
+                cert_der = None
+
+            if cert_der:
+                cert_obj = x509.load_der_x509_certificate(cert_der, default_backend())
+                issuer_cn = cert_obj.issuer.get_attributes_for_oid(NameOID.COMMON_NAME)
+                issuer_org = cert_obj.issuer.get_attributes_for_oid(NameOID.ORGANIZATION_NAME)
+                valid_from = getattr(cert_obj, 'not_valid_before_utc', cert_obj.not_valid_before.replace(tzinfo=timezone.utc))
+                valid_to = getattr(cert_obj, 'not_valid_after_utc', cert_obj.not_valid_after.replace(tzinfo=timezone.utc))
+                now_utc = datetime.now(timezone.utc)
+
+                ssl_info.update({
+                    "issuer": issuer_cn[0].value if issuer_cn else (issuer_org[0].value if issuer_org else 'Unknown'),
+                    "valid_from": valid_from.isoformat(),
+                    "valid_to": valid_to.isoformat(),
+                    "days_remaining": int((valid_to - now_utc).total_seconds() // 86400)
+                })
+        except Exception as e:
+            ssl_info["error"] = str(e)
+
+        result = {
+            "domain": domain,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "records": records_out,
+            "dnssec": dnssec,
+            "ssl": ssl_info,
+            "resolver_used": {"name": "Google Public DNS", "ip": resolver_ip}
+        }
+
+        return jsonify(result), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route('/api/record-types', methods=['GET'])
 def api_record_types():
     return jsonify({"record_types": RECORD_TYPES}), 200
@@ -636,7 +738,7 @@ def api_check_host():
                 return ptr or None
             except Exception:
                 return None
-        
+
         try:
             if is_ip:
                 result["ip"] = host
