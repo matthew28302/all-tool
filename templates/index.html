@@ -2706,6 +2706,14 @@
         }
 
         function processFullBundle(files) {
+            function normalizePemText(text) {
+                return String(text || '')
+                    .replace(/\r\n/g, '\n')
+                    .replace(/\r/g, '\n')
+                    .replace(/\n{3,}/g, '\n\n')
+                    .trim();
+            }
+
             const certFiles = [];
             for (const [filename, content] of Object.entries(files)) {
                 if (typeof content === 'string' && content.includes('BEGIN CERTIFICATE')) {
@@ -2719,7 +2727,7 @@
 
             for (const [filename, content] of certFiles) {
                 const matches = content.match(certRegex) || [];
-                matches.forEach(pem => extracted.push({ pem: pem.trim(), filename }));
+                matches.forEach(pem => extracted.push({ pem: normalizePemText(pem), filename }));
             }
 
             console.log('Tổng số đoạn cert tách được:', extracted.length);
@@ -2885,9 +2893,9 @@
             console.log('Bundle certs selected:', finalList.slice(1).map(c => c.subjectCN || c.subjectDN));
             console.log('Bundle có', finalList.length, 'đoạn cert');
 
-            const bundle = finalList.map(c => c.pem).join('\n').trim();
-            const certPem = leaf.pem;
-            const caBundlePem = finalList.slice(1).map(c => c.pem).join('\n').trim();
+            const bundle = normalizePemText(finalList.map(c => c.pem).join('\n'));
+            const certPem = normalizePemText(leaf.pem);
+            const caBundlePem = normalizePemText(finalList.slice(1).map(c => c.pem).join('\n'));
 
             return {
                 all: bundle,
@@ -2956,7 +2964,10 @@
         }
 
         function copyTextToClipboard(text, successMessage) {
-            const value = text || '';
+            const value = String(text || '')
+                .replace(/\r\n/g, '\n')
+                .replace(/\r/g, '\n')
+                .trim();
             if (!value) {
                 showSSLMessage('❌ Không có dữ liệu để copy!', 'error');
                 return;
