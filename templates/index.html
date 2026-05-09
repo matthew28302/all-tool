@@ -1964,7 +1964,9 @@
                     <h3>
                         Certificate Bundle
                         <div class="btn-group">
-                            <button class="btn btn-success" onclick="copyToClipboard('bundleOutput')">📋 Copy</button>
+                            <button class="btn btn-secondary" onclick="copySslBundlePart('cert')">📄 Copy Cert</button>
+                            <button class="btn btn-secondary" onclick="copySslBundlePart('bundle')">📚 Copy Bundle</button>
+                            <button class="btn btn-success" onclick="copySslBundlePart('all')">📋 Copy All</button>
                             <button class="btn btn-info" onclick="downloadBundle()">⬇️ Download</button>
                         </div>
                     </h3>
@@ -2645,6 +2647,7 @@
         const generateBtn = document.getElementById('generateBtn');
 
         let currentDomain = '', currentBundle = '', currentZipFilename = '', currentOriginalFiles = {};
+        window.sslBundleParts = { cert: '', bundle: '', all: '' };
 
         privateKeyInput.addEventListener('input', () => { generateBtn.disabled = !privateKeyInput.value.trim() || !currentBundle; });
 
@@ -2662,6 +2665,7 @@
             if (!file.name.endsWith('.zip')) { showSSLMessage('Vui lòng chọn file ZIP!', 'error'); return; }
 
             currentBundle = ''; currentDomain = ''; currentZipFilename = ''; currentOriginalFiles = {};
+            window.sslBundleParts = { cert: '', bundle: '', all: '' };
             bundleOutput.value = ''; privateKeyInput.value = ''; generateBtn.disabled = true;
             document.getElementById('additionalResults').innerHTML = '';
             
@@ -2682,12 +2686,17 @@
                     }
                 }
 
-                let bundle = processFullBundle(files);
-                if (bundle) {
-                    currentBundle = bundle;
-                    bundleOutput.value = bundle;
+                const bundleParts = processFullBundle(files);
+                if (bundleParts) {
+                    currentBundle = bundleParts.all;
+                    bundleOutput.value = bundleParts.all;
+                    window.sslBundleParts = {
+                        cert: bundleParts.cert,
+                        bundle: bundleParts.bundle,
+                        all: bundleParts.all
+                    };
                     sslResultArea.classList.add('show');
-                    showSSLMessage('✅ Xử lý thành công! Tìm thấy ' + (bundle.match(/BEGIN CERTIFICATE/g) || []).length + ' certificates.', 'success');
+                    showSSLMessage('✅ Xử lý thành công! Tìm thấy ' + (bundleParts.all.match(/BEGIN CERTIFICATE/g) || []).length + ' certificates.', 'success');
                 } else {
                     showSSLMessage('❌ Không tìm thấy file certificate hợp lệ!', 'error');
                 }
@@ -2697,8 +2706,12 @@
         }
 
         function processFullBundle(files) {
-            const certFiles = Object.entries(files)
-                .filter(([_, content]) => typeof content === 'string' && content.includes('BEGIN CERTIFICATE'));
+            const certFiles = [];
+            for (const [filename, content] of Object.entries(files)) {
+                if (typeof content === 'string' && content.includes('BEGIN CERTIFICATE')) {
+                    certFiles.push([filename, content]);
+                }
+            }
             console.log('Tất cả file chứng chỉ:', certFiles.map(([n]) => n));
 
             const certRegex = /-----BEGIN CERTIFICATE-----[\s\S]*?-----END CERTIFICATE-----/g;
@@ -2784,6 +2797,7 @@
                     preferredHosts.add('www.' + base);
                 }
             }
+            const preferredHostList = Array.from(preferredHosts);
 
             const issuerSet = new Set(parsedCerts.map(c => c.issuerDN));
             const subjectSet = new Set(parsedCerts.map(c => c.subjectDN));
@@ -2797,8 +2811,8 @@
                 if (subjectSet.has(c.issuerDN) && c.subjectDN !== c.issuerDN) score += 1; // có parent trong tập cert
 
                 const names = certNames(c);
-                if (preferredHosts.size > 0) {
-                    const hasPreferredName = Array.from(preferredHosts).some(host => names.some(name => wildcardMatches(name, host) || wildcardMatches(host, name)));
+                if (preferredHostList.length > 0) {
+                    const hasPreferredName = preferredHostList.some(host => names.some(name => wildcardMatches(name, host) || wildcardMatches(host, name)));
                     if (hasPreferredName) score += 8;
                 }
 
@@ -2871,7 +2885,15 @@
             console.log('Bundle certs selected:', finalList.slice(1).map(c => c.subjectCN || c.subjectDN));
             console.log('Bundle có', finalList.length, 'đoạn cert');
 
-            return finalList.map(c => c.pem).join('\n').trim();
+            const bundle = finalList.map(c => c.pem).join('\n').trim();
+            const certPem = leaf.pem;
+            const caBundlePem = finalList.slice(1).map(c => c.pem).join('\n').trim();
+
+            return {
+                all: bundle,
+                cert: certPem,
+                bundle: caBundlePem,
+            };
         }
 
         function removeDuplicateCerts(bundle) {
@@ -2933,11 +2955,46 @@
             return chain;
         }
 
-        function copyToClipboard(elementId) {
-            const el = document.getElementById(elementId);
-            el.select();
-            document.execCommand('copy');
-            showSSLMessage('✅ Đã copy vào clipboard!', 'success');
+        function copyTextToClipboard(text, successMessage) {
+            const value = text || '';
+            if (!value) {
+                showSSLMessage('❌ Không có dữ liệu để copy!', 'error');
+                return;
+            }
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(value).then(() => {
+                    showSSLMessage(successMessage || '✅ Đã copy vào clipboard!', 'success');
+                }).catch(() => {
+                    showSSLMessage('❌ Không thể copy dữ liệu!', 'error');
+                });
+                return;
+            }
+
+            const textarea = document.createElement('textarea');
+            textarea.value = value;
+            textarea.style.position = 'fixed';
+            textarea.style.left = '-9999px';
+            document.body.appendChild(textarea);
+            textarea.select();
+            try {
+                document.execCommand('copy');
+                showSSLMessage(successMessage || '✅ Đã copy vào clipboard!', 'success');
+            } catch (err) {
+                showSSLMessage('❌ Không thể copy dữ liệu!', 'error');
+            } finally {
+                document.body.removeChild(textarea);
+            }
+        }
+
+        function copySslBundlePart(part) {
+            const parts = window.sslBundleParts || { cert: '', bundle: '', all: '' };
+            if (part === 'cert') {
+                copyTextToClipboard(parts.cert, '✅ Đã copy Certificate!');
+            } else if (part === 'bundle') {
+                copyTextToClipboard(parts.bundle, '✅ Đã copy CA Bundle!');
+            } else {
+                copyTextToClipboard(parts.all, '✅ Đã copy Cert + CA Bundle!');
+            }
         }
 
         function downloadBundle() {
