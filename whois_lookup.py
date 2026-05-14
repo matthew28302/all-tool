@@ -10,17 +10,24 @@ from __future__ import annotations
 import argparse
 import html
 import json
+import os
 import re
 import sys
-from dataclasses import dataclass
+import threading
+import time
+from dataclasses import dataclass, replace
 from typing import Any, Optional
 from urllib import error as urlerror
 from urllib import parse as urlparse
 from urllib import request as urlrequest
 
-DEFAULT_TIMEOUT = 20
+DEFAULT_TIMEOUT = 12
+WHOIS_CACHE_TTL_SECONDS = int(os.environ.get('WHOIS_CACHE_TTL_SECONDS', '15'))
 WHOIS_CHECK_URL = "https://whois.pavietnam.net/check/{domain}/"
 WHOIS_API_URL = "https://whois.pavietnam.net/whois.php"
+
+_CACHE_LOCK = threading.Lock()
+_WHOIS_CACHE: dict[str, tuple[float, WhoisResult]] = {}
 
 
 @dataclass
@@ -52,6 +59,24 @@ def to_ascii_domain(domain: str) -> str:
         return cleaned.encode("idna").decode("ascii")
     except UnicodeError as exc:
         raise ValueError(f"Invalid domain (IDNA encode failed): {domain}") from exc
+
+
+def _cache_get(cache_key: str) -> Optional[WhoisResult]:
+    now = time.time()
+    with _CACHE_LOCK:
+        cached = _WHOIS_CACHE.get(cache_key)
+        if not cached:
+            return None
+        created_at, result = cached
+        if now - created_at > WHOIS_CACHE_TTL_SECONDS:
+            del _WHOIS_CACHE[cache_key]
+            return None
+        return result
+
+
+def _cache_set(cache_key: str, result: WhoisResult) -> None:
+    with _CACHE_LOCK:
+        _WHOIS_CACHE[cache_key] = (time.time(), result)
 
 
 def fetch_html(url: str, timeout: int = DEFAULT_TIMEOUT) -> tuple[Optional[str], Optional[str]]:
@@ -119,6 +144,41 @@ def _strip_tags(text: str) -> str:
     return re.sub(r"\s+", " ", text).strip()
 
 
+def _normalize_status_text(raw_value: Any) -> Optional[str]:
+    if not raw_value:
+        return None
+
+    if isinstance(raw_value, (list, tuple, set)):
+        parts: list[str] = []
+        for item in raw_value:
+            normalized = _normalize_status_text(item)
+            if normalized:
+                parts.extend([part.strip() for part in normalized.split(",") if part.strip()])
+        if parts:
+            return ", ".join(dict.fromkeys(parts))
+        return None
+
+    text = html.unescape(raw_value)
+    text = re.sub(r"<br\s*/?>", "\n", text, flags=re.IGNORECASE)
+    text = re.sub(r"<[^>]+>", "", text)
+
+    statuses: list[str] = []
+    for line in text.splitlines():
+        cleaned = line.strip()
+        if not cleaned:
+            continue
+        token = cleaned.split()[0].strip()
+        if not token or token.lower().startswith("http"):
+            continue
+        statuses.append(token)
+
+    if statuses:
+        return ", ".join(dict.fromkeys(statuses))
+
+    fallback = text.strip()
+    return fallback or None
+
+
 def _extract_field_value(page_html: str, field_class: str) -> Optional[str]:
     pattern = (
         rf'<div\s+class="fl\s+left\s+{re.escape(field_class)}"[^>]*>.*?</div>'
@@ -174,10 +234,10 @@ def apply_registrarinfo_payload(result: WhoisResult, payload: dict[str, Any]) ->
     abuse_phone_value = registrar_info.get("Registrar Abuse Contact Phone")
     registry_lock_value = registrar_info.get("Registry Lock")
 
-    if isinstance(status_value, str) and status_value.strip():
-        result.status_line = status_value.strip()
-    if isinstance(domain_status_value, str) and domain_status_value.strip():
-        result.domain_status = domain_status_value.strip()
+    if isinstance(status_value, (str, list, tuple, set)) and status_value:
+        result.status_line = _normalize_status_text(status_value)
+    if isinstance(domain_status_value, (str, list, tuple, set)) and domain_status_value:
+        result.domain_status = _normalize_status_text(domain_status_value)
         if not result.status_line:
             result.status_line = result.domain_status
     if isinstance(owner_value, str) and owner_value.strip():
@@ -219,7 +279,7 @@ def apply_registrarinfo_payload(result: WhoisResult, payload: dict[str, Any]) ->
 
 
 def parse_pavietnam_html(domain: str, source_url: str, page_html: str) -> WhoisResult:
-    status_line = _extract_field_value(page_html, "status")
+    status_line = _normalize_status_text(_extract_field_value(page_html, "status"))
     registrant_name = _extract_field_value(page_html, "owner_name")
     registrar_name = _extract_field_value(page_html, "other_registrar_name")
     if not registrar_name:
@@ -249,6 +309,14 @@ def parse_pavietnam_html(domain: str, source_url: str, page_html: str) -> WhoisR
 def lookup_domain(domain: str, include_html: bool) -> WhoisResult:
     ascii_domain = to_ascii_domain(domain)
     source_url = WHOIS_CHECK_URL.format(domain=urlparse.quote(ascii_domain))
+
+    cache_key = f"{ascii_domain}"
+    cached = _cache_get(cache_key)
+    if cached is not None:
+        if include_html:
+            return cached
+        return replace(cached, raw_html=None)
+
     page_html, err = fetch_html(source_url)
 
     if err:
@@ -296,6 +364,8 @@ def lookup_domain(domain: str, include_html: bool) -> WhoisResult:
 
     if not any([result.creation_date, result.expiry_date, result.registrant_name, result.status_line]):
         result.errors.append("Could not parse WHOIS fields from response")
+
+    _cache_set(cache_key, result)
 
     return result
 
