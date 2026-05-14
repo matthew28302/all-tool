@@ -1750,6 +1750,7 @@
                                 </div>
                             </div>
                         </div>
+                        <div id="whoisPanel" style="margin-bottom:12px;"></div>
                         <div id="dnsRecords" class="dns-record-grid"></div>
                     </div>
                 </div>
@@ -2532,7 +2533,13 @@
                 });
                 var data = await response.json();
                 if (data.error) { alert('Lỗi: ' + data.error); return; }
-                if (dnsMode === 'basic') renderBasicResults(data); else renderResults(data);
+                if (dnsMode === 'basic') {
+                    renderBasicResults(data);
+                    checkWhois(domain);
+                } else {
+                    document.getElementById('whoisPanel').innerHTML = '';
+                    renderResults(data);
+                }
             } catch (err) {
                 alert('Lỗi kết nối: ' + err.message);
             } finally {
@@ -2636,6 +2643,59 @@
 
         function escapeHtml(text) { var div = document.createElement('div'); div.textContent = text; return div.innerHTML; }
         function clearCache() { fetch('/api/clear-cache', { method: 'POST' }).then(() => alert('✓ Cache đã được xóa')).catch(err => alert('Lỗi: ' + err.message)); }
+
+        // WHOIS integration: call backend /api/whois and render fields similar to whois_lookup.py --json
+        async function checkWhois(domain) {
+            domain = (domain || document.getElementById('domainInput').value.trim()).trim();
+            if (!domain) { alert('Vui lòng nhập tên miền'); return; }
+            var panel = document.getElementById('whoisPanel');
+            panel.innerHTML = '<div class="result-box message-info">Đang lấy WHOIS…</div>';
+            try {
+                var resp = await fetch('/api/whois', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ domain: domain, include_html: false })
+                });
+                var data = await resp.json();
+                if (data.error) {
+                    panel.innerHTML = '<div class="message message-error">Lỗi WHOIS: ' + escapeHtml(data.error) + '</div>';
+                    return;
+                }
+                renderWhois(data);
+            } catch (err) {
+                panel.innerHTML = '<div class="message message-error">Lỗi kết nối WHOIS: ' + escapeHtml(err.message) + '</div>';
+            }
+        }
+
+        function renderWhois(data) {
+            var panel = document.getElementById('whoisPanel');
+            if (!panel) return;
+            var html = '<div class="dns-record-card">';
+            html += '<div class="dns-record-header">';
+            html += '<div><div class="dns-record-title">WHOIS</div><div class="dns-record-subtitle">Kết quả từ whois.pavietnam.net</div></div>';
+            html += '<span class="dns-rate full">' + escapeHtml(data.domain || '-') + '</span>';
+            html += '</div>';
+            html += '<div class="dns-record-body">';
+            html += '<div class="dns-resolver-grid" style="grid-template-columns:repeat(auto-fit,minmax(260px,1fr));">';
+            html += '<div class="dns-resolver-card success"><div class="dns-resolver-name">Status</div><div class="dns-resolver-values"><span class="dns-record-value">' + escapeHtml((data.status_line || data.status) || '-') + '</span></div></div>';
+            html += '<div class="dns-resolver-card success"><div class="dns-resolver-name">Creation Date</div><div class="dns-resolver-values"><span class="dns-record-value">' + escapeHtml(data.creation_date || '-') + '</span></div></div>';
+            html += '<div class="dns-resolver-card success"><div class="dns-resolver-name">Expiry Date</div><div class="dns-resolver-values"><span class="dns-record-value">' + escapeHtml(data.expiry_date || '-') + '</span></div></div>';
+            html += '<div class="dns-resolver-card success"><div class="dns-resolver-name">Registrant</div><div class="dns-resolver-values"><span class="dns-record-value">' + escapeHtml(data.registrant_name || '-') + '</span></div></div>';
+            html += '<div class="dns-resolver-card success"><div class="dns-resolver-name">Registrar</div><div class="dns-resolver-values"><span class="dns-record-value">' + escapeHtml(data.registrar_name || '-') + '</span></div></div>';
+            // Registrar IANA ID / Abuse contact removed from UI per request
+            html += '<div class="dns-resolver-card success"><div class="dns-resolver-name">Registry Lock</div><div class="dns-resolver-values"><span class="dns-record-value">' + escapeHtml(data.registry_lock || '-') + '</span></div></div>';
+            html += '</div>';
+
+            if (data.name_servers && data.name_servers.length > 0) {
+                html += '<div style="margin-top:14px;"><div class="dns-record-subtitle" style="margin-bottom:8px;">Name Servers</div><div class="dns-resolver-values">' + data.name_servers.map(function(ns) { return '<span class="dns-record-value">' + escapeHtml(ns) + '</span>'; }).join('') + '</div></div>';
+            }
+            if (data.errors && data.errors.length > 0) {
+                html += '<div style="margin-top:14px; padding:12px 14px; border-radius:12px; background:#fef2f2; color:#b91c1c; border:1px solid #fee2e2;"><strong>Errors:</strong> ' + escapeHtml(data.errors.join('; ')) + '</div>';
+            }
+            html += '</div></div>';
+            panel.innerHTML = html;
+            panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
 
         // ========== SSL Tool ==========
         const uploadArea = document.getElementById('uploadArea');

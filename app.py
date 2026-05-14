@@ -33,6 +33,8 @@ import hashlib
 import base64
 import ipaddress
 from urllib.parse import urlparse
+from dataclasses import asdict
+import whois_lookup
 
 # ACME / Let's Encrypt
 import josepy as jose
@@ -43,6 +45,27 @@ from acme import client as acme_client, challenges as acme_challenges, messages 
 
 app = Flask(__name__)
 CORS(app)
+
+# Simple in-memory TTL cache to speed up repeated checks (no external deps)
+CACHE_TTL = int(os.environ.get('CACHE_TTL_SECONDS', '60'))  # seconds
+_cache_lock = threading.Lock()
+_cache: dict = {}
+
+def cache_get(key: str):
+    with _cache_lock:
+        v = _cache.get(key)
+        if not v:
+            return None
+        ts, val = v
+        if time.time() - ts > CACHE_TTL:
+            del _cache[key]
+            return None
+        return val
+
+def cache_set(key: str, value):
+    with _cache_lock:
+        _cache[key] = (time.time(), value)
+
 @app.route('/ping')
 def ping():
     return 'OK', 200  # Response siêu ngắn
@@ -373,31 +396,47 @@ def api_check_dns_basic():
         if not valid_types:
             valid_types = ['A', 'TXT', 'MX', 'SOA', 'NS']
 
-        # Use Google's DNS-over-HTTPS API to fetch a single authoritative-looking answer
+        # Try cache first (key includes domain and requested types)
+        cache_key = f"basic:{domain}:{','.join(valid_types)}"
+        cached = cache_get(cache_key)
+        if cached is not None:
+            logger.debug(f"Cache hit: /api/check-dns-basic {cache_key}")
+            # still include current timestamp
+            cached['timestamp'] = datetime.now(timezone.utc).isoformat()
+            return jsonify(cached), 200
+
+        # Use Google's DNS-over-HTTPS API to fetch answers in parallel (faster than sequential)
         resolver_ip = '8.8.8.8'
         records_out = {}
-        for rt in valid_types:
+        url = 'https://dns.google/resolve'
+
+        def doh_query(record_type: str) -> tuple:
             try:
-                # Google's DoH endpoint
-                url = 'https://dns.google/resolve'
-                params = {'name': domain, 'type': rt}
-                resp = requests.get(url, params=params, timeout=4)
-                if resp.status_code == 200:
-                    j = resp.json()
-                    answers = []
-                    if 'Answer' in j and isinstance(j['Answer'], list) and len(j['Answer']) > 0:
-                        for answer_item in j['Answer']:
-                            data_value = answer_item.get('data')
-                            if data_value is not None:
-                                answers.append(data_value)
-                    if answers:
-                        records_out[rt] = {"status": "success", "records": answers}
-                    else:
-                        records_out[rt] = {"status": "no_record", "records": []}
-                else:
-                    records_out[rt] = {"status": "no_record", "records": []}
+                resp = requests.get(url, params={'name': domain, 'type': record_type}, timeout=3)
+                if resp.status_code != 200:
+                    return record_type, {"status": "no_record", "records": []}
+                j = resp.json()
+                answers = []
+                if 'Answer' in j and isinstance(j['Answer'], list) and len(j['Answer']) > 0:
+                    for answer_item in j['Answer']:
+                        data_value = answer_item.get('data')
+                        if data_value is not None:
+                            answers.append(data_value)
+                if answers:
+                    return record_type, {"status": "success", "records": answers}
+                return record_type, {"status": "no_record", "records": []}
             except Exception:
-                records_out[rt] = {"status": "no_record", "records": []}
+                return record_type, {"status": "no_record", "records": []}
+
+        # Submit all DoH queries concurrently
+        futures = [executor.submit(doh_query, rt) for rt in valid_types]
+        for f in as_completed(futures):
+            try:
+                rt, payload = f.result()
+                records_out[rt] = payload
+            except Exception:
+                # on unexpected failure, mark as no_record
+                continue
 
         # Fast DNSSEC check
         dnssec = check_dnssec_fast(domain)
@@ -448,7 +487,37 @@ def api_check_dns_basic():
             "resolver_used": {"name": "Google Public DNS", "ip": resolver_ip}
         }
 
+        # store in cache
+        try:
+            cache_set(cache_key, result)
+        except Exception:
+            pass
+
         return jsonify(result), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/whois', methods=['POST'])
+def api_whois():
+    """Return WHOIS information for a domain using whois_lookup.py logic.
+    Returns the same JSON schema as `python3 whois_lookup.py <domain> --json`.
+    """
+    try:
+        data = request.get_json(silent=True) or {}
+        domain = (data.get('domain') or '').strip()
+        include_html = bool(data.get('include_html', False))
+
+        if not domain:
+            return jsonify({"error": "Domain is required"}), 400
+
+        try:
+            result = whois_lookup.lookup_domain(domain, include_html=include_html)
+        except ValueError as ve:
+            return jsonify({"error": str(ve)}), 400
+
+        payload = asdict(result)
+        return jsonify(payload), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
