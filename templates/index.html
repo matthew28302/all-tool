@@ -355,6 +355,104 @@
             grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
             gap: 16px;
         }
+        .bulk-input-wrap {
+            margin-bottom: 14px;
+        }
+        .bulk-input {
+            width: 100%;
+            min-height: 150px;
+            padding: 14px 16px;
+            border: 1px solid #cbd5e1;
+            border-radius: 12px;
+            background: #ffffff;
+            color: #1e293b;
+            font-size: 0.95rem;
+            line-height: 1.55;
+            resize: vertical;
+            box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.04);
+        }
+        .bulk-input:focus {
+            outline: none;
+            border-color: #0ea5e9;
+            box-shadow: 0 0 0 4px rgba(14, 165, 233, 0.12);
+        }
+        .bulk-input::placeholder { color: #94a3b8; }
+        .bulk-table {
+            display: grid;
+            gap: 10px;
+        }
+        .bulk-table-head,
+        .bulk-table-row {
+            display: grid;
+            grid-template-columns: minmax(180px, 1.2fr) minmax(140px, 0.8fr) minmax(220px, 1fr) minmax(220px, 1fr);
+            gap: 12px;
+            align-items: start;
+        }
+        .bulk-table-head {
+            padding: 12px 14px;
+            border-radius: 14px;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            color: #64748b;
+            font-size: 0.78rem;
+            font-weight: 800;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+        .bulk-table-row {
+            padding: 14px;
+            border-radius: 16px;
+            border: 1px solid #e2e8f0;
+            background: #ffffff;
+            box-shadow: 0 10px 24px rgba(15, 23, 42, 0.05);
+        }
+        .bulk-table-row:nth-child(even) {
+            background: #fbfdff;
+        }
+        .bulk-domain-pill {
+            display: inline-flex;
+            align-items: center;
+            padding: 6px 10px;
+            border-radius: 999px;
+            background: #e0f2fe;
+            color: #0369a1;
+            font-weight: 800;
+            font-size: 0.86rem;
+            word-break: break-all;
+        }
+        .bulk-cell {
+            color: #0f172a;
+            font-size: 0.92rem;
+            line-height: 1.45;
+            word-break: break-word;
+        }
+        .bulk-value-lines {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            width: 100%;
+        }
+        .bulk-value-line {
+            display: block;
+            width: 100%;
+            white-space: normal;
+        }
+        .bulk-cell .dns-record-value {
+            margin: 2px 4px 2px 0;
+        }
+        .bulk-value-line.dns-record-value {
+            display: block;
+            width: 100%;
+        }
+        .bulk-empty {
+            color: #94a3b8;
+            font-style: italic;
+        }
+        .bulk-error-note {
+            margin-top: 8px;
+            color: #b91c1c;
+            font-size: 0.82rem;
+        }
         .dns-record-card {
             display: flex;
             flex-direction: column;
@@ -566,6 +664,10 @@
             .dns-panel-header { flex-direction: column; }
             .dns-panel-title { font-size: 1.45rem; }
             .dns-resolver-grid { grid-template-columns: 1fr; }
+            .bulk-table-head,
+            .bulk-table-row {
+                grid-template-columns: 1fr;
+            }
             .dns-search-row { align-items: stretch; }
             .dns-search-row .btn { width: 100%; }
             .dns-actions { width: 100%; }
@@ -1659,6 +1761,9 @@
             <button class="tab-btn active" data-tab="dns" id="tabbtn-dns" role="tab" aria-selected="true" aria-controls="tab-dns" tabindex="0" onclick="switchTab('dns')">
                 <span class="icon">🔍</span> DNS
             </button>
+            <button class="tab-btn" data-tab="bulkdns" id="tabbtn-bulkdns" role="tab" aria-selected="false" aria-controls="tab-bulkdns" tabindex="-1" onclick="switchTab('bulkdns')">
+                <span class="icon">🗂️</span> Bulk DNS
+            </button>
             <button class="tab-btn" data-tab="sslcheck" id="tabbtn-sslcheck" role="tab" aria-selected="false" aria-controls="tab-sslcheck" tabindex="-1" onclick="switchTab('sslcheck')">
                 <span class="icon">🛡️</span> SSL Check
             </button>
@@ -1752,6 +1857,76 @@
                         </div>
                         <div id="whoisPanel" style="margin-bottom:12px;"></div>
                         <div id="dnsRecords" class="dns-record-grid"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="tab-bulkdns" class="tab-content" role="tabpanel" aria-labelledby="tabbtn-bulkdns" hidden>
+            <div class="dns-shell">
+                <div class="dns-hero">
+                    <div class="dns-card dns-search-card">
+                        <div class="dns-panel-header">
+                            <div>
+                                <div class="dns-panel-title">Bulk DNS</div>
+                                <div class="dns-panel-subtitle">Nhập danh sách tên miền, cách nhau bằng dấu phẩy hoặc xuống dòng. Kết quả dùng basic DNS để lấy IP, MX và Nameserver.</div>
+                            </div>
+                        </div>
+
+                        <div class="bulk-input-wrap">
+                            <textarea id="bulkDomainsInput" class="bulk-input" placeholder="example.com, example.vn&#10;google.com&#10;openai.com"></textarea>
+                        </div>
+
+                        <div class="dns-search-row">
+                            <div class="dns-actions">
+                                <button class="btn btn-primary" onclick="checkBulkDNS()">🔍 Kiểm tra Bulk</button>
+                                <button class="btn btn-secondary" onclick="clearBulkDNS()">🗑️ Clear</button>
+                            </div>
+                        </div>
+
+                        <div class="dns-query-note">Basic mode only: A record cho IP, MX và NS cho từng domain.</div>
+                    </div>
+
+                    <div class="dns-card dns-stats-card">
+                        <div class="dns-stat-row">
+                            <span class="dns-stat-label">Domains</span>
+                            <span class="dns-stat-value accent" id="bulkSummaryTotal">-</span>
+                        </div>
+                        <div class="dns-stat-row">
+                            <span class="dns-stat-label">Có IP</span>
+                            <span class="dns-stat-value success" id="bulkSummaryResolved">-</span>
+                        </div>
+                        <div class="dns-stat-row">
+                            <span class="dns-stat-label">Không có IP</span>
+                            <span class="dns-stat-value error" id="bulkSummaryMissing">-</span>
+                        </div>
+                        <div class="dns-stat-row">
+                            <span class="dns-stat-label">Cập nhật</span>
+                            <span class="dns-stat-value accent" id="bulkSummaryUpdated">-</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="loading" id="bulkLoading">
+                    <div class="spinner"></div>
+                    <p class="dns-loading-note">Đang kiểm tra bulk DNS basic...</p>
+                </div>
+
+                <div class="results-container" id="bulkResults">
+                    <div class="dns-card dns-results-panel">
+                        <div class="dns-section-head">
+                            <div class="section-title">📋 Bulk DNS Results</div>
+                            <div class="dns-section-chip" id="bulkCountChip">0 domains</div>
+                        </div>
+                        <div class="bulk-table">
+                            <div class="bulk-table-head">
+                                <div>Tên miền</div>
+                                <div>IP đang trỏ</div>
+                                <div>MX</div>
+                                <div>Nameserver</div>
+                            </div>
+                            <div id="bulkResultsTable"></div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -2211,7 +2386,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/forge/0.10.0/forge.min.js"></script>
     <script>
         // ========== Tab Switching ==========
-        const tabIds = ['dns', 'sslcheck', 'hostcheck', 'ssl', 'ssldecoder', 'freessl'];
+        const tabIds = ['dns', 'bulkdns', 'sslcheck', 'hostcheck', 'ssl', 'ssldecoder', 'freessl'];
 
         function switchTab(tab, options = {}) {
             const nextTab = tabIds.includes(tab) ? tab : 'dns';
@@ -2639,6 +2814,118 @@
             setDnsView(dnsViewMode);
 
             document.getElementById('results').classList.add('show');
+        }
+
+        function normalizeBulkDomain(value) {
+            return String(value || '')
+                .trim()
+                .toLowerCase()
+                .replace(/^https?:\/\//, '')
+                .replace(/\/.*$/, '')
+                .replace(/:.+$/, '')
+                .replace(/^www\./, '')
+                .trim();
+        }
+
+        function parseBulkDomains(text) {
+            const items = String(text || '').split(/[\n,]+/);
+            const seen = new Set();
+            const domains = [];
+            items.forEach(item => {
+                const domain = normalizeBulkDomain(item);
+                if (domain && !seen.has(domain)) {
+                    seen.add(domain);
+                    domains.push(domain);
+                }
+            });
+            return domains;
+        }
+
+        async function checkBulkDNS() {
+            const bulkInput = document.getElementById('bulkDomainsInput');
+            const text = bulkInput ? bulkInput.value : '';
+            const domains = parseBulkDomains(text);
+
+            if (domains.length === 0) {
+                alert('Vui lòng nhập ít nhất 1 tên miền');
+                return;
+            }
+
+            document.getElementById('bulkLoading').classList.add('show');
+            document.getElementById('bulkResults').classList.remove('show');
+
+            try {
+                const response = await fetch('/api/check-dns-bulk', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ domains: domains })
+                });
+                const data = await response.json();
+                if (data.error) {
+                    alert('Lỗi: ' + data.error);
+                    return;
+                }
+                renderBulkDNSResults(data);
+            } catch (err) {
+                alert('Lỗi kết nối: ' + err.message);
+            } finally {
+                document.getElementById('bulkLoading').classList.remove('show');
+            }
+        }
+
+        function renderBulkDNSResults(data) {
+            const results = Array.isArray(data.results) ? data.results : [];
+            document.getElementById('bulkCountChip').textContent = (data.count || results.length || 0) + ' domains';
+            document.getElementById('bulkSummaryTotal').textContent = data.count || results.length || 0;
+            const resolved = results.filter(item => item.ip && item.ip !== '-').length;
+            document.getElementById('bulkSummaryResolved').textContent = resolved;
+            document.getElementById('bulkSummaryMissing').textContent = (data.count || results.length || 0) - resolved;
+            document.getElementById('bulkSummaryUpdated').textContent = new Date().toLocaleString('vi-VN');
+
+            const rowsHtml = results.map(function(item) {
+                const mx = item.mx || [];
+                const ns = item.nameserver || [];
+                const err = item.error ? '<div class="bulk-error-note">' + escapeHtml(item.error) + '</div>' : '';
+                return '<div class="bulk-table-row">' +
+                    '<div class="bulk-cell"><span class="bulk-domain-pill">' + escapeHtml(item.domain || '-') + '</span>' + err + '</div>' +
+                    '<div class="bulk-cell">' + escapeHtml(item.ip || '-') + '</div>' +
+                    '<div class="bulk-cell">' + bulkRenderValues(mx) + '</div>' +
+                    '<div class="bulk-cell">' + bulkRenderValues(ns) + '</div>' +
+                '</div>';
+            }).join('');
+
+            document.getElementById('bulkResultsTable').innerHTML = rowsHtml || '<div class="bulk-table-row"><div class="bulk-cell" style="grid-column:1/-1;color:#94a3b8;">Chưa có dữ liệu</div></div>';
+            document.getElementById('bulkResults').classList.add('show');
+        }
+
+        function bulkRenderValues(value) {
+            if (!value || value === '-') {
+                return '<span class="bulk-empty">-</span>';
+            }
+            const parts = Array.isArray(value)
+                ? value.map(item => String(item).trim()).filter(Boolean)
+                : String(value)
+                    .split(/\s*,\s*|\n+/)
+                    .map(item => item.trim())
+                    .filter(Boolean);
+            if (parts.length <= 1) {
+                return '<span class="dns-record-value">' + escapeHtml(value) + '</span>';
+            }
+            return '<div class="bulk-value-lines">' + parts.map(function(part) {
+                return '<span class="bulk-value-line dns-record-value">' + escapeHtml(part) + '</span>';
+            }).join('') + '</div>';
+        }
+
+        function clearBulkDNS() {
+            const input = document.getElementById('bulkDomainsInput');
+            if (input) input.value = '';
+            document.getElementById('bulkResultsTable').innerHTML = '';
+            document.getElementById('bulkResults').classList.remove('show');
+            document.getElementById('bulkSummaryTotal').textContent = '-';
+            document.getElementById('bulkSummaryResolved').textContent = '-';
+            document.getElementById('bulkSummaryMissing').textContent = '-';
+            document.getElementById('bulkSummaryUpdated').textContent = '-';
+            document.getElementById('bulkCountChip').textContent = '0 domains';
         }
 
         function escapeHtml(text) { var div = document.createElement('div'); div.textContent = text; return div.innerHTML; }

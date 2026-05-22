@@ -32,6 +32,7 @@ import subprocess
 import hashlib
 import base64
 import ipaddress
+import copy
 from urllib.parse import urlparse
 from dataclasses import asdict
 import whois_lookup
@@ -346,6 +347,117 @@ def check_dns_fast(domain: str, record_types: List[str]) -> Dict:
     return results
 
 
+def _normalize_domain_input(domain: str) -> str:
+    domain = (domain or '').strip().lower()
+    domain = domain.replace('http://', '').replace('https://', '')
+    domain = domain.split('/')[0].split(':')[0]
+    return domain
+
+
+def build_dns_basic_result(domain: str, record_types: List[str], include_dnssec: bool = True, include_ssl: bool = True) -> Dict:
+    domain = _normalize_domain_input(domain)
+    if not domain:
+        return {"error": "Domain is required"}
+
+    valid_types = [rt for rt in record_types if rt in RECORD_TYPES]
+    if not valid_types:
+        valid_types = ['A', 'TXT', 'MX', 'SOA', 'NS']
+
+    cache_key = f"basic:{domain}:{','.join(valid_types)}:dnssec={1 if include_dnssec else 0}:ssl={1 if include_ssl else 0}"
+    cached = cache_get(cache_key)
+    if cached is not None:
+        cached_copy = copy.deepcopy(cached)
+        cached_copy['timestamp'] = datetime.now(timezone.utc).isoformat()
+        return cached_copy
+
+    resolver_ip = '8.8.8.8'
+    records_out = {}
+    url = 'https://dns.google/resolve'
+
+    def doh_query(record_type: str) -> tuple:
+        try:
+            resp = requests.get(url, params={'name': domain, 'type': record_type}, timeout=3)
+            if resp.status_code != 200:
+                return record_type, {"status": "no_record", "records": []}
+            j = resp.json()
+            answers = []
+            if 'Answer' in j and isinstance(j['Answer'], list) and len(j['Answer']) > 0:
+                for answer_item in j['Answer']:
+                    data_value = answer_item.get('data')
+                    if data_value is not None:
+                        answers.append(data_value)
+            if answers:
+                return record_type, {"status": "success", "records": answers}
+            return record_type, {"status": "no_record", "records": []}
+        except Exception:
+            return record_type, {"status": "no_record", "records": []}
+
+    futures = [executor.submit(doh_query, rt) for rt in valid_types]
+    for f in as_completed(futures):
+        try:
+            rt, payload = f.result()
+            records_out[rt] = payload
+        except Exception:
+            continue
+
+    dnssec = {"enabled": False, "valid": False, "status": "Skipped", "details": {}}
+    if include_dnssec:
+        dnssec = check_dnssec_fast(domain)
+
+    ssl_info = {
+        "issuer": None,
+        "valid_from": None,
+        "valid_to": None,
+        "days_remaining": None,
+        "error": None
+    }
+    if include_ssl:
+        try:
+            ctx = ssl.create_default_context()
+            ctx.check_hostname = False
+            ctx.verify_mode = ssl.CERT_NONE
+            cert_der = None
+            try:
+                with socket.create_connection((domain, 443), timeout=6) as sock:
+                    with ctx.wrap_socket(sock, server_hostname=domain) as ssock:
+                        cert_der = ssock.getpeercert(binary_form=True)
+            except Exception:
+                cert_der = None
+
+            if cert_der:
+                cert_obj = x509.load_der_x509_certificate(cert_der, default_backend())
+                issuer_cn = cert_obj.issuer.get_attributes_for_oid(NameOID.COMMON_NAME)
+                issuer_org = cert_obj.issuer.get_attributes_for_oid(NameOID.ORGANIZATION_NAME)
+                valid_from = getattr(cert_obj, 'not_valid_before_utc', cert_obj.not_valid_before.replace(tzinfo=timezone.utc))
+                valid_to = getattr(cert_obj, 'not_valid_after_utc', cert_obj.not_valid_after.replace(tzinfo=timezone.utc))
+                now_utc = datetime.now(timezone.utc)
+
+                ssl_info.update({
+                    "issuer": issuer_cn[0].value if issuer_cn else (issuer_org[0].value if issuer_org else 'Unknown'),
+                    "valid_from": valid_from.isoformat(),
+                    "valid_to": valid_to.isoformat(),
+                    "days_remaining": int((valid_to - now_utc).total_seconds() // 86400)
+                })
+        except Exception as e:
+            ssl_info["error"] = str(e)
+
+    result = {
+        "domain": domain,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "records": records_out,
+        "dnssec": dnssec,
+        "ssl": ssl_info,
+        "resolver_used": {"name": "Google Public DNS", "ip": resolver_ip}
+    }
+
+    try:
+        cache_set(cache_key, result)
+    except Exception:
+        pass
+
+    return result
+
+
 @app.route('/')
 def index():
     return render_template('index.html')
@@ -386,114 +498,82 @@ def api_check_dns_basic():
         # Basic mode default record types: A, TXT, MX, SOA, NS
         record_types = data.get('record_types', ['A', 'TXT', 'MX', 'SOA', 'NS'])
 
-        if not domain:
-            return jsonify({"error": "Domain is required"}), 400
-
-        domain = domain.replace('http://', '').replace('https://', '').split('/')[0]
-
-        # Limit to allowed record types
-        valid_types = [rt for rt in record_types if rt in RECORD_TYPES]
-        if not valid_types:
-            valid_types = ['A', 'TXT', 'MX', 'SOA', 'NS']
-
-        # Try cache first (key includes domain and requested types)
-        cache_key = f"basic:{domain}:{','.join(valid_types)}"
-        cached = cache_get(cache_key)
-        if cached is not None:
-            logger.debug(f"Cache hit: /api/check-dns-basic {cache_key}")
-            # still include current timestamp
-            cached['timestamp'] = datetime.now(timezone.utc).isoformat()
-            return jsonify(cached), 200
-
-        # Use Google's DNS-over-HTTPS API to fetch answers in parallel (faster than sequential)
-        resolver_ip = '8.8.8.8'
-        records_out = {}
-        url = 'https://dns.google/resolve'
-
-        def doh_query(record_type: str) -> tuple:
-            try:
-                resp = requests.get(url, params={'name': domain, 'type': record_type}, timeout=3)
-                if resp.status_code != 200:
-                    return record_type, {"status": "no_record", "records": []}
-                j = resp.json()
-                answers = []
-                if 'Answer' in j and isinstance(j['Answer'], list) and len(j['Answer']) > 0:
-                    for answer_item in j['Answer']:
-                        data_value = answer_item.get('data')
-                        if data_value is not None:
-                            answers.append(data_value)
-                if answers:
-                    return record_type, {"status": "success", "records": answers}
-                return record_type, {"status": "no_record", "records": []}
-            except Exception:
-                return record_type, {"status": "no_record", "records": []}
-
-        # Submit all DoH queries concurrently
-        futures = [executor.submit(doh_query, rt) for rt in valid_types]
-        for f in as_completed(futures):
-            try:
-                rt, payload = f.result()
-                records_out[rt] = payload
-            except Exception:
-                # on unexpected failure, mark as no_record
-                continue
-
-        # Fast DNSSEC check
-        dnssec = check_dnssec_fast(domain)
-
-        # Quick SSL probe (issuer + valid_from/valid_to)
-        ssl_info = {
-            "issuer": None,
-            "valid_from": None,
-            "valid_to": None,
-            "days_remaining": None,
-            "error": None
-        }
-        try:
-            ctx = ssl.create_default_context()
-            ctx.check_hostname = False
-            ctx.verify_mode = ssl.CERT_NONE
-            cert_der = None
-            try:
-                with socket.create_connection((domain, 443), timeout=6) as sock:
-                    with ctx.wrap_socket(sock, server_hostname=domain) as ssock:
-                        cert_der = ssock.getpeercert(binary_form=True)
-            except Exception as e:
-                cert_der = None
-
-            if cert_der:
-                cert_obj = x509.load_der_x509_certificate(cert_der, default_backend())
-                issuer_cn = cert_obj.issuer.get_attributes_for_oid(NameOID.COMMON_NAME)
-                issuer_org = cert_obj.issuer.get_attributes_for_oid(NameOID.ORGANIZATION_NAME)
-                valid_from = getattr(cert_obj, 'not_valid_before_utc', cert_obj.not_valid_before.replace(tzinfo=timezone.utc))
-                valid_to = getattr(cert_obj, 'not_valid_after_utc', cert_obj.not_valid_after.replace(tzinfo=timezone.utc))
-                now_utc = datetime.now(timezone.utc)
-
-                ssl_info.update({
-                    "issuer": issuer_cn[0].value if issuer_cn else (issuer_org[0].value if issuer_org else 'Unknown'),
-                    "valid_from": valid_from.isoformat(),
-                    "valid_to": valid_to.isoformat(),
-                    "days_remaining": int((valid_to - now_utc).total_seconds() // 86400)
-                })
-        except Exception as e:
-            ssl_info["error"] = str(e)
-
-        result = {
-            "domain": domain,
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-            "records": records_out,
-            "dnssec": dnssec,
-            "ssl": ssl_info,
-            "resolver_used": {"name": "Google Public DNS", "ip": resolver_ip}
-        }
-
-        # store in cache
-        try:
-            cache_set(cache_key, result)
-        except Exception:
-            pass
-
+        result = build_dns_basic_result(domain, record_types, include_dnssec=True, include_ssl=True)
+        if result.get("error"):
+            return jsonify(result), 400
         return jsonify(result), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/check-dns-bulk', methods=['POST'])
+def api_check_dns_bulk():
+    """Bulk DNS basic checks for a list of domains."""
+    try:
+        data = request.get_json(silent=True) or {}
+        domains_input = data.get('domains', [])
+
+        if isinstance(domains_input, str):
+            domains_input = re.split(r'[\n,]+', domains_input)
+
+        domains: list[str] = []
+        seen = set()
+        for item in domains_input:
+            cleaned = _normalize_domain_input(item)
+            if cleaned and cleaned not in seen:
+                seen.add(cleaned)
+                domains.append(cleaned)
+
+        if not domains:
+            return jsonify({"error": "Domain list is required"}), 400
+
+        # Bulk uses the fast record set only: A, MX, NS.
+        record_types = ['A', 'MX', 'NS']
+        max_workers = min(6, len(domains))
+
+        ordered_results = []
+        with ThreadPoolExecutor(max_workers=max_workers) as pool:
+            future_map = {
+                pool.submit(build_dns_basic_result, domain, record_types, False, False): domain
+                for domain in domains
+            }
+            results_map = {}
+            for future in as_completed(future_map):
+                domain = future_map[future]
+                try:
+                    results_map[domain] = future.result()
+                except Exception as exc:
+                    results_map[domain] = {
+                        "domain": domain,
+                        "error": str(exc),
+                        "records": {},
+                        "dnssec": {},
+                        "ssl": {},
+                        "resolver_used": {"name": "Google Public DNS", "ip": '8.8.8.8'}
+                    }
+
+        for domain in domains:
+            result = results_map.get(domain) or {"domain": domain, "error": "No result"}
+            records = result.get('records') or {}
+            a_records = records.get('A', {}).get('records', []) if isinstance(records.get('A'), dict) else []
+            mx_records = records.get('MX', {}).get('records', []) if isinstance(records.get('MX'), dict) else []
+            ns_records = records.get('NS', {}).get('records', []) if isinstance(records.get('NS'), dict) else []
+            ordered_results.append({
+                "domain": domain,
+                "ip": a_records[0] if a_records else '-',
+                "mx": mx_records,
+                "nameserver": ns_records,
+                "records": records,
+                "error": result.get('error'),
+                "cached": bool(result.get('cached'))
+            })
+
+        return jsonify({
+            "count": len(domains),
+            "results": ordered_results,
+            "record_types": record_types,
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        }), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
