@@ -48,7 +48,8 @@ app = Flask(__name__)
 CORS(app)
 
 # Simple in-memory TTL cache to speed up repeated checks (no external deps)
-CACHE_TTL = int(os.environ.get('CACHE_TTL_SECONDS', '60'))  # seconds
+# Set to 0 to disable caching (always fresh queries)
+CACHE_TTL = int(os.environ.get('CACHE_TTL_SECONDS', '0'))  # seconds
 _cache_lock = threading.Lock()
 _cache: dict = {}
 
