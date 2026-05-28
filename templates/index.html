@@ -678,6 +678,186 @@
         .ssl-header { text-align: center; padding: 20px 0 30px; }
         .ssl-header h2 { font-size: 1.8rem; color: #8b5cf6; margin-bottom: 8px; }
         .ssl-header p { color: #64748b; }
+
+        .ssl-shell { display: grid; gap: 16px; }
+        .ssl-choice-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 14px;
+        }
+        .ssl-choice-card {
+            border: 1px solid #ddd6fe;
+            background: linear-gradient(180deg, #ffffff 0%, #faf5ff 100%);
+            border-radius: 16px;
+            padding: 18px;
+            text-align: left;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+            box-shadow: 0 10px 24px rgba(139, 92, 246, 0.08);
+            min-height: 132px;
+            display: grid;
+            gap: 10px;
+        }
+        .ssl-choice-card:hover {
+            transform: translateY(-2px);
+            border-color: #c084fc;
+            box-shadow: 0 14px 30px rgba(139, 92, 246, 0.12);
+        }
+        .ssl-choice-icon {
+            width: 42px;
+            height: 42px;
+            border-radius: 12px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.3rem;
+            background: #f3e8ff;
+            color: #7c3aed;
+        }
+        .ssl-choice-title {
+            font-size: 1.05rem;
+            font-weight: 800;
+            color: #1e293b;
+        }
+        .ssl-choice-copy {
+            color: #64748b;
+            font-size: 0.92rem;
+            line-height: 1.5;
+        }
+
+        .ssl-mode-panel {
+            display: grid;
+            gap: 14px;
+            transition: opacity 0.22s ease, transform 0.22s ease, max-height 0.24s ease;
+        }
+        .ssl-mode-panel.is-hidden {
+            opacity: 0;
+            transform: translateY(8px);
+            max-height: 0;
+            overflow: hidden;
+            pointer-events: none;
+            margin: 0;
+        }
+        .ssl-mode-toolbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
+            padding: 4px 0 2px;
+        }
+        .ssl-mode-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            border-radius: 999px;
+            background: #f5f3ff;
+            border: 1px solid #ddd6fe;
+            color: #6d28d9;
+            font-size: 0.85rem;
+            font-weight: 700;
+        }
+        .ssl-mode-section {
+            transition: opacity 0.22s ease, transform 0.22s ease, max-height 0.24s ease, margin 0.24s ease, padding 0.24s ease;
+            overflow: hidden;
+        }
+        .ssl-mode-section.is-hidden-mode {
+            max-height: 0;
+            opacity: 0;
+            transform: translateY(8px);
+            pointer-events: none;
+            margin: 0;
+            padding-top: 0;
+            padding-bottom: 0;
+        }
+        .ssl-mode-section.is-visible-mode {
+            max-height: 2200px;
+            opacity: 1;
+            transform: translateY(0);
+        }
+        .ssl-mode-card {
+            background: #ffffff;
+            border: 1px solid #ddd6fe;
+            border-radius: 16px;
+            padding: 18px;
+            box-shadow: 0 10px 24px rgba(139, 92, 246, 0.06);
+        }
+        .ssl-mode-card h3 {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-bottom: 12px;
+            color: #1e293b;
+        }
+        .ssl-mode-card p {
+            color: #64748b;
+            line-height: 1.5;
+        }
+        .ssl-upload-card .upload-area {
+            margin-bottom: 0;
+        }
+        .ssl-paste-input {
+            width: 100%;
+            min-height: 260px;
+            padding: 14px;
+            border: 1px solid #c4b5fd;
+            border-radius: 16px;
+            background: #fff;
+            color: #1e293b;
+            font-size: 0.92rem;
+            line-height: 1.55;
+            resize: vertical;
+            font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, monospace;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+        .ssl-paste-input:focus {
+            outline: none;
+            border-color: #8b5cf6;
+            box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.12);
+        }
+        .ssl-paste-input::placeholder { color: #94a3b8; }
+        .ssl-paste-help {
+            margin-top: 10px;
+            color: #64748b;
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+        .ssl-detect-summary {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 12px;
+        }
+        .ssl-detect-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 10px;
+            border-radius: 999px;
+            background: #ede9fe;
+            border: 1px solid #ddd6fe;
+            color: #6d28d9;
+            font-size: 0.78rem;
+            font-weight: 700;
+        }
+        .ssl-detect-chip.success {
+            background: #dcfce7;
+            border-color: #bbf7d0;
+            color: #166534;
+        }
+        .ssl-detect-chip.error {
+            background: #fee2e2;
+            border-color: #fecaca;
+            color: #991b1b;
+        }
+        .ssl-detect-chip.muted {
+            background: #f8fafc;
+            border-color: #e2e8f0;
+            color: #64748b;
+        }
         
         .upload-area {
             border: 2px dashed #8b5cf6;
@@ -1748,6 +1928,10 @@
             .result-box h3 { align-items: flex-start; }
             .btn-group { width: 100%; }
             .btn-group .btn { flex: 1; }
+            .ssl-choice-grid { grid-template-columns: 1fr; }
+            .ssl-mode-toolbar { align-items: stretch; }
+            .ssl-mode-toolbar .btn { width: 100%; }
+            .ssl-paste-input { min-height: 220px; }
             #dnsRecords.compact-view .dns-resolver-grid {
                 grid-template-columns: 1fr;
             }
@@ -2123,14 +2307,59 @@
                 <p>Công cụ gộp chứng chỉ SSL tự động</p>
             </div>
 
-            <div class="upload-area" id="uploadArea">
-                <div class="upload-icon">📁</div>
-                <p><strong>Kéo thả file ZIP vào đây</strong></p>
-                <p class="text-muted mt-10">hoặc</p>
-                <button class="btn btn-primary mt-10" onclick="document.getElementById('fileInput').click()">
-                    Chọn file ZIP
-                </button>
-                <input type="file" id="fileInput" accept=".zip" class="is-hidden">
+            <div class="ssl-shell">
+                <div id="sslModeChooser" class="ssl-choice-grid">
+                    <button type="button" class="ssl-choice-card" onclick="setSSLInputMode('zip')">
+                        <div class="ssl-choice-icon">📤</div>
+                        <div class="ssl-choice-title">Upload ZIP</div>
+                        <div class="ssl-choice-copy">Kéo thả hoặc chọn file ZIP để tự tách certificate bundle.</div>
+                    </button>
+                    <button type="button" class="ssl-choice-card" onclick="setSSLInputMode('paste')">
+                        <div class="ssl-choice-icon">📋</div>
+                        <div class="ssl-choice-title">Paste SSL Content</div>
+                        <div class="ssl-choice-copy">Dán trực tiếp Private Key, Certificate và CA Bundle theo PEM multiline.</div>
+                    </button>
+                </div>
+
+                <div id="sslModePanel" class="ssl-mode-panel is-hidden">
+                    <div class="ssl-mode-toolbar">
+                        <div class="ssl-mode-pill" id="sslModeLabel">Chọn phương thức nhập</div>
+                        <button type="button" class="btn btn-secondary btn-compact" onclick="resetSSLInputMode()">↩ Chọn lại phương thức</button>
+                    </div>
+
+                    <div id="sslZipSection" class="ssl-mode-section is-hidden-mode">
+                        <div class="ssl-mode-card ssl-upload-card">
+                            <h3>
+                                <span>📁 Upload ZIP</span>
+                                <span class="ssl-detect-chip muted">ZIP only</span>
+                            </h3>
+                            <div class="upload-area" id="uploadArea">
+                                <div class="upload-icon">📁</div>
+                                <p><strong>Kéo thả file ZIP vào đây</strong></p>
+                                <p class="text-muted mt-10">hoặc</p>
+                                <button class="btn btn-primary mt-10" type="button" onclick="document.getElementById('fileInput').click()">
+                                    Chọn file ZIP
+                                </button>
+                                <input type="file" id="fileInput" accept=".zip" class="is-hidden">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="sslPasteSection" class="ssl-mode-section is-hidden-mode">
+                        <div class="ssl-mode-card">
+                            <h3>
+                                <span>📝 Paste SSL Content</span>
+                                <span class="ssl-detect-chip">Auto detect PEM</span>
+                            </h3>
+                            <p>Dán theo format mẫu bên dưới. Hệ thống sẽ tự nhận diện Private Key, Cert và CA Bundle.</p>
+                            <textarea id="sslPasteInput" class="ssl-paste-input" placeholder="Private Key:\n-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n\nCert:\n-----BEGIN CERTIFICATE-----\n...\n-----END CERTIFICATE-----\n\nCA Bundle:\n-----BEGIN CERTIFICATE-----\n...\n-----END CERTIFICATE-----\n-----BEGIN CERTIFICATE-----\n...\n-----END CERTIFICATE-----"></textarea>
+                            <div class="ssl-paste-help">
+                                CA Bundle có thể chứa nhiều block certificate liên tiếp. Nếu paste không đúng format, hệ thống sẽ báo lỗi và giữ nút xử lý ở trạng thái tắt.
+                            </div>
+                            <div id="sslPasteSummary" class="ssl-detect-summary"></div>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <div id="sslMessage" class="message"></div>
@@ -2992,11 +3221,217 @@
         const sslMessage = document.getElementById('sslMessage');
         const privateKeyInput = document.getElementById('privateKeyInput');
         const generateBtn = document.getElementById('generateBtn');
+        const sslModeChooser = document.getElementById('sslModeChooser');
+        const sslModePanel = document.getElementById('sslModePanel');
+        const sslModeLabel = document.getElementById('sslModeLabel');
+        const sslZipSection = document.getElementById('sslZipSection');
+        const sslPasteSection = document.getElementById('sslPasteSection');
+        const sslPasteInput = document.getElementById('sslPasteInput');
+        const sslPasteSummary = document.getElementById('sslPasteSummary');
 
+        let inputMode = null;
+        let sslMessageTimer = null;
         let currentDomain = '', currentBundle = '', currentZipFilename = '', currentOriginalFiles = {};
         window.sslBundleParts = { cert: '', bundle: '', all: '' };
 
-        privateKeyInput.addEventListener('input', () => { generateBtn.disabled = !privateKeyInput.value.trim() || !currentBundle; });
+        function updateGenerateButtonState() {
+            generateBtn.disabled = !(privateKeyInput.value.trim() && currentBundle.trim());
+        }
+
+        function normalizePemText(text) {
+            return String(text || '')
+                .replace(/\r\n/g, '\n')
+                .replace(/\r/g, '\n')
+                .trim();
+        }
+
+        function extractPemBlocksFromText(text, kind) {
+            const normalized = normalizePemText(text);
+            if (!normalized) return [];
+            const pattern = kind === 'key'
+                ? /-----BEGIN (?:[A-Z ]+ )?PRIVATE KEY-----[\s\S]*?-----END (?:[A-Z ]+ )?PRIVATE KEY-----/gi
+                : /-----BEGIN CERTIFICATE-----[\s\S]*?-----END CERTIFICATE-----/gi;
+            return normalized.match(pattern) || [];
+        }
+
+        function setSslSectionState(section, visible) {
+            if (!section) return;
+            section.classList.toggle('is-hidden-mode', !visible);
+            section.classList.toggle('is-visible-mode', visible);
+        }
+
+        function renderSslPasteSummary(items) {
+            if (!sslPasteSummary) return;
+            sslPasteSummary.innerHTML = '';
+            const chipItems = Array.isArray(items) ? items : [];
+            if (chipItems.length === 0) {
+                const chip = document.createElement('span');
+                chip.className = 'ssl-detect-chip muted';
+                chip.textContent = 'Chưa có dữ liệu';
+                sslPasteSummary.appendChild(chip);
+                return;
+            }
+            chipItems.forEach(item => {
+                const chip = document.createElement('span');
+                chip.className = 'ssl-detect-chip' + (item.state ? ' ' + item.state : '');
+                chip.textContent = item.label;
+                sslPasteSummary.appendChild(chip);
+            });
+        }
+
+        function clearParsedSslBundleState(options = {}) {
+            currentBundle = '';
+            currentZipFilename = '';
+            currentDomain = '';
+            currentOriginalFiles = {};
+            window.sslBundleParts = { cert: '', bundle: '', all: '' };
+            bundleOutput.value = '';
+            if (!options.keepPrivateKey) privateKeyInput.value = '';
+            sslResultArea.classList.remove('show');
+            updateGenerateButtonState();
+        }
+
+        function applySslBundleParts(parts, meta = {}) {
+            const safeParts = parts || { cert: '', bundle: '', all: '' };
+            currentBundle = normalizePemText(safeParts.all);
+            currentDomain = meta.domain || currentDomain || 'ssl-bundle';
+            currentZipFilename = meta.filename || currentZipFilename;
+            bundleOutput.value = currentBundle;
+            privateKeyInput.value = normalizePemText(meta.privateKey || privateKeyInput.value);
+            window.sslBundleParts = {
+                cert: normalizePemText(safeParts.cert),
+                bundle: normalizePemText(safeParts.bundle),
+                all: normalizePemText(safeParts.all)
+            };
+            sslResultArea.classList.add('show');
+            updateGenerateButtonState();
+        }
+
+        function setSSLInputMode(mode) {
+            const nextMode = mode === 'paste' ? 'paste' : 'zip';
+            inputMode = nextMode;
+            if (sslModeChooser) sslModeChooser.classList.add('is-hidden');
+            if (sslModePanel) sslModePanel.classList.remove('is-hidden');
+            if (sslModeLabel) sslModeLabel.textContent = nextMode === 'zip' ? 'Đang dùng: Upload ZIP' : 'Đang dùng: Paste SSL Content';
+            setSslSectionState(sslZipSection, nextMode === 'zip');
+            setSslSectionState(sslPasteSection, nextMode === 'paste');
+            if (nextMode === 'paste' && sslPasteInput && document.activeElement !== sslPasteInput) {
+                setTimeout(() => sslPasteInput.focus(), 0);
+            }
+        }
+
+        function resetSSLInputMode() {
+            inputMode = null;
+            if (sslModeChooser) sslModeChooser.classList.remove('is-hidden');
+            if (sslModePanel) sslModePanel.classList.add('is-hidden');
+            setSslSectionState(sslZipSection, false);
+            setSslSectionState(sslPasteSection, false);
+            if (sslModeLabel) sslModeLabel.textContent = 'Chọn phương thức nhập';
+            if (fileInput) fileInput.value = '';
+            if (sslPasteInput) sslPasteInput.value = '';
+            renderSslPasteSummary([]);
+            clearParsedSslBundleState();
+            showSSLMessage('', 'info');
+        }
+
+        function parseSslPasteContent(text) {
+            const normalized = normalizePemText(text);
+            const hasLabels = /(?:^|\n)\s*Private Key\s*:/i.test(normalized) || /(?:^|\n)\s*Cert(?:ificate)?\s*:/i.test(normalized) || /(?:^|\n)\s*CA Bundle\s*:/i.test(normalized);
+
+            const privateKeySection = (normalized.match(/(?:^|\n)\s*Private Key\s*:\s*([\s\S]*?)(?=\n\s*(?:Cert(?:ificate)?|CA Bundle)\s*:|$)/i) || [])[1] || normalized;
+            const certSection = (normalized.match(/(?:^|\n)\s*Cert(?:ificate)?\s*:\s*([\s\S]*?)(?=\n\s*CA Bundle\s*:|$)/i) || [])[1] || normalized;
+            const caSection = (normalized.match(/(?:^|\n)\s*CA Bundle\s*:\s*([\s\S]*)$/i) || [])[1] || '';
+
+            const errors = [];
+            const privateKeyBlocks = extractPemBlocksFromText(privateKeySection, 'key');
+            const certBlocks = extractPemBlocksFromText(certSection, 'cert');
+            const caBlocks = caSection ? extractPemBlocksFromText(caSection, 'cert') : [];
+
+            if (privateKeyBlocks.length === 0) {
+                errors.push('Không tìm thấy Private Key');
+            } else {
+                try {
+                    forge.pki.privateKeyFromPem(normalizePemText(privateKeyBlocks[0]));
+                } catch (error) {
+                    errors.push('Không tìm thấy Private Key');
+                }
+            }
+
+            if (certBlocks.length === 0) {
+                errors.push('Certificate không hợp lệ');
+            } else {
+                try {
+                    forge.pki.certificateFromPem(normalizePemText(certBlocks[0]));
+                } catch (error) {
+                    errors.push('Certificate không hợp lệ');
+                }
+            }
+
+            if (caSection.trim() && caBlocks.length === 0) {
+                errors.push('CA Bundle thiếu hoặc sai format');
+            }
+
+            if (errors.length > 0) {
+                return { valid: false, errors };
+            }
+
+            const privateKeyPem = normalizePemText(privateKeyBlocks[0]);
+            const certPem = normalizePemText(certBlocks[0]);
+            const caBundleBlocks = caSection ? caBlocks : certBlocks.slice(1);
+
+            if (caBundleBlocks.length > 0) {
+                for (const block of caBundleBlocks) {
+                    try {
+                        forge.pki.certificateFromPem(normalizePemText(block));
+                    } catch (error) {
+                        return { valid: false, errors: ['CA Bundle thiếu hoặc sai format'] };
+                    }
+                }
+            }
+
+            const caBundlePem = normalizePemText(caBundleBlocks.join('\n'));
+            const allPem = normalizePemText([certPem, caBundlePem].filter(Boolean).join('\n'));
+
+            return {
+                valid: true,
+                privateKeyPem,
+                certPem,
+                caBundlePem,
+                allPem,
+                summary: [
+                    { label: 'Private Key', state: 'success' },
+                    { label: 'Certificate', state: 'success' },
+                    { label: `CA Bundle${caBundleBlocks.length ? ' × ' + caBundleBlocks.length : ''}`, state: caBundleBlocks.length ? 'success' : 'muted' }
+                ]
+            };
+        }
+
+        privateKeyInput.addEventListener('input', updateGenerateButtonState);
+
+        if (sslPasteInput) {
+            sslPasteInput.addEventListener('input', () => {
+                if (inputMode !== 'paste') setSSLInputMode('paste');
+
+                const rawValue = sslPasteInput.value || '';
+                if (!rawValue.trim()) {
+                    clearParsedSslBundleState();
+                    renderSslPasteSummary([]);
+                    showSSLMessage('', 'info');
+                    return;
+                }
+
+                const parsed = parseSslPasteContent(rawValue);
+                if (parsed.valid) {
+                    applySslBundleParts({ cert: parsed.certPem, bundle: parsed.caBundlePem, all: parsed.allPem }, { privateKey: parsed.privateKeyPem, domain: 'ssl-paste-bundle' });
+                    renderSslPasteSummary(parsed.summary);
+                    showSSLMessage('✅ Đã nhận diện Private Key, Certificate và CA Bundle.', 'success');
+                } else {
+                    clearParsedSslBundleState();
+                    renderSslPasteSummary([{ label: parsed.errors[0] || 'Chưa sẵn sàng', state: 'error' }]);
+                    showSSLMessage('❌ ' + parsed.errors[0], 'error');
+                }
+            });
+        }
 
         uploadArea.addEventListener('dragover', (e) => { e.preventDefault(); uploadArea.classList.add('dragover'); });
         uploadArea.addEventListener('dragleave', () => { uploadArea.classList.remove('dragover'); });
@@ -3004,18 +3439,26 @@
         fileInput.addEventListener('change', (e) => { if (e.target.files.length > 0) handleFile(e.target.files[0]); });
 
         function showSSLMessage(msg, type) {
-            sslMessage.innerHTML = '<div class="message-' + type + '">' + msg + '</div>';
-            if (type !== 'info') setTimeout(() => sslMessage.innerHTML = '', 5000);
+            if (sslMessageTimer) {
+                clearTimeout(sslMessageTimer);
+                sslMessageTimer = null;
+            }
+            if (!sslMessage) return;
+            sslMessage.innerHTML = msg ? '<div class="message-' + type + '">' + msg + '</div>' : '';
+            if (type !== 'info' && msg) {
+                sslMessageTimer = setTimeout(() => {
+                    sslMessage.innerHTML = '';
+                }, 5000);
+            }
         }
 
         async function handleFile(file) {
             if (!file.name.endsWith('.zip')) { showSSLMessage('Vui lòng chọn file ZIP!', 'error'); return; }
 
-            currentBundle = ''; currentDomain = ''; currentZipFilename = ''; currentOriginalFiles = {};
-            window.sslBundleParts = { cert: '', bundle: '', all: '' };
-            bundleOutput.value = ''; privateKeyInput.value = ''; generateBtn.disabled = true;
+            setSSLInputMode('zip');
+            clearParsedSslBundleState();
+            renderSslPasteSummary([]);
             document.getElementById('additionalResults').innerHTML = '';
-            
             showSSLMessage('Đang xử lý file...', 'info');
 
             try {
@@ -3035,19 +3478,19 @@
 
                 const bundleParts = processFullBundle(files);
                 if (bundleParts) {
-                    currentBundle = bundleParts.all;
-                    bundleOutput.value = bundleParts.all;
-                    window.sslBundleParts = {
-                        cert: bundleParts.cert,
-                        bundle: bundleParts.bundle,
-                        all: bundleParts.all
-                    };
+                    applySslBundleParts(bundleParts, { domain: currentDomain, filename: file.name });
+                    renderSslPasteSummary([
+                        { label: 'ZIP parsed', state: 'success' },
+                        { label: 'Certificate bundle ready', state: 'success' }
+                    ]);
                     sslResultArea.classList.add('show');
                     showSSLMessage('✅ Xử lý thành công! Tìm thấy ' + (bundleParts.all.match(/BEGIN CERTIFICATE/g) || []).length + ' certificates.', 'success');
                 } else {
+                    clearParsedSslBundleState();
                     showSSLMessage('❌ Không tìm thấy file certificate hợp lệ!', 'error');
                 }
             } catch (error) {
+                clearParsedSslBundleState();
                 showSSLMessage('❌ Lỗi khi xử lý file: ' + error.message, 'error');
             }
         }
