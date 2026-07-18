@@ -1,2 +1,10 @@
-# Local SSL issued store (do not commit)
+# Ignore sensitive files not intended for public repo
+pass.csv
+import-ssl.sh
+install-ssl.sh
+
+# Environment / local
+.env
+*.pem
+*.key# Local SSL issued store (do not commit)
 acme/issued_ssl_store.json

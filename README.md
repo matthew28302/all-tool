@@ -192,3 +192,10 @@ Feel free to submit improvements and bug reports!
 
 **For more information about DNS:** https://en.wikipedia.org/wiki/Domain_Name_System
 # all-tool
+
+## Public release notes
+
+- The `Install SSL` tab and related install scripts have been removed from this public distribution.
+- Sensitive files (for example `pass.csv`, install scripts) are excluded and should not be committed.
+
+If you need to use the install features or sensitive files, keep them in a private fork or add them locally; do not upload them to public repositories.

@@ -1,0 +1,1242 @@
+[
+  {
+    "id": "577b470f-6e54-4094-9d8e-df5fd72d24c1",
+    "session_id": "dbba1977-ff25-4e32-b8d2-c7b38a2e4e72",
+    "domain": "henglivn.com",
+    "sans": [
+      "*.henglivn.com"
+    ],
+    "challenge_type": "dns-01",
+    "issued_at": "2026-07-18 09:44:02",
+    "status": "issued",
+    "certificate": "-----BEGIN CERTIFICATE-----\nMIIFBDCCA+ygAwIBAgISBa/KSkoWiHFrExmzpdAbLCV/MA0GCSqGSIb3DQEBCwUA\nMDMxCzAJBgNVBAYTAlVTMRYwFAYDVQQKEw1MZXQncyBFbmNyeXB0MQwwCgYDVQQD\nEwNZUjIwHhcNMjYwNzE4MDE0NTI3WhcNMjYxMDE2MDE0NTI2WjAXMRUwEwYDVQQD\nEwxoZW5nbGl2bi5jb20wggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQC+\nVpFsDikugyHD+yCXGGX3OJtba4do1yifRKaPQd4gfPOoImMRBK1Q4NCd+ZycElyf\nK4rj2KX1tOpoPwVLHZo7aUG3Y22/aQwDPcdcdTdTz/3SJ9w7rjUMdFQT77Qfuq+p\nFqxl6tSguqZmWRq5sY9103xOL73b0CnAWvGpHcKcIf2/pD7iJbe9n80XH4HaCaUW\nTLCPiXJgWmJ6F6CSO4HcxHalzBrdRl2ZYIVFgNDW4KyCH5ZWsHKNkI0Z+ziz8kh1\nzdsouwPCSl6oVVjLSLlAv0ZkEro4oAcFidtEPdsQHEyda07zTaoQ8wZsGiJHPdsd\nsNrrmUuFNo69VMqxl2FRAgMBAAGjggIsMIICKDAOBgNVHQ8BAf8EBAMCBaAwEwYD\nVR0lBAwwCgYIKwYBBQUHAwEwDAYDVR0TAQH/BAIwADAdBgNVHQ4EFgQUeO7CrdSV\nmSU0hL+0CvqPqYFYlNMwHwYDVR0jBBgwFoAUQBUtJnntMiCe35pyHdYyH4EMgQww\nMwYIKwYBBQUHAQEEJzAlMCMGCCsGAQUFBzAChhdodHRwOi8veXIyLmkubGVuY3Iu\nb3JnLzAnBgNVHREEIDAegg4qLmhlbmdsaXZuLmNvbYIMaGVuZ2xpdm4uY29tMBMG\nA1UdIAQMMAowCAYGZ4EMAQIBMC8GA1UdHwQoMCYwJKAioCCGHmh0dHA6Ly95cjIu\nYy5sZW5jci5vcmcvMTI4LmNybDCCAQ0GCisGAQQB1nkCBAIEgf4EgfsA+QB/AKgm\ny+MKxjUSRlM/4GXxTxnZbhkIE8Qd2W15ALMSPFUnAAABn3Mb7s8ACAAABQAUsW2U\nBAMASDBGAiEA2j+U7+rPrVM0neRHIrANSD2Eed9eb+8YCbxawzIEMS0CIQDIvvdA\nanw5GafHOWQA1BizXtvr1i2Xqx4p6LqwxiMVnQB2AK9niDtXsE7dj6bZfvYuqOuB\nCsdxYPAkXlXWDC/nhYc6AAABn3Mb9qwAAAQDAEcwRQIhAKp0BRR8pvh//1FOql/L\nsu56WCFPmwa27ykHkSnIs7DrAiAyhUrfdwPwl6U8XCLJbFm45D1qH1lJ2UXOhTfz\nsNwajTANBgkqhkiG9w0BAQsFAAOCAQEAGM+P7iElynO1CvxocGHz5O+/hEpydWGq\nDrk6YSOJT3YfT5AODri+m0Gs5J/Lq0PGi0OIILn4Z/eJ04E2aB6l6JJoV48CJA3p\ncryiperAF4fhk7LLDlgM3aHQmBO4GOUf3iecwyzfv66nkN4DSs4U53xtV/T51Ihy\nALMha9/BY04GG9aVrph0zDQPVg0LxCDVY1uk3UKvkO10A4lizjFH8FwcE0gO65qr\nOdpNfWk0hoD1ix3xuMNS88G/BrwWNQXdPwELHf+kaXvgsbHu0b6EUBqZxxVxfcnp\nXRp4D2z8gDnHRRhGiTogCTYN53D0HVzVN5ITViTJJpKFvoqgwblBCw==\n-----END CERTIFICATE-----",
+    "private_key": "-----BEGIN RSA PRIVATE KEY-----\nMIIEpAIBAAKCAQEAvlaRbA4pLoMhw/sglxhl9zibW2uHaNcon0Smj0HeIHzzqCJj\nEQStUODQnfmcnBJcnyuK49il9bTqaD8FSx2aO2lBt2Ntv2kMAz3HXHU3U8/90ifc\nO641DHRUE++0H7qvqRasZerUoLqmZlkaubGPddN8Ti+929ApwFrxqR3CnCH9v6Q+\n4iW3vZ/NFx+B2gmlFkywj4lyYFpiehegkjuB3MR2pcwa3UZdmWCFRYDQ1uCsgh+W\nVrByjZCNGfs4s/JIdc3bKLsDwkpeqFVYy0i5QL9GZBK6OKAHBYnbRD3bEBxMnWtO\n802qEPMGbBoiRz3bHbDa65lLhTaOvVTKsZdhUQIDAQABAoIBABAUF797IEEyuFfZ\n90YwPE/SlzQVLKh/cWnn1pKYL7OKnpoTwo7Z2GqyPQk1QGSiO/MBrn9CCj3r6RfC\niBfQ8boGUZP0aR1P2kENV1GRAMoakjBOJ/FeLVLGomIXP/3kqylTVh+bY1gLAFq5\nuPNaA5qCUZg4ufbvOhGq1QpyTkHaS0eyg2KiVN5Xd18pPFXlDiol3cVivig/tcJX\nRShveHNHuNM/qqeOUG1CkdNbehf9ANOf2Gqe5xptygROrCIHNMd/YRwZc7HxCdvy\nTFli1j1YOnkx4bhZ2hto8mLv+AgAwmynlW0kr/6tu9YMwtgOQPoEH/Fc0e2hr9p9\nFLf6WOkCgYEA8WvWOrwbbjKo+FrNNIyjeu5dIv1kGbDWBSCnOohSRiCAtQxJeQxO\nHNPFUNBe+ZkQQarPTe2/LZL3VErKP4QsLheO9J1y1AWNnzJW0xGNyqN+ffG4wjx3\nyHtn6GLb5Aj/PtZPFF7ZoiwC3DrpGH5KLAjRbqRo1Kpbn/TQFzfOKzkCgYEAydUH\n8o7w6vQBDtIneIDggA1bXRMkb9vf8i6K74R2irLr8bFBe2KIzLgUqppO4HB8HCG5\n1tp2c965u3voL5YmHw1hATEdEGJvCUxPxFh7JD8MbyhOyy7u3bP8ExrMaLnXeBph\nM029FKJhQ//P/M4nxJg2P96IOTGcZbP+7/IUrtkCgYEAtkozp4PTvoCYH3cIjU5I\nPpFvV/U2uUNSRurh+otmfDccmBgf/juxW4j36056+EKACOV9xJzpBvN6t3YFgrI9\nXcxCECg2xSswRW2QK62Mf961q0lytY9M7t9nlQvYdzXn7T2K1pnMAOz0d/Avg2QQ\ng3FhGgcgdLvxlTUYTv+/N9kCgYEApu1dPFzCnuAeO97OLFkS1HW3mbwqR6Wni4q4\n+C4rSL2AbQ44ZU7ya7bXyN4E3JXL4Ax4wl0+2Mhd/tUVDL53WvlawHyZWCLBSQRn\neLHhbvICW7EPsfZoMs8YbcidRQRnU/slZyQlfPprzay2nZT3yR5Gx/5J1lvUyTzc\nXiFuv8kCgYBGBgoNHVdZK+iTJacKQ9P5LNIEVTTjxmgq4iqOnRk8uCdrHhQ4Sar9\nhYb4yZ5aN2t71roRf2/Xkg8d+QGeN1U2L1fNeXm/KR0uxpZSKAnDxF8A3HNg7Jv0\nvf1nDSBy8Rx8zf2+FIDV1wlMkCgCgW+KJiDnUDZddVsjXRQAozzCCQ==\n-----END RSA PRIVATE KEY-----\n",
+    "ca_bundle": "-----BEGIN CERTIFICATE-----\nMIIE2jCCAsKgAwIBAgIQTr0klH4k05SALYSlL9WzGTANBgkqhkiG9w0BAQsFADAu\nMQswCQYDVQQGEwJVUzENMAsGA1UEChMESVNSRzEQMA4GA1UEAxMHUm9vdCBZUjAe\nFw0yNTA5MDMwMDAwMDBaFw0yODA5MDIyMzU5NTlaMDMxCzAJBgNVBAYTAlVTMRYw\nFAYDVQQKEw1MZXQncyBFbmNyeXB0MQwwCgYDVQQDEwNZUjIwggEiMA0GCSqGSIb3\nDQEBAQUAA4IBDwAwggEKAoIBAQDZ0LxwBppqh84luqMerV/eeL/fXQ7mLQQv1Lnp\nWKZbyvGpx6wh6AfnslAnF6ewTkcHA+gSOoBvm3Dfm06AuGiF+KRut4fAcowqnAQQ\nCW98+QPP/eOv/wug7Iyk4NkOxf2I6g2f55T6nJoOTLFcukeRq80JGQEYan+dPFr9\nOGUgQK2hGKgNkW87pappsOAuUJcroYhRt5uUis4qaZireiseu32gzDJNBAiKtsvd\n6HX4v25bpkRNcS/B/Gtc9kVbUpD+2PLPxdei3Tim55k4tfAEXwD2qyiPTxrTNq6l\nN+AMr5g2c1dNqkOTwjxeV6L5lpP1rGiYvLnRaPlOqyZRPW+5AgMBAAGjge4wgesw\nDgYDVR0PAQH/BAQDAgGGMBMGA1UdJQQMMAoGCCsGAQUFBwMBMBIGA1UdEwEB/wQI\nMAYBAf8CAQAwHQYDVR0OBBYEFEAVLSZ57TIgnt+ach3WMh+BDIEMMB8GA1UdIwQY\nMBaAFN7nW2DQIm1AKH0/DQH+pLVStFGUMDIGCCsGAQUFBwEBBCYwJDAiBggrBgEF\nBQcwAoYWaHR0cDovL3lyLmkubGVuY3Iub3JnLzATBgNVHSAEDDAKMAgGBmeBDAEC\nATAnBgNVHR8EIDAeMBygGqAYhhZodHRwOi8veXIuYy5sZW5jci5vcmcvMA0GCSqG\nSIb3DQEBCwUAA4ICAQB0ZUQWZ9/Yn9COEpo+JfecMnB0h0vwDm/M66IqXqw3LoaL\nmx9lZvRTeDIS67PUeI3yCA2W6PKRD0/FE/G57lOmS+Xy5AaaL00ICGOqjNcCaMWW\n8o8nevHOd4i4lqgtznE/28QwlcdJyF8yBiWHpnyjhEpmNWJURgOCOg2xpwRMBCsj\nMScqYPtOhBeuYQvSwAEeTML2Ukh6uGuX4E14q65Ja8cdjF5bAldnP1eE4FBaAwsZ\nG2fOqqrKV03Y85Nw2btedP1AtliQuJZs/Jo/gXxXdc7LrH3McgnpnbTiAncX7yES\nhP6kzQejllqMCIt52HOjxDGWafS7Xw+DKwqmH+Eqy8dcbOuag/1AYlQoKNVK3F5q\nHh6tEDiMqQcLIibGKteE6iHo4A/bIScbzrhXUYuism42ZYzmc48FMVIH3qy4L84E\nTdAH2gtxw0PAhvRVXp8HP7wfngpzsN/8xOTpeRSbM4+Qbc56G6+Bifmv6sk1ieQb\nNA3wJdl4DDUuQSV8hBgx6zoI1ZSGORprDFux7c6rhc77QZMSRrEgomBeklervEve\n86ylWmZ3WWHV6RLMi8xNvjd71r4EPIGgY7BZU/VPBkq+uA7Gb6mbJnFgV43uh3xy\nLRFgxIAphIukwTGSMZZR+AI+Qnp0BYTWovHXozOf3H8r6hozEoT02JHn0AeTfA==\n-----END CERTIFICATE-----\n-----BEGIN CERTIFICATE-----\n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\n-----END CERTIFICATE-----",
+    "full_chain": "-----BEGIN CERTIFICATE-----\nMIIFBDCCA+ygAwIBAgISBa/KSkoWiHFrExmzpdAbLCV/MA0GCSqGSIb3DQEBCwUA\nMDMxCzAJBgNVBAYTAlVTMRYwFAYDVQQKEw1MZXQncyBFbmNyeXB0MQwwCgYDVQQD\nEwNZUjIwHhcNMjYwNzE4MDE0NTI3WhcNMjYxMDE2MDE0NTI2WjAXMRUwEwYDVQQD\nEwxoZW5nbGl2bi5jb20wggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQC+\nVpFsDikugyHD+yCXGGX3OJtba4do1yifRKaPQd4gfPOoImMRBK1Q4NCd+ZycElyf\nK4rj2KX1tOpoPwVLHZo7aUG3Y22/aQwDPcdcdTdTz/3SJ9w7rjUMdFQT77Qfuq+p\nFqxl6tSguqZmWRq5sY9103xOL73b0CnAWvGpHcKcIf2/pD7iJbe9n80XH4HaCaUW\nTLCPiXJgWmJ6F6CSO4HcxHalzBrdRl2ZYIVFgNDW4KyCH5ZWsHKNkI0Z+ziz8kh1\nzdsouwPCSl6oVVjLSLlAv0ZkEro4oAcFidtEPdsQHEyda07zTaoQ8wZsGiJHPdsd\nsNrrmUuFNo69VMqxl2FRAgMBAAGjggIsMIICKDAOBgNVHQ8BAf8EBAMCBaAwEwYD\nVR0lBAwwCgYIKwYBBQUHAwEwDAYDVR0TAQH/BAIwADAdBgNVHQ4EFgQUeO7CrdSV\nmSU0hL+0CvqPqYFYlNMwHwYDVR0jBBgwFoAUQBUtJnntMiCe35pyHdYyH4EMgQww\nMwYIKwYBBQUHAQEEJzAlMCMGCCsGAQUFBzAChhdodHRwOi8veXIyLmkubGVuY3Iu\nb3JnLzAnBgNVHREEIDAegg4qLmhlbmdsaXZuLmNvbYIMaGVuZ2xpdm4uY29tMBMG\nA1UdIAQMMAowCAYGZ4EMAQIBMC8GA1UdHwQoMCYwJKAioCCGHmh0dHA6Ly95cjIu\nYy5sZW5jci5vcmcvMTI4LmNybDCCAQ0GCisGAQQB1nkCBAIEgf4EgfsA+QB/AKgm\ny+MKxjUSRlM/4GXxTxnZbhkIE8Qd2W15ALMSPFUnAAABn3Mb7s8ACAAABQAUsW2U\nBAMASDBGAiEA2j+U7+rPrVM0neRHIrANSD2Eed9eb+8YCbxawzIEMS0CIQDIvvdA\nanw5GafHOWQA1BizXtvr1i2Xqx4p6LqwxiMVnQB2AK9niDtXsE7dj6bZfvYuqOuB\nCsdxYPAkXlXWDC/nhYc6AAABn3Mb9qwAAAQDAEcwRQIhAKp0BRR8pvh//1FOql/L\nsu56WCFPmwa27ykHkSnIs7DrAiAyhUrfdwPwl6U8XCLJbFm45D1qH1lJ2UXOhTfz\nsNwajTANBgkqhkiG9w0BAQsFAAOCAQEAGM+P7iElynO1CvxocGHz5O+/hEpydWGq\nDrk6YSOJT3YfT5AODri+m0Gs5J/Lq0PGi0OIILn4Z/eJ04E2aB6l6JJoV48CJA3p\ncryiperAF4fhk7LLDlgM3aHQmBO4GOUf3iecwyzfv66nkN4DSs4U53xtV/T51Ihy\nALMha9/BY04GG9aVrph0zDQPVg0LxCDVY1uk3UKvkO10A4lizjFH8FwcE0gO65qr\nOdpNfWk0hoD1ix3xuMNS88G/BrwWNQXdPwELHf+kaXvgsbHu0b6EUBqZxxVxfcnp\nXRp4D2z8gDnHRRhGiTogCTYN53D0HVzVN5ITViTJJpKFvoqgwblBCw==\n-----END CERTIFICATE-----\n\n-----BEGIN CERTIFICATE-----\nMIIE2jCCAsKgAwIBAgIQTr0klH4k05SALYSlL9WzGTANBgkqhkiG9w0BAQsFADAu\nMQswCQYDVQQGEwJVUzENMAsGA1UEChMESVNSRzEQMA4GA1UEAxMHUm9vdCBZUjAe\nFw0yNTA5MDMwMDAwMDBaFw0yODA5MDIyMzU5NTlaMDMxCzAJBgNVBAYTAlVTMRYw\nFAYDVQQKEw1MZXQncyBFbmNyeXB0MQwwCgYDVQQDEwNZUjIwggEiMA0GCSqGSIb3\nDQEBAQUAA4IBDwAwggEKAoIBAQDZ0LxwBppqh84luqMerV/eeL/fXQ7mLQQv1Lnp\nWKZbyvGpx6wh6AfnslAnF6ewTkcHA+gSOoBvm3Dfm06AuGiF+KRut4fAcowqnAQQ\nCW98+QPP/eOv/wug7Iyk4NkOxf2I6g2f55T6nJoOTLFcukeRq80JGQEYan+dPFr9\nOGUgQK2hGKgNkW87pappsOAuUJcroYhRt5uUis4qaZireiseu32gzDJNBAiKtsvd\n6HX4v25bpkRNcS/B/Gtc9kVbUpD+2PLPxdei3Tim55k4tfAEXwD2qyiPTxrTNq6l\nN+AMr5g2c1dNqkOTwjxeV6L5lpP1rGiYvLnRaPlOqyZRPW+5AgMBAAGjge4wgesw\nDgYDVR0PAQH/BAQDAgGGMBMGA1UdJQQMMAoGCCsGAQUFBwMBMBIGA1UdEwEB/wQI\nMAYBAf8CAQAwHQYDVR0OBBYEFEAVLSZ57TIgnt+ach3WMh+BDIEMMB8GA1UdIwQY\nMBaAFN7nW2DQIm1AKH0/DQH+pLVStFGUMDIGCCsGAQUFBwEBBCYwJDAiBggrBgEF\nBQcwAoYWaHR0cDovL3lyLmkubGVuY3Iub3JnLzATBgNVHSAEDDAKMAgGBmeBDAEC\nATAnBgNVHR8EIDAeMBygGqAYhhZodHRwOi8veXIuYy5sZW5jci5vcmcvMA0GCSqG\nSIb3DQEBCwUAA4ICAQB0ZUQWZ9/Yn9COEpo+JfecMnB0h0vwDm/M66IqXqw3LoaL\nmx9lZvRTeDIS67PUeI3yCA2W6PKRD0/FE/G57lOmS+Xy5AaaL00ICGOqjNcCaMWW\n8o8nevHOd4i4lqgtznE/28QwlcdJyF8yBiWHpnyjhEpmNWJURgOCOg2xpwRMBCsj\nMScqYPtOhBeuYQvSwAEeTML2Ukh6uGuX4E14q65Ja8cdjF5bAldnP1eE4FBaAwsZ\nG2fOqqrKV03Y85Nw2btedP1AtliQuJZs/Jo/gXxXdc7LrH3McgnpnbTiAncX7yES\nhP6kzQejllqMCIt52HOjxDGWafS7Xw+DKwqmH+Eqy8dcbOuag/1AYlQoKNVK3F5q\nHh6tEDiMqQcLIibGKteE6iHo4A/bIScbzrhXUYuism42ZYzmc48FMVIH3qy4L84E\nTdAH2gtxw0PAhvRVXp8HP7wfngpzsN/8xOTpeRSbM4+Qbc56G6+Bifmv6sk1ieQb\nNA3wJdl4DDUuQSV8hBgx6zoI1ZSGORprDFux7c6rhc77QZMSRrEgomBeklervEve\n86ylWmZ3WWHV6RLMi8xNvjd71r4EPIGgY7BZU/VPBkq+uA7Gb6mbJnFgV43uh3xy\nLRFgxIAphIukwTGSMZZR+AI+Qnp0BYTWovHXozOf3H8r6hozEoT02JHn0AeTfA==\n-----END CERTIFICATE-----\n\n-----BEGIN CERTIFICATE-----\n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\n-----END CERTIFICATE-----\n",
+    "valid_from": "2026-07-18 01:45:27",
+    "valid_to": "2026-10-16 01:45:26",
+    "subject": "CN=henglivn.com",
+    "issuer": "CN=YR2,O=Let's Encrypt,C=US",
+    "serial_number": "495379733657765106243917434088363140064639",
+    "provider": "letsencrypt",
+    "email": "admin@henglivn.com",
+    "order_url": "https://acme-v02.api.letsencrypt.org/acme/order/3544738265/533568408095",
+    "finalize_url": "https://acme-v02.api.letsencrypt.org/acme/finalize/3544738265/533568408095",
+    "auth_urls": [
+      "https://acme-v02.api.letsencrypt.org/acme/authz/3544738265/741442058295",
+      "https://acme-v02.api.letsencrypt.org/acme/authz/3544738265/741442058305"
+    ],
+    "domains": [
+      {
+        "domain": "henglivn.com",
+        "auth_url": "https://acme-v02.api.letsencrypt.org/acme/authz/3544738265/741442058295",
+        "challenge_url": "https://acme-v02.api.letsencrypt.org/acme/chall/3544738265/741442058295/31t-hQ",
+        "status": "valid",
+        "last_error": null
+      },
+      {
+        "domain": "henglivn.com",
+        "auth_url": "https://acme-v02.api.letsencrypt.org/acme/authz/3544738265/741442058305",
+        "challenge_url": "https://acme-v02.api.letsencrypt.org/acme/chall/3544738265/741442058305/bBIthQ",
+        "status": "valid",
+        "last_error": null
+      }
+    ],
+    "progress_logs": [
+      {
+        "time": "2026-07-18 09:42:54",
+        "level": "success",
+        "message": "Order ACME đã tạo. Vui lòng thêm bản ghi xác thực.",
+        "run_id": "init-1784342574252"
+      },
+      {
+        "time": "2026-07-18 09:43:50",
+        "level": "loading",
+        "message": "Đang pre-check bản ghi xác thực...",
+        "run_id": "verify-1784342630375"
+      },
+      {
+        "time": "2026-07-18 09:43:54",
+        "level": "success",
+        "message": "Pre-check đạt. Đã gửi challenge, bắt đầu xác thực tự động...",
+        "run_id": "verify-1784342630375"
+      },
+      {
+        "time": "2026-07-18 09:43:54",
+        "level": "loading",
+        "message": "Đã gửi challenge tới ACME. Đang polling authorization...",
+        "run_id": "verify-1784342630375"
+      },
+      {
+        "time": "2026-07-18 09:43:57",
+        "level": "success",
+        "message": "Tất cả authorization đã valid.",
+        "run_id": "verify-1784342630375"
+      },
+      {
+        "time": "2026-07-18 09:43:57",
+        "level": "loading",
+        "message": "Đang finalize order và chờ cấp chứng chỉ...",
+        "run_id": "verify-1784342630375"
+      },
+      {
+        "time": "2026-07-18 09:44:02",
+        "level": "success",
+        "message": "Đã cấp cert thành công.",
+        "run_id": "verify-1784342630375"
+      }
+    ],
+    "progress_text": "Đã cấp cert thành công.",
+    "last_error": null,
+    "current_run_id": "verify-1784342630375",
+    "updated_at": "2026-07-18 09:44:02"
+  },
+  {
+    "id": "30000325-973e-4dbf-854c-e6a4fd0ed2c1",
+    "session_id": "d8983411-0ca7-48b5-9609-9a01e00a600b",
+    "domain": "henglivn.com",
+    "sans": [
+      "www.henglivn.com"
+    ],
+    "challenge_type": "dns-01",
+    "issued_at": null,
+    "status": "pending",
+    "certificate": "",
+    "private_key": "",
+    "ca_bundle": "",
+    "full_chain": "",
+    "valid_from": null,
+    "valid_to": null,
+    "subject": null,
+    "issuer": null,
+    "serial_number": null,
+    "provider": "letsencrypt",
+    "email": "admin@henglivn.com",
+    "challenges": [
+      {
+        "type": "dns-01",
+        "domain": "henglivn.com",
+        "token": "d_UtSsbhNcMH4H_7tz5abRDX1qCuKci-lI_D6vf4ci8",
+        "key_auth": "d_UtSsbhNcMH4H_7tz5abRDX1qCuKci-lI_D6vf4ci8.mv0WEAW5LQAZAAfQiUOVF_gS2GReIdrst8S-eKTyF44",
+        "dns_name": "_acme-challenge.henglivn.com",
+        "dns_value": "KXot4Jv8A0RtQ5ZEHF-QTdfr5cipBsKt7YMUrNBbvFM",
+        "auth_url": "https://acme-v02.api.letsencrypt.org/acme/authz/3544737565/741441801575",
+        "challenge_url": "https://acme-v02.api.letsencrypt.org/acme/chall/3544737565/741441801575/x0q3Cw",
+        "status": "pending"
+      },
+      {
+        "type": "dns-01",
+        "domain": "www.henglivn.com",
+        "token": "amhiQ6r2qbJwaxXG45V9iMw_yV8a2E1ppoDaTEfrthE",
+        "key_auth": "amhiQ6r2qbJwaxXG45V9iMw_yV8a2E1ppoDaTEfrthE.mv0WEAW5LQAZAAfQiUOVF_gS2GReIdrst8S-eKTyF44",
+        "dns_name": "_acme-challenge.www.henglivn.com",
+        "dns_value": "ymBrQJHahP69hXHREJPru7QOpy2XR5_JrcLkvP2C1fg",
+        "auth_url": "https://acme-v02.api.letsencrypt.org/acme/authz/3544737565/741441801585",
+        "challenge_url": "https://acme-v02.api.letsencrypt.org/acme/chall/3544737565/741441801585/RyuI4w",
+        "status": "pending"
+      }
+    ],
+    "order_url": "https://acme-v02.api.letsencrypt.org/acme/order/3544737565/533568244695",
+    "finalize_url": "https://acme-v02.api.letsencrypt.org/acme/finalize/3544737565/533568244695",
+    "auth_urls": [
+      "https://acme-v02.api.letsencrypt.org/acme/authz/3544737565/741441801575",
+      "https://acme-v02.api.letsencrypt.org/acme/authz/3544737565/741441801585"
+    ],
+    "domains": [
+      {
+        "domain": "henglivn.com",
+        "auth_url": "https://acme-v02.api.letsencrypt.org/acme/authz/3544737565/741441801575",
+        "challenge_url": "https://acme-v02.api.letsencrypt.org/acme/chall/3544737565/741441801575/x0q3Cw",
+        "status": "pending",
+        "last_error": null
+      },
+      {
+        "domain": "www.henglivn.com",
+        "auth_url": "https://acme-v02.api.letsencrypt.org/acme/authz/3544737565/741441801585",
+        "challenge_url": "https://acme-v02.api.letsencrypt.org/acme/chall/3544737565/741441801585/RyuI4w",
+        "status": "pending",
+        "last_error": null
+      }
+    ],
+    "created_at": "2026-07-18 09:42:16",
+    "last_check_at": null,
+    "last_check_results": [],
+    "dns_cache_clear": [],
+    "progress_logs": [
+      {
+        "time": "2026-07-18 09:42:16",
+        "level": "success",
+        "message": "Order ACME đã tạo. Vui lòng thêm bản ghi xác thực.",
+        "run_id": "init-1784342536178"
+      }
+    ],
+    "progress_text": "Order ACME đã tạo. Vui lòng thêm bản ghi xác thực.",
+    "last_error": null,
+    "current_run_id": "init-1784342536178",
+    "updated_at": "2026-07-18 09:42:16"
+  },
+  {
+    "id": "17af895d-e208-4d9e-bf5a-d31a97b2cd59",
+    "session_id": "dcbd5b10-8f5c-4e78-b3e0-0faa9ef0768d",
+    "domain": "tongkhomavach.com.vn",
+    "sans": [
+      "www.tongkhomavach.com.vn"
+    ],
+    "challenge_type": "dns-01",
+    "issued_at": "2026-07-17 15:43:24",
+    "status": "issued",
+    "certificate": "-----BEGIN CERTIFICATE-----\nMIIFHTCCBAWgAwIBAgISBQ/bSAk3snL5sEcySnC/DqMtMA0GCSqGSIb3DQEBCwUA\nMDMxCzAJBgNVBAYTAlVTMRYwFAYDVQQKEw1MZXQncyBFbmNyeXB0MQwwCgYDVQQD\nEwNZUjIwHhcNMjYwNzE3MDc0NDUxWhcNMjYxMDE1MDc0NDUwWjAfMR0wGwYDVQQD\nExR0b25na2hvbWF2YWNoLmNvbS52bjCCASIwDQYJKoZIhvcNAQEBBQADggEPADCC\nAQoCggEBAL4icMfLpUu5RB//RV3bAL4j8YywZLlTjbglCMwmfes1EGJ6xYIMRTna\nfTicdSF1H4tTvxLL5czZvwh7iYL3Z7oHTfUDXOHmf1ZWil+uPFqEvljUFL7ZGDpc\nJURm4Rn7BXSvRhcPYvPXOkkycCGkYDvX/KhahIGJDQByQzamAuwpW9+BQA7iUnXE\nB28NgSBBXbzq67Wv7w7/4ubODJ9AGU7mgHn7RvQG/b7OhSREXFSvEAKyYruWsgSx\nsqnFQ1yfiu65daIXXDvZoTIgga0E5HpFBvt+7x4DWD5VdhCS2cMfg+3/5oHOo/ab\n99yaupSNu6iZwvRBVBZXK5n6dUDCqVUCAwEAAaOCAj0wggI5MA4GA1UdDwEB/wQE\nAwIFoDATBgNVHSUEDDAKBggrBgEFBQcDATAMBgNVHRMBAf8EAjAAMB0GA1UdDgQW\nBBRwI/pWJND1bVUMo1auhRLv0fzqATAfBgNVHSMEGDAWgBRAFS0mee0yIJ7fmnId\n1jIfgQyBDDAzBggrBgEFBQcBAQQnMCUwIwYIKwYBBQUHMAKGF2h0dHA6Ly95cjIu\naS5sZW5jci5vcmcvMDkGA1UdEQQyMDCCFHRvbmdraG9tYXZhY2guY29tLnZughh3\nd3cudG9uZ2tob21hdmFjaC5jb20udm4wEwYDVR0gBAwwCjAIBgZngQwBAgEwLgYD\nVR0fBCcwJTAjoCGgH4YdaHR0cDovL3lyMi5jLmxlbmNyLm9yZy80Ni5jcmwwggEN\nBgorBgEEAdZ5AgQCBIH+BIH7APkAdwDIo8R/x7OtuTVrAT9qehJt4zpOQ6XGRvmX\nrTl1mR3PmgAAAZ9vPpq2AAAEAwBIMEYCIQCjyDNcVX1+vrTfNf7xn8hbMYUCcOMK\nlI3M+SKmQuuNSgIhAPozi2PBCwNylo7KZZRvkBsAM86QbIroxQOeTXsqrSeRAH4A\nbP5QGUOoXqkWvFLRM+TcyR7xQRx9JYQg0XOAnhgY6zoAAAGfbz6dewAIAAAFABXB\nY9kEAwBHMEUCIQCTddxWcJdTe0Saq01Eb5/OQghxnLxJ0GMPqvpTWFUX6AIgEN+M\njCXXgNvnjvS9ikNZtge9sxpqRlbDhJKamB3QgwEwDQYJKoZIhvcNAQELBQADggEB\nAHKtQcZJ9fpaoX92KguAKOyckMWCNCoX+RVsVDq68KMtbANeYXEmkoJBfDAQUW1R\nvaUsTLaM7rtJqN6DkLWvkd6iSVaavOQK1hlNoXrKQXY2Jo2nsJdFYGmJ3waSJzZi\ntvC0Fyc8eizEP9kNPHoID+Y95UaLWUoDS/V6mYGMJKrNSMZ/HQBzsAMItrN6YZ/e\ndNBa37KwKirCTIebkOc8fFMU0miGh0BqdbEc6t/SSpJJis/h+jKr5qcI0NuxhDic\nLhml8C7EV1KN+desmSOn+1sDyw6xJ0qpUy1XAG/4jLQY4oHGhl/Xjry2ebbgOV9d\nOeARR36+srZG9dPYi0McU/g=\n-----END CERTIFICATE-----",
+    "private_key": "-----BEGIN RSA PRIVATE KEY-----\nMIIEogIBAAKCAQEAviJwx8ulS7lEH/9FXdsAviPxjLBkuVONuCUIzCZ96zUQYnrF\nggxFOdp9OJx1IXUfi1O/EsvlzNm/CHuJgvdnugdN9QNc4eZ/VlaKX648WoS+WNQU\nvtkYOlwlRGbhGfsFdK9GFw9i89c6STJwIaRgO9f8qFqEgYkNAHJDNqYC7Clb34FA\nDuJSdcQHbw2BIEFdvOrrta/vDv/i5s4Mn0AZTuaAeftG9Ab9vs6FJERcVK8QArJi\nu5ayBLGyqcVDXJ+K7rl1ohdcO9mhMiCBrQTkekUG+37vHgNYPlV2EJLZwx+D7f/m\ngc6j9pv33Jq6lI27qJnC9EFUFlcrmfp1QMKpVQIDAQABAoIBABrUQfUfZPqzcMvR\nudhi5SRExCU7EBYf686BLfrzWi9MtJGA4MqCBWlYIvVQYS17GRwQPCpgf9O7zLtb\nW0MSEB6YQJrYgkxqDwEq2FRkrKWFN6rRz6pCeKsQ15K4Wv552leQZ/ksYE/SHf+4\nJfRz/RRUsj/l+JlNXSVOpPIFfkIT3FEbZDEPlq0dHzP4HLukt93eEvlAEbGrS/fi\n6Y9GAo4/Dx5QzNtlc2q9S/c0W++kCzwtyY4/2J/hp8FaglqGDWdv1E7ci66CodGJ\nAzCKDySzuoIG0/M58tLIzkaEqKMWsaxqcTnb022efcmvygDs2Lleslvu3IAtbWzb\neCTlbF0CgYEA5SBvOTc4kDELV6s9Tj9vjOFglpAieAgDUXVJiSX/0O244Co/avfx\nxJ+SAf4l1NMowbtgQzGugQ1ajxZWUZQ6GPi9ocncque0qHCQqzx2AZeUCx1dm9N6\n4M1jZKl4FMyW2zm9CbFV/yJRSnWtQz6dqK3MhxW5Wi6NorEW7S8YfLsCgYEA1G9C\nmf2tcE7uxQzjA0L16L2gU4XcAI/eTXV/fZvnO3tLLAZSWMEVJ4woOEf3VgTCauC6\nbfjNRM3A12b3u4rWVkh7FSEAdgWLb0BvqNl6TvJfXD89qe+1hfkGfKVIGZ1GmKeG\nIdGh64S5iP6TYHypJtJ5kN/fTY+z+MbVM3qomS8CgYB2JEM1PUPtFVzD14fE0PCz\ns4IaIDelrHwJhHBmRzGgiPLKov4QKch/mcevP1xCYJ6jRfpcq0FPSZNoNBxN9CAA\nwEEHKw6dENwV/fSaVpKCP6YWFQ4vStwRDdYyES/ZiaQ/ZYYTeVzeMNO5kPPFuIOS\ndgr/nDP2TAq72JP5uE7oAQKBgB49TDzBaJvxEHoKUJJZSMn9nEHnbx7BXAKotCI8\nPBkyfsvghn5N1eYQRHVmgSXEfaxbGw6meQnPRCElbiRLKiGUJbknPnqOZX/Lq1lc\nw9VTGRH3ip6TGcLdZPf/SxkiUzdNuYE85xCwjvyaSH5WoHl/QoDF7XKL/zFtlFHE\npxVPAoGALuoTCpfbMSIsy9uhmXU2jK/JeaEvD6ykBQnH3V6QtBr02Qz3VFL+gqsP\nU2I/XAQC+mRbCrCZMgSNa3tCocCDe05xyHwE/o+65oqAzXr9rhmnnVi5uE6BXBmy\nVCiZ3mnz2hy2SGnjws9irXboJMGko/xvVFePMsj3GC+YhrKXPWQ=\n-----END RSA PRIVATE KEY-----\n",
+    "ca_bundle": "-----BEGIN CERTIFICATE-----\nMIIE2jCCAsKgAwIBAgIQTr0klH4k05SALYSlL9WzGTANBgkqhkiG9w0BAQsFADAu\nMQswCQYDVQQGEwJVUzENMAsGA1UEChMESVNSRzEQMA4GA1UEAxMHUm9vdCBZUjAe\nFw0yNTA5MDMwMDAwMDBaFw0yODA5MDIyMzU5NTlaMDMxCzAJBgNVBAYTAlVTMRYw\nFAYDVQQKEw1MZXQncyBFbmNyeXB0MQwwCgYDVQQDEwNZUjIwggEiMA0GCSqGSIb3\nDQEBAQUAA4IBDwAwggEKAoIBAQDZ0LxwBppqh84luqMerV/eeL/fXQ7mLQQv1Lnp\nWKZbyvGpx6wh6AfnslAnF6ewTkcHA+gSOoBvm3Dfm06AuGiF+KRut4fAcowqnAQQ\nCW98+QPP/eOv/wug7Iyk4NkOxf2I6g2f55T6nJoOTLFcukeRq80JGQEYan+dPFr9\nOGUgQK2hGKgNkW87pappsOAuUJcroYhRt5uUis4qaZireiseu32gzDJNBAiKtsvd\n6HX4v25bpkRNcS/B/Gtc9kVbUpD+2PLPxdei3Tim55k4tfAEXwD2qyiPTxrTNq6l\nN+AMr5g2c1dNqkOTwjxeV6L5lpP1rGiYvLnRaPlOqyZRPW+5AgMBAAGjge4wgesw\nDgYDVR0PAQH/BAQDAgGGMBMGA1UdJQQMMAoGCCsGAQUFBwMBMBIGA1UdEwEB/wQI\nMAYBAf8CAQAwHQYDVR0OBBYEFEAVLSZ57TIgnt+ach3WMh+BDIEMMB8GA1UdIwQY\nMBaAFN7nW2DQIm1AKH0/DQH+pLVStFGUMDIGCCsGAQUFBwEBBCYwJDAiBggrBgEF\nBQcwAoYWaHR0cDovL3lyLmkubGVuY3Iub3JnLzATBgNVHSAEDDAKMAgGBmeBDAEC\nATAnBgNVHR8EIDAeMBygGqAYhhZodHRwOi8veXIuYy5sZW5jci5vcmcvMA0GCSqG\nSIb3DQEBCwUAA4ICAQB0ZUQWZ9/Yn9COEpo+JfecMnB0h0vwDm/M66IqXqw3LoaL\nmx9lZvRTeDIS67PUeI3yCA2W6PKRD0/FE/G57lOmS+Xy5AaaL00ICGOqjNcCaMWW\n8o8nevHOd4i4lqgtznE/28QwlcdJyF8yBiWHpnyjhEpmNWJURgOCOg2xpwRMBCsj\nMScqYPtOhBeuYQvSwAEeTML2Ukh6uGuX4E14q65Ja8cdjF5bAldnP1eE4FBaAwsZ\nG2fOqqrKV03Y85Nw2btedP1AtliQuJZs/Jo/gXxXdc7LrH3McgnpnbTiAncX7yES\nhP6kzQejllqMCIt52HOjxDGWafS7Xw+DKwqmH+Eqy8dcbOuag/1AYlQoKNVK3F5q\nHh6tEDiMqQcLIibGKteE6iHo4A/bIScbzrhXUYuism42ZYzmc48FMVIH3qy4L84E\nTdAH2gtxw0PAhvRVXp8HP7wfngpzsN/8xOTpeRSbM4+Qbc56G6+Bifmv6sk1ieQb\nNA3wJdl4DDUuQSV8hBgx6zoI1ZSGORprDFux7c6rhc77QZMSRrEgomBeklervEve\n86ylWmZ3WWHV6RLMi8xNvjd71r4EPIGgY7BZU/VPBkq+uA7Gb6mbJnFgV43uh3xy\nLRFgxIAphIukwTGSMZZR+AI+Qnp0BYTWovHXozOf3H8r6hozEoT02JHn0AeTfA==\n-----END CERTIFICATE-----\n-----BEGIN CERTIFICATE-----\n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\n-----END CERTIFICATE-----",
+    "full_chain": "-----BEGIN CERTIFICATE-----\nMIIFHTCCBAWgAwIBAgISBQ/bSAk3snL5sEcySnC/DqMtMA0GCSqGSIb3DQEBCwUA\nMDMxCzAJBgNVBAYTAlVTMRYwFAYDVQQKEw1MZXQncyBFbmNyeXB0MQwwCgYDVQQD\nEwNZUjIwHhcNMjYwNzE3MDc0NDUxWhcNMjYxMDE1MDc0NDUwWjAfMR0wGwYDVQQD\nExR0b25na2hvbWF2YWNoLmNvbS52bjCCASIwDQYJKoZIhvcNAQEBBQADggEPADCC\nAQoCggEBAL4icMfLpUu5RB//RV3bAL4j8YywZLlTjbglCMwmfes1EGJ6xYIMRTna\nfTicdSF1H4tTvxLL5czZvwh7iYL3Z7oHTfUDXOHmf1ZWil+uPFqEvljUFL7ZGDpc\nJURm4Rn7BXSvRhcPYvPXOkkycCGkYDvX/KhahIGJDQByQzamAuwpW9+BQA7iUnXE\nB28NgSBBXbzq67Wv7w7/4ubODJ9AGU7mgHn7RvQG/b7OhSREXFSvEAKyYruWsgSx\nsqnFQ1yfiu65daIXXDvZoTIgga0E5HpFBvt+7x4DWD5VdhCS2cMfg+3/5oHOo/ab\n99yaupSNu6iZwvRBVBZXK5n6dUDCqVUCAwEAAaOCAj0wggI5MA4GA1UdDwEB/wQE\nAwIFoDATBgNVHSUEDDAKBggrBgEFBQcDATAMBgNVHRMBAf8EAjAAMB0GA1UdDgQW\nBBRwI/pWJND1bVUMo1auhRLv0fzqATAfBgNVHSMEGDAWgBRAFS0mee0yIJ7fmnId\n1jIfgQyBDDAzBggrBgEFBQcBAQQnMCUwIwYIKwYBBQUHMAKGF2h0dHA6Ly95cjIu\naS5sZW5jci5vcmcvMDkGA1UdEQQyMDCCFHRvbmdraG9tYXZhY2guY29tLnZughh3\nd3cudG9uZ2tob21hdmFjaC5jb20udm4wEwYDVR0gBAwwCjAIBgZngQwBAgEwLgYD\nVR0fBCcwJTAjoCGgH4YdaHR0cDovL3lyMi5jLmxlbmNyLm9yZy80Ni5jcmwwggEN\nBgorBgEEAdZ5AgQCBIH+BIH7APkAdwDIo8R/x7OtuTVrAT9qehJt4zpOQ6XGRvmX\nrTl1mR3PmgAAAZ9vPpq2AAAEAwBIMEYCIQCjyDNcVX1+vrTfNf7xn8hbMYUCcOMK\nlI3M+SKmQuuNSgIhAPozi2PBCwNylo7KZZRvkBsAM86QbIroxQOeTXsqrSeRAH4A\nbP5QGUOoXqkWvFLRM+TcyR7xQRx9JYQg0XOAnhgY6zoAAAGfbz6dewAIAAAFABXB\nY9kEAwBHMEUCIQCTddxWcJdTe0Saq01Eb5/OQghxnLxJ0GMPqvpTWFUX6AIgEN+M\njCXXgNvnjvS9ikNZtge9sxpqRlbDhJKamB3QgwEwDQYJKoZIhvcNAQELBQADggEB\nAHKtQcZJ9fpaoX92KguAKOyckMWCNCoX+RVsVDq68KMtbANeYXEmkoJBfDAQUW1R\nvaUsTLaM7rtJqN6DkLWvkd6iSVaavOQK1hlNoXrKQXY2Jo2nsJdFYGmJ3waSJzZi\ntvC0Fyc8eizEP9kNPHoID+Y95UaLWUoDS/V6mYGMJKrNSMZ/HQBzsAMItrN6YZ/e\ndNBa37KwKirCTIebkOc8fFMU0miGh0BqdbEc6t/SSpJJis/h+jKr5qcI0NuxhDic\nLhml8C7EV1KN+desmSOn+1sDyw6xJ0qpUy1XAG/4jLQY4oHGhl/Xjry2ebbgOV9d\nOeARR36+srZG9dPYi0McU/g=\n-----END CERTIFICATE-----\n\n-----BEGIN CERTIFICATE-----\nMIIE2jCCAsKgAwIBAgIQTr0klH4k05SALYSlL9WzGTANBgkqhkiG9w0BAQsFADAu\nMQswCQYDVQQGEwJVUzENMAsGA1UEChMESVNSRzEQMA4GA1UEAxMHUm9vdCBZUjAe\nFw0yNTA5MDMwMDAwMDBaFw0yODA5MDIyMzU5NTlaMDMxCzAJBgNVBAYTAlVTMRYw\nFAYDVQQKEw1MZXQncyBFbmNyeXB0MQwwCgYDVQQDEwNZUjIwggEiMA0GCSqGSIb3\nDQEBAQUAA4IBDwAwggEKAoIBAQDZ0LxwBppqh84luqMerV/eeL/fXQ7mLQQv1Lnp\nWKZbyvGpx6wh6AfnslAnF6ewTkcHA+gSOoBvm3Dfm06AuGiF+KRut4fAcowqnAQQ\nCW98+QPP/eOv/wug7Iyk4NkOxf2I6g2f55T6nJoOTLFcukeRq80JGQEYan+dPFr9\nOGUgQK2hGKgNkW87pappsOAuUJcroYhRt5uUis4qaZireiseu32gzDJNBAiKtsvd\n6HX4v25bpkRNcS/B/Gtc9kVbUpD+2PLPxdei3Tim55k4tfAEXwD2qyiPTxrTNq6l\nN+AMr5g2c1dNqkOTwjxeV6L5lpP1rGiYvLnRaPlOqyZRPW+5AgMBAAGjge4wgesw\nDgYDVR0PAQH/BAQDAgGGMBMGA1UdJQQMMAoGCCsGAQUFBwMBMBIGA1UdEwEB/wQI\nMAYBAf8CAQAwHQYDVR0OBBYEFEAVLSZ57TIgnt+ach3WMh+BDIEMMB8GA1UdIwQY\nMBaAFN7nW2DQIm1AKH0/DQH+pLVStFGUMDIGCCsGAQUFBwEBBCYwJDAiBggrBgEF\nBQcwAoYWaHR0cDovL3lyLmkubGVuY3Iub3JnLzATBgNVHSAEDDAKMAgGBmeBDAEC\nATAnBgNVHR8EIDAeMBygGqAYhhZodHRwOi8veXIuYy5sZW5jci5vcmcvMA0GCSqG\nSIb3DQEBCwUAA4ICAQB0ZUQWZ9/Yn9COEpo+JfecMnB0h0vwDm/M66IqXqw3LoaL\nmx9lZvRTeDIS67PUeI3yCA2W6PKRD0/FE/G57lOmS+Xy5AaaL00ICGOqjNcCaMWW\n8o8nevHOd4i4lqgtznE/28QwlcdJyF8yBiWHpnyjhEpmNWJURgOCOg2xpwRMBCsj\nMScqYPtOhBeuYQvSwAEeTML2Ukh6uGuX4E14q65Ja8cdjF5bAldnP1eE4FBaAwsZ\nG2fOqqrKV03Y85Nw2btedP1AtliQuJZs/Jo/gXxXdc7LrH3McgnpnbTiAncX7yES\nhP6kzQejllqMCIt52HOjxDGWafS7Xw+DKwqmH+Eqy8dcbOuag/1AYlQoKNVK3F5q\nHh6tEDiMqQcLIibGKteE6iHo4A/bIScbzrhXUYuism42ZYzmc48FMVIH3qy4L84E\nTdAH2gtxw0PAhvRVXp8HP7wfngpzsN/8xOTpeRSbM4+Qbc56G6+Bifmv6sk1ieQb\nNA3wJdl4DDUuQSV8hBgx6zoI1ZSGORprDFux7c6rhc77QZMSRrEgomBeklervEve\n86ylWmZ3WWHV6RLMi8xNvjd71r4EPIGgY7BZU/VPBkq+uA7Gb6mbJnFgV43uh3xy\nLRFgxIAphIukwTGSMZZR+AI+Qnp0BYTWovHXozOf3H8r6hozEoT02JHn0AeTfA==\n-----END CERTIFICATE-----\n\n-----BEGIN CERTIFICATE-----\n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\n-----END CERTIFICATE-----\n",
+    "valid_from": "2026-07-17 07:44:51",
+    "valid_to": "2026-10-15 07:44:50",
+    "subject": "CN=tongkhomavach.com.vn",
+    "issuer": "CN=YR2,O=Let's Encrypt,C=US",
+    "serial_number": "440957140126020483968387523875494209430317",
+    "provider": "letsencrypt",
+    "email": "admin@tongkhomavach.com.vn",
+    "order_url": "https://acme-v02.api.letsencrypt.org/acme/order/3542392456/533273330816",
+    "finalize_url": "https://acme-v02.api.letsencrypt.org/acme/finalize/3542392456/533273330816",
+    "auth_urls": [
+      "https://acme-v02.api.letsencrypt.org/acme/authz/3542392456/740971004876",
+      "https://acme-v02.api.letsencrypt.org/acme/authz/3542392456/740971004886"
+    ],
+    "domains": [
+      {
+        "domain": "tongkhomavach.com.vn",
+        "auth_url": "https://acme-v02.api.letsencrypt.org/acme/authz/3542392456/740971004876",
+        "challenge_url": "https://acme-v02.api.letsencrypt.org/acme/chall/3542392456/740971004876/3yMiRg",
+        "status": "valid",
+        "last_error": null
+      },
+      {
+        "domain": "www.tongkhomavach.com.vn",
+        "auth_url": "https://acme-v02.api.letsencrypt.org/acme/authz/3542392456/740971004886",
+        "challenge_url": "https://acme-v02.api.letsencrypt.org/acme/chall/3542392456/740971004886/p1C15w",
+        "status": "valid",
+        "last_error": null
+      }
+    ],
+    "progress_logs": [
+      {
+        "time": "2026-07-17 15:31:05",
+        "level": "success",
+        "message": "Order ACME đã tạo. Vui lòng thêm bản ghi xác thực.",
+        "run_id": "init-1784277065989"
+      },
+      {
+        "time": "2026-07-17 15:43:01",
+        "level": "loading",
+        "message": "Đang pre-check bản ghi xác thực...",
+        "run_id": "verify-1784277781423"
+      },
+      {
+        "time": "2026-07-17 15:43:15",
+        "level": "success",
+        "message": "Pre-check đạt. Đã gửi challenge, bắt đầu xác thực tự động...",
+        "run_id": "verify-1784277781423"
+      },
+      {
+        "time": "2026-07-17 15:43:15",
+        "level": "loading",
+        "message": "Đã gửi challenge tới ACME. Đang polling authorization...",
+        "run_id": "verify-1784277781423"
+      },
+      {
+        "time": "2026-07-17 15:43:20",
+        "level": "success",
+        "message": "Tất cả authorization đã valid.",
+        "run_id": "verify-1784277781423"
+      },
+      {
+        "time": "2026-07-17 15:43:20",
+        "level": "loading",
+        "message": "Đang finalize order và chờ cấp chứng chỉ...",
+        "run_id": "verify-1784277781423"
+      },
+      {
+        "time": "2026-07-17 15:43:24",
+        "level": "success",
+        "message": "Đã cấp cert thành công.",
+        "run_id": "verify-1784277781423"
+      }
+    ],
+    "progress_text": "Đã cấp cert thành công.",
+    "last_error": null,
+    "current_run_id": "verify-1784277781423",
+    "updated_at": "2026-07-17 15:43:24"
+  },
+  {
+    "id": "0319676b-078f-48dd-9ff0-63c171bad8f4",
+    "session_id": "a0936b12-5ee0-453b-80d2-a54109c286ef",
+    "domain": "mail.vuontraicay.online",
+    "sans": [],
+    "challenge_type": "dns-01",
+    "issued_at": "2026-07-16 19:48:11",
+    "status": "issued",
+    "certificate": "-----BEGIN CERTIFICATE-----\nMIIF+DCCBGCgAwIBAgIQfCrgbE2rakiGp2d2bZjrtTANBgkqhkiG9w0BAQsFADBP\nMQswCQYDVQQGEwJVUzEYMBYGA1UECgwPU1NMIENvcnBvcmF0aW9uMSYwJAYDVQQD\nDB1TU0wuY29tIFRMUyBJc3N1aW5nIFJTQSBDQSBSMTAeFw0yNjA3MTYxMjM4MDVa\nFw0yNjEwMjgxMjM2NDBaMCIxIDAeBgNVBAMMF21haWwudnVvbnRyYWljYXkub25s\naW5lMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAon3Kom3aZmnoANVT\nmLV8z+s+e+qQ4WQuglAej93LWGBwZVEQEiPTVwIpTEQJfc/rOSDWH4bWCmj3Kn+I\nB6qCu7EAArvavRwL4Q+N/AEEKzH4hGDbmsLkMKbzwIzmFFoosfxW0EOmqCjmuQqG\n6OTAvrF0UVuuM0fujyWxqixaz94IWDTv7Yp1fVpSJDWwQQjR/0MLU4RwgxQTGTOt\nWlgxM9w8EBuE4IpSU7QBN/pALXF/ZQQAXX+rXnzanikKu58cT3WH6kc1Cb3xmQf6\nwb50+7Lpt+gIVdgCdFs+lV5uWlZyhPd6CO8mPHCIsR8/uEX2va5O6GBgq55Akz6e\nfuCGhQIDAQABo4ICezCCAncwDAYDVR0TAQH/BAIwADAfBgNVHSMEGDAWgBR5upR3\noA0Z3TTmOaT8TKXSWm31jDBqBggrBgEFBQcBAQReMFwwOAYIKwYBBQUHMAKGLGh0\ndHA6Ly9jZXJ0LnNzbC5jb20vU1NMLmNvbS1UTFMtSS1SU0EtUjEuY2VyMCAGCCsG\nAQUFBzABhhRodHRwOi8vb2NzcHMuc3NsLmNvbTAiBgNVHREEGzAZghdtYWlsLnZ1\nb250cmFpY2F5Lm9ubGluZTAjBgNVHSAEHDAaMAgGBmeBDAECATAOBgwrBgEEAYKp\nMAEDAQEwHQYDVR0lBBYwFAYIKwYBBQUHAwIGCCsGAQUFBwMBMD0GA1UdHwQ2MDQw\nMqAwoC6GLGh0dHA6Ly9jcmxzLnNzbC5jb20vU1NMLmNvbS1UTFMtSS1SU0EtUjEu\nY3JsMB0GA1UdDgQWBBQGS0db3qPgjVlQorKJ+bPutm9IeTAOBgNVHQ8BAf8EBAMC\nBaAwggECBgorBgEEAdZ5AgQCBIHzBIHwAO4AdQDIo8R/x7OtuTVrAT9qehJt4zpO\nQ6XGRvmXrTl1mR3PmgAAAZ9q+FKMAAAEAwBGMEQCIHMA8Mk5OTMrBeEo0q/uGrkT\naDm9k6kZx1pYDArJUUZOAiAkWxdKH9i1ZOcMDdPgtKQpDxb/cagQc7NSGZ68N7Uf\nIgB1ANgJVTuUT3r/yBYZb5RPhauw+Pxeh1UmDxXRLnK7RUsUAAABn2r4UqgAAAQD\nAEYwRAIgL2kNHeJdliqEl9vu4LHFM/0Pe6ysFKWR+YEH7sV2SrICIDWRa96Egikq\n3/nPO6IV9/j7cPe6dvJ2X/3Yyk0hXaobMA0GCSqGSIb3DQEBCwUAA4IBgQAIGO0Q\neNC0a5JAKZRTzmIeGJS1pUTBi9adSJKzC4ZpwhOFTpNWCW1GHfVoHEZNNh/rnVgt\nl3clO/gvVcmsmgFXSwDk8mYwTHDPkPs8kM6T1fPwG/nIBB2By4LLjlbS3ZBDYWRj\necMtvTchW9JNdlSDUgiLog1UGIQrmux9EHxJ5IixRRvoQ+TbSqlae0h4zp9L1wOt\nDvOEtQkBkkXLoxafnR8kSh+hIQ93mpt+7En/Roz24b4Qz8WXt9wOLZcYujbjrrbd\nNwnMGNgvSeh6Q1430xRhxvMMLWDekIuQZfAdHwS2/2X8jjYLYuJGx5aBlPWxW34O\nOnB1msY8bAX4x5Qsc6vcOPlGb4JCAd2AAwO9t7Z5qHVm16Nt9N/j/ICqoxQoRU7G\nLRY1+4VbfaEWMJ5FfHYqobVcrMvckqypg4EJJfqdu7+t6fMVMgF1UbvBZlK7UShF\nM895IVNtrx6FR1gJ+j2Q5uJnFCX8IpmAoqIFVns3temzYo3G7I+12irtgq8=\n-----END CERTIFICATE-----",
+    "private_key": "-----BEGIN RSA PRIVATE KEY-----\nMIIEowIBAAKCAQEAon3Kom3aZmnoANVTmLV8z+s+e+qQ4WQuglAej93LWGBwZVEQ\nEiPTVwIpTEQJfc/rOSDWH4bWCmj3Kn+IB6qCu7EAArvavRwL4Q+N/AEEKzH4hGDb\nmsLkMKbzwIzmFFoosfxW0EOmqCjmuQqG6OTAvrF0UVuuM0fujyWxqixaz94IWDTv\n7Yp1fVpSJDWwQQjR/0MLU4RwgxQTGTOtWlgxM9w8EBuE4IpSU7QBN/pALXF/ZQQA\nXX+rXnzanikKu58cT3WH6kc1Cb3xmQf6wb50+7Lpt+gIVdgCdFs+lV5uWlZyhPd6\nCO8mPHCIsR8/uEX2va5O6GBgq55Akz6efuCGhQIDAQABAoIBAAHXYxXMIOQgNxzV\n+LM2UJ/FOVlgzcYqwyF+6Zm/wwTRXZ9donenfZxII1JV7bWbRuhy0s+wpiRKuYz7\nElOOlG9ZZiKhy6zGRewwUkTqI130nFhZBflkU/7+eqyn7BjhnKxyVkQt6r7lF8Lp\nDPZUAUsn6lAxtcZRqQZo6vEpZ4Ng1W/1vPrlZMu1FVsr7tFIJin5YVFK2WYkNla3\nBf8o899Wr9brEowASpoaRGzyGgv2gnu5qaiavjyX6WuQ74hOMwlNKq0ZlxRCXq+Q\ntx88t3CXy3zDC5/lYgcQi7nDHTarjdbLOJfPQFS6Em7x7neZXmlDKGbmKUSmT3+C\nvEKXSFECgYEA4FsprAFd483MTRiWi9XADZpJ6jBpAv94qhWSPLQLPppaah7Ao/vB\nE28lv7YoqCI/1fzHazmEs2c/D26bY/ciSF+Z20FO57QqlzsvLjjmo1Ekkt+Xe6CK\nPZvw2kQXVE9ktYWht75MtoeTNX8+sCvbH2dxpXsEX//uSOnmx8KkYZcCgYEAuWjg\nMrLTDWZKF1d4xNy0C9IOg/NAMAuN6ohyUKTTBrjMGYwoRskmkUGOTbpl7x3YkwkM\nTn/DS9e1DnfRhirXmNHp7g/UZCL6qwy0BgBlX7FBGRDkaMOp8jEmyY3izSIemqMM\nbvpB3vA+l1NNdb4ceZb1xMELDfMSRaBM4yWkZEMCgYBnj0z1+4+GNpmGQMJE+75x\nyPUzZ3MhkiD1iY19/bFvDTqM33MWfn/J47Ut//xWV7DVqp+2S8+ILDE8g1aw1wN5\nGr/fKA8u/sfmFMibcmJromnabeDzjNAizhdn+KQ4I4meDHfwY6PvYTc/K2QZV7UG\nku4vb1A+q9kmyOjg7mSIMwKBgGjZ/F/vbRdYz3Gfz/ZUcaV1pyvLtnL1Nc56V1tv\nur9EZnfUITrWqm7eyeD/FoJBOKb+KO2DpygO1p9V9zGOrNoJa+drIEt41JVC29PB\nCZMyJIROXz032bXTQgIdsTMcpn4A0xk3gWTYLC1buKRrXKMOUfJw0RWUbrLdUl3q\nfasNAoGBANLl6xPfGhxxfSAKhpWnJixbUN4vr1Y2RJ8/qEquf9dZlIJV6NrS6zNm\nBfRX38zS4pPtRaLHYFquT2OPRhm5TKEfbt2jojIKwM5JYJZLQSLD7M/epkcP2UnU\nqGOo7rXHFtwo+D33W+qUI10yNxkA1ugA/J4LmYzEYvtAXQk+vpEf\n-----END RSA PRIVATE KEY-----\n",
+    "ca_bundle": "-----BEGIN CERTIFICATE-----\n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\niTZinEPk\n-----END CERTIFICATE-----\n-----BEGIN CERTIFICATE-----\nMIIF7TCCBNWgAwIBAgIRAP+ygvcoMZtiuvS4Tw3+kzkwDQYJKoZIhvcNAQELBQAw\nezELMAkGA1UEBhMCR0IxGzAZBgNVBAgMEkdyZWF0ZXIgTWFuY2hlc3RlcjEQMA4G\nA1UEBwwHU2FsZm9yZDEaMBgGA1UECgwRQ29tb2RvIENBIExpbWl0ZWQxITAfBgNV\nBAMMGEFBQSBDZXJ0aWZpY2F0ZSBTZXJ2aWNlczAeFw0yNTA4MDEwMDAwMDBaFw0y\nODEyMzEyMzU5NTlaME4xCzAJBgNVBAYTAlVTMRgwFgYDVQQKDA9TU0wgQ29ycG9y\nYXRpb24xJTAjBgNVBAMMHFNTTC5jb20gVExTIFJTQSBSb290IENBIDIwMjIwggIi\nMA0GCSqGSIb3DQEBAQUAA4ICDwAwggIKAoICAQDQpAlyT0CIEmE+NSOe7vZ0zy97\nWD3OPA0QKJAvl/eMSNig2CWxTLARTBdzUNAiSmO7gdMpbtW1CT4mGH+yEn+TmLev\n8Da/8u4Ynpw7UsVHGV1082Rm1V3HaLS/GxwGo7yPQCO2HsaEvVHEGznBldIp7Euu\ney2/Of20Yt6We0HGnKDgBnL78AeXCTmBdK/3NFkRVwrCW8Ek9DFzMILGnboC9z58\nRF+DDfPx3SBpFglQ4tRVtuCAcnZuTEe3dVVZtFN02ZTGQa1YijFmDx6iGylATi/f\ne+YWLC38v+zztPq+GPabSdTuBW7ZNPOc8ewBi9Egxg+gtbwXTkh7UcL86VxpN0dm\ns2j4FSjwudOkFcxaT7pScKMSRd3Guk77wtD3qFInbW55tYz8e4zBFkzugH++8Ha+\nQVMSM65aOEKr1w8+QY12BzLVq4n2TmfZsUJ1I27zzUKy/FX1U4cXO8AzWPFS0vmA\npPDo8DuLOMykxpB/D5z9i9Gjz9qDp2nJUDbVXAXSCkF022MRN8GloJZLHowWEneu\nlDR7Hn/CZgDkqoPqipCtzjZETdFR6bwf82oF/cB0HyUZQFFu6oJRQN+buQgqBgLV\nIxwT1unb28awest7J5v74NVGJO0QS2NLpQWPurgdK6b6keKSUr3s62eXbZotn4Ey\nBWcy+0gIP9kluAQlLwIDAQABo4IBlzCCAZMwHwYDVR0jBBgwFoAUoBEKIz6W8Qfs\n4q8p74Klf9AwpLQwHQYDVR0OBBYEFPsuN+7jhHonLs0ZNbEzfP/UREK5MA4GA1Ud\nDwEB/wQEAwIBhjASBgNVHRMBAf8ECDAGAQH/AgECMB0GA1UdJQQWMBQGCCsGAQUF\nBwMBBggrBgEFBQcDAjCBkgYDVR0gBIGKMIGHMAcGBWeBDAEBMAgGBmeBDAECATAI\nBgZngQwBAgIwCAYGZ4EMAQIDMA4GDCsGAQQBgqkwAQMBATAOBgwrBgEEAYKpMAED\nAQIwDgYMKwYBBAGCqTABAwEDMA4GDCsGAQQBgqkwAQMBBDAOBgwrBgEEAYKpMAED\nAQUwDgYMKwYBBAGCqTABAwEGMEMGA1UdHwQ8MDowOKA2oDSGMmh0dHA6Ly9jcmwu\nY29tb2RvY2EuY29tL0FBQUNlcnRpZmljYXRlU2VydmljZXMuY3JsMDQGCCsGAQUF\nBwEBBCgwJjAkBggrBgEFBQcwAYYYaHR0cDovL29jc3AuY29tb2RvY2EuY29tMA0G\nCSqGSIb3DQEBCwUAA4IBAQB6GuqiV0P/BPtHYkhy1lSqbHGhAzwVtRPpcFqPQjYV\nw9wvwBxex/7dzzsCLHIIH+TGv3JpmTtUSNTKhm1EXRR9Uc9h8l6OALhNK70oVEzw\nOLRfAdLc0oaczE8/aVWxxGWUF9i4TXrklD7psIlUUX0x/AbcuJGOjTgZWw4iHAMM\nfLuw20YqGNXZAL8hiQnDXI5WtaIAw8rGkLiaFBOhdwPHl+1CdLGxXVzafaXFI3BS\nSXKXq2AgdbjVmkM6yj2cihLBlLGBDtkXdZ4bRMYxUMQTX5057SzRk8NxIurm+4W6\nZrI4zH+N6ocqOwihhYe05n/JEcim7g6wZjA1KHFv2ajA\n-----END CERTIFICATE-----\n-----BEGIN CERTIFICATE-----\nMIIEMjCCAxqgAwIBAgIBATANBgkqhkiG9w0BAQUFADB7MQswCQYDVQQGEwJHQjEb\nMBkGA1UECAwSR3JlYXRlciBNYW5jaGVzdGVyMRAwDgYDVQQHDAdTYWxmb3JkMRow\nGAYDVQQKDBFDb21vZG8gQ0EgTGltaXRlZDEhMB8GA1UEAwwYQUFBIENlcnRpZmlj\nYXRlIFNlcnZpY2VzMB4XDTA0MDEwMTAwMDAwMFoXDTI4MTIzMTIzNTk1OVowezEL\nMAkGA1UEBhMCR0IxGzAZBgNVBAgMEkdyZWF0ZXIgTWFuY2hlc3RlcjEQMA4GA1UE\nBwwHU2FsZm9yZDEaMBgGA1UECgwRQ29tb2RvIENBIExpbWl0ZWQxITAfBgNVBAMM\nGEFBQSBDZXJ0aWZpY2F0ZSBTZXJ2aWNlczCCASIwDQYJKoZIhvcNAQEBBQADggEP\nADCCAQoCggEBAL5AnfRu4ep2hxxNRUSOvkbIgwadwSr+GB+O5AL686tdUIoWMQua\nBtDFcCLNSS1UY8y2bmhGC1Pqy0wkwLxyTurxFa70VJoSCsN6sjNg4tqJVfMiWPPe\n3M/vg4aijJRPn2jymJBGhCfHdr/jzDUsi14HZGWCwEiwqJH5YZ92IFCokcdmtet4\nYgNW8IoaE+oxox6gmf049vYnMlhvB/VruPsUK6+3qszWY19zjNoFmag4qMsXeDZR\nrOme9Hg6jc8P2ULimAyrL58OAd7vn5lJ8S3frHRNG5i1R8XlKdH5kBjHYpy+g8cm\nez6KJcfA3Z3mNWgQIJ2P2N7Sw4ScDV7oL8kCAwEAAaOBwDCBvTAdBgNVHQ4EFgQU\noBEKIz6W8Qfs4q8p74Klf9AwpLQwDgYDVR0PAQH/BAQDAgEGMA8GA1UdEwEB/wQF\nMAMBAf8wewYDVR0fBHQwcjA4oDagNIYyaHR0cDovL2NybC5jb21vZG9jYS5jb20v\nQUFBQ2VydGlmaWNhdGVTZXJ2aWNlcy5jcmwwNqA0oDKGMGh0dHA6Ly9jcmwuY29t\nb2RvLm5ldC9BQUFDZXJ0aWZpY2F0ZVNlcnZpY2VzLmNybDANBgkqhkiG9w0BAQUF\nAAOCAQEACFb8AvCb6P+k+tZ7xkSAzk/ExfYAWMymtrwUSWgEdujm7l3sAg9g1o1Q\nGE8mTgHj5rCl7r+8dFRBv/38ErjHT1r0iWAFf2C3BUrz9vHCv8S5dIa2LX1rzNLz\nRt0vxuBqw8M0Ayx9lt1awg6nCpnBBYurDC/zXDrPbDdVCYfeU0BsWO/8tqtlbgT2\nG9w84FoVxp7Z8VlIMCFlA2zs6SFz7JsDoeA3raAVGI/6ugLOpyypEBMs1OUIJqsi\nl2D4kF501KKaU73yqWjgom7C12yxow+ev+to51byrvLjKzg6CYG1a4XXvi3tPxq3\nsmPi9WIsgtRqAEFQ8TmDn5XpNpaYbg==\n-----END CERTIFICATE-----",
+    "full_chain": "-----BEGIN CERTIFICATE-----\nMIIF+DCCBGCgAwIBAgIQfCrgbE2rakiGp2d2bZjrtTANBgkqhkiG9w0BAQsFADBP\nMQswCQYDVQQGEwJVUzEYMBYGA1UECgwPU1NMIENvcnBvcmF0aW9uMSYwJAYDVQQD\nDB1TU0wuY29tIFRMUyBJc3N1aW5nIFJTQSBDQSBSMTAeFw0yNjA3MTYxMjM4MDVa\nFw0yNjEwMjgxMjM2NDBaMCIxIDAeBgNVBAMMF21haWwudnVvbnRyYWljYXkub25s\naW5lMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAon3Kom3aZmnoANVT\nmLV8z+s+e+qQ4WQuglAej93LWGBwZVEQEiPTVwIpTEQJfc/rOSDWH4bWCmj3Kn+I\nB6qCu7EAArvavRwL4Q+N/AEEKzH4hGDbmsLkMKbzwIzmFFoosfxW0EOmqCjmuQqG\n6OTAvrF0UVuuM0fujyWxqixaz94IWDTv7Yp1fVpSJDWwQQjR/0MLU4RwgxQTGTOt\nWlgxM9w8EBuE4IpSU7QBN/pALXF/ZQQAXX+rXnzanikKu58cT3WH6kc1Cb3xmQf6\nwb50+7Lpt+gIVdgCdFs+lV5uWlZyhPd6CO8mPHCIsR8/uEX2va5O6GBgq55Akz6e\nfuCGhQIDAQABo4ICezCCAncwDAYDVR0TAQH/BAIwADAfBgNVHSMEGDAWgBR5upR3\noA0Z3TTmOaT8TKXSWm31jDBqBggrBgEFBQcBAQReMFwwOAYIKwYBBQUHMAKGLGh0\ndHA6Ly9jZXJ0LnNzbC5jb20vU1NMLmNvbS1UTFMtSS1SU0EtUjEuY2VyMCAGCCsG\nAQUFBzABhhRodHRwOi8vb2NzcHMuc3NsLmNvbTAiBgNVHREEGzAZghdtYWlsLnZ1\nb250cmFpY2F5Lm9ubGluZTAjBgNVHSAEHDAaMAgGBmeBDAECATAOBgwrBgEEAYKp\nMAEDAQEwHQYDVR0lBBYwFAYIKwYBBQUHAwIGCCsGAQUFBwMBMD0GA1UdHwQ2MDQw\nMqAwoC6GLGh0dHA6Ly9jcmxzLnNzbC5jb20vU1NMLmNvbS1UTFMtSS1SU0EtUjEu\nY3JsMB0GA1UdDgQWBBQGS0db3qPgjVlQorKJ+bPutm9IeTAOBgNVHQ8BAf8EBAMC\nBaAwggECBgorBgEEAdZ5AgQCBIHzBIHwAO4AdQDIo8R/x7OtuTVrAT9qehJt4zpO\nQ6XGRvmXrTl1mR3PmgAAAZ9q+FKMAAAEAwBGMEQCIHMA8Mk5OTMrBeEo0q/uGrkT\naDm9k6kZx1pYDArJUUZOAiAkWxdKH9i1ZOcMDdPgtKQpDxb/cagQc7NSGZ68N7Uf\nIgB1ANgJVTuUT3r/yBYZb5RPhauw+Pxeh1UmDxXRLnK7RUsUAAABn2r4UqgAAAQD\nAEYwRAIgL2kNHeJdliqEl9vu4LHFM/0Pe6ysFKWR+YEH7sV2SrICIDWRa96Egikq\n3/nPO6IV9/j7cPe6dvJ2X/3Yyk0hXaobMA0GCSqGSIb3DQEBCwUAA4IBgQAIGO0Q\neNC0a5JAKZRTzmIeGJS1pUTBi9adSJKzC4ZpwhOFTpNWCW1GHfVoHEZNNh/rnVgt\nl3clO/gvVcmsmgFXSwDk8mYwTHDPkPs8kM6T1fPwG/nIBB2By4LLjlbS3ZBDYWRj\necMtvTchW9JNdlSDUgiLog1UGIQrmux9EHxJ5IixRRvoQ+TbSqlae0h4zp9L1wOt\nDvOEtQkBkkXLoxafnR8kSh+hIQ93mpt+7En/Roz24b4Qz8WXt9wOLZcYujbjrrbd\nNwnMGNgvSeh6Q1430xRhxvMMLWDekIuQZfAdHwS2/2X8jjYLYuJGx5aBlPWxW34O\nOnB1msY8bAX4x5Qsc6vcOPlGb4JCAd2AAwO9t7Z5qHVm16Nt9N/j/ICqoxQoRU7G\nLRY1+4VbfaEWMJ5FfHYqobVcrMvckqypg4EJJfqdu7+t6fMVMgF1UbvBZlK7UShF\nM895IVNtrx6FR1gJ+j2Q5uJnFCX8IpmAoqIFVns3temzYo3G7I+12irtgq8=\n-----END CERTIFICATE-----\n-----BEGIN CERTIFICATE-----\n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\niTZinEPk\n-----END CERTIFICATE-----\n-----BEGIN CERTIFICATE-----\nMIIF7TCCBNWgAwIBAgIRAP+ygvcoMZtiuvS4Tw3+kzkwDQYJKoZIhvcNAQELBQAw\nezELMAkGA1UEBhMCR0IxGzAZBgNVBAgMEkdyZWF0ZXIgTWFuY2hlc3RlcjEQMA4G\nA1UEBwwHU2FsZm9yZDEaMBgGA1UECgwRQ29tb2RvIENBIExpbWl0ZWQxITAfBgNV\nBAMMGEFBQSBDZXJ0aWZpY2F0ZSBTZXJ2aWNlczAeFw0yNTA4MDEwMDAwMDBaFw0y\nODEyMzEyMzU5NTlaME4xCzAJBgNVBAYTAlVTMRgwFgYDVQQKDA9TU0wgQ29ycG9y\nYXRpb24xJTAjBgNVBAMMHFNTTC5jb20gVExTIFJTQSBSb290IENBIDIwMjIwggIi\nMA0GCSqGSIb3DQEBAQUAA4ICDwAwggIKAoICAQDQpAlyT0CIEmE+NSOe7vZ0zy97\nWD3OPA0QKJAvl/eMSNig2CWxTLARTBdzUNAiSmO7gdMpbtW1CT4mGH+yEn+TmLev\n8Da/8u4Ynpw7UsVHGV1082Rm1V3HaLS/GxwGo7yPQCO2HsaEvVHEGznBldIp7Euu\ney2/Of20Yt6We0HGnKDgBnL78AeXCTmBdK/3NFkRVwrCW8Ek9DFzMILGnboC9z58\nRF+DDfPx3SBpFglQ4tRVtuCAcnZuTEe3dVVZtFN02ZTGQa1YijFmDx6iGylATi/f\ne+YWLC38v+zztPq+GPabSdTuBW7ZNPOc8ewBi9Egxg+gtbwXTkh7UcL86VxpN0dm\ns2j4FSjwudOkFcxaT7pScKMSRd3Guk77wtD3qFInbW55tYz8e4zBFkzugH++8Ha+\nQVMSM65aOEKr1w8+QY12BzLVq4n2TmfZsUJ1I27zzUKy/FX1U4cXO8AzWPFS0vmA\npPDo8DuLOMykxpB/D5z9i9Gjz9qDp2nJUDbVXAXSCkF022MRN8GloJZLHowWEneu\nlDR7Hn/CZgDkqoPqipCtzjZETdFR6bwf82oF/cB0HyUZQFFu6oJRQN+buQgqBgLV\nIxwT1unb28awest7J5v74NVGJO0QS2NLpQWPurgdK6b6keKSUr3s62eXbZotn4Ey\nBWcy+0gIP9kluAQlLwIDAQABo4IBlzCCAZMwHwYDVR0jBBgwFoAUoBEKIz6W8Qfs\n4q8p74Klf9AwpLQwHQYDVR0OBBYEFPsuN+7jhHonLs0ZNbEzfP/UREK5MA4GA1Ud\nDwEB/wQEAwIBhjASBgNVHRMBAf8ECDAGAQH/AgECMB0GA1UdJQQWMBQGCCsGAQUF\nBwMBBggrBgEFBQcDAjCBkgYDVR0gBIGKMIGHMAcGBWeBDAEBMAgGBmeBDAECATAI\nBgZngQwBAgIwCAYGZ4EMAQIDMA4GDCsGAQQBgqkwAQMBATAOBgwrBgEEAYKpMAED\nAQIwDgYMKwYBBAGCqTABAwEDMA4GDCsGAQQBgqkwAQMBBDAOBgwrBgEEAYKpMAED\nAQUwDgYMKwYBBAGCqTABAwEGMEMGA1UdHwQ8MDowOKA2oDSGMmh0dHA6Ly9jcmwu\nY29tb2RvY2EuY29tL0FBQUNlcnRpZmljYXRlU2VydmljZXMuY3JsMDQGCCsGAQUF\nBwEBBCgwJjAkBggrBgEFBQcwAYYYaHR0cDovL29jc3AuY29tb2RvY2EuY29tMA0G\nCSqGSIb3DQEBCwUAA4IBAQB6GuqiV0P/BPtHYkhy1lSqbHGhAzwVtRPpcFqPQjYV\nw9wvwBxex/7dzzsCLHIIH+TGv3JpmTtUSNTKhm1EXRR9Uc9h8l6OALhNK70oVEzw\nOLRfAdLc0oaczE8/aVWxxGWUF9i4TXrklD7psIlUUX0x/AbcuJGOjTgZWw4iHAMM\nfLuw20YqGNXZAL8hiQnDXI5WtaIAw8rGkLiaFBOhdwPHl+1CdLGxXVzafaXFI3BS\nSXKXq2AgdbjVmkM6yj2cihLBlLGBDtkXdZ4bRMYxUMQTX5057SzRk8NxIurm+4W6\nZrI4zH+N6ocqOwihhYe05n/JEcim7g6wZjA1KHFv2ajA\n-----END CERTIFICATE-----\n-----BEGIN CERTIFICATE-----\nMIIEMjCCAxqgAwIBAgIBATANBgkqhkiG9w0BAQUFADB7MQswCQYDVQQGEwJHQjEb\nMBkGA1UECAwSR3JlYXRlciBNYW5jaGVzdGVyMRAwDgYDVQQHDAdTYWxmb3JkMRow\nGAYDVQQKDBFDb21vZG8gQ0EgTGltaXRlZDEhMB8GA1UEAwwYQUFBIENlcnRpZmlj\nYXRlIFNlcnZpY2VzMB4XDTA0MDEwMTAwMDAwMFoXDTI4MTIzMTIzNTk1OVowezEL\nMAkGA1UEBhMCR0IxGzAZBgNVBAgMEkdyZWF0ZXIgTWFuY2hlc3RlcjEQMA4GA1UE\nBwwHU2FsZm9yZDEaMBgGA1UECgwRQ29tb2RvIENBIExpbWl0ZWQxITAfBgNVBAMM\nGEFBQSBDZXJ0aWZpY2F0ZSBTZXJ2aWNlczCCASIwDQYJKoZIhvcNAQEBBQADggEP\nADCCAQoCggEBAL5AnfRu4ep2hxxNRUSOvkbIgwadwSr+GB+O5AL686tdUIoWMQua\nBtDFcCLNSS1UY8y2bmhGC1Pqy0wkwLxyTurxFa70VJoSCsN6sjNg4tqJVfMiWPPe\n3M/vg4aijJRPn2jymJBGhCfHdr/jzDUsi14HZGWCwEiwqJH5YZ92IFCokcdmtet4\nYgNW8IoaE+oxox6gmf049vYnMlhvB/VruPsUK6+3qszWY19zjNoFmag4qMsXeDZR\nrOme9Hg6jc8P2ULimAyrL58OAd7vn5lJ8S3frHRNG5i1R8XlKdH5kBjHYpy+g8cm\nez6KJcfA3Z3mNWgQIJ2P2N7Sw4ScDV7oL8kCAwEAAaOBwDCBvTAdBgNVHQ4EFgQU\noBEKIz6W8Qfs4q8p74Klf9AwpLQwDgYDVR0PAQH/BAQDAgEGMA8GA1UdEwEB/wQF\nMAMBAf8wewYDVR0fBHQwcjA4oDagNIYyaHR0cDovL2NybC5jb21vZG9jYS5jb20v\nQUFBQ2VydGlmaWNhdGVTZXJ2aWNlcy5jcmwwNqA0oDKGMGh0dHA6Ly9jcmwuY29t\nb2RvLm5ldC9BQUFDZXJ0aWZpY2F0ZVNlcnZpY2VzLmNybDANBgkqhkiG9w0BAQUF\nAAOCAQEACFb8AvCb6P+k+tZ7xkSAzk/ExfYAWMymtrwUSWgEdujm7l3sAg9g1o1Q\nGE8mTgHj5rCl7r+8dFRBv/38ErjHT1r0iWAFf2C3BUrz9vHCv8S5dIa2LX1rzNLz\nRt0vxuBqw8M0Ayx9lt1awg6nCpnBBYurDC/zXDrPbDdVCYfeU0BsWO/8tqtlbgT2\nG9w84FoVxp7Z8VlIMCFlA2zs6SFz7JsDoeA3raAVGI/6ugLOpyypEBMs1OUIJqsi\nl2D4kF501KKaU73yqWjgom7C12yxow+ev+to51byrvLjKzg6CYG1a4XXvi3tPxq3\nsmPi9WIsgtRqAEFQ8TmDn5XpNpaYbg==\n-----END CERTIFICATE-----\n",
+    "valid_from": "2026-07-16 12:38:05",
+    "valid_to": "2026-10-28 12:36:40",
+    "subject": "CN=mail.vuontraicay.online",
+    "issuer": "CN=SSL.com TLS Issuing RSA CA R1,O=SSL Corporation,C=US",
+    "serial_number": "165046899785818374495307047658323504053",
+    "provider": "sslcom",
+    "email": "admin@mail.vuontraicay.online",
+    "order_url": "https://acme.ssl.com/ejbca/acme/sslcom-dv-rsa/acct/edQGPvm1qAHdsdkrohFfhA/orders/acuFC_5VSyrbcHTRPPcKhlH3z0jJ5lUAqUeliWPavno",
+    "finalize_url": "https://acme.ssl.com/ejbca/acme/sslcom-dv-rsa/acct/edQGPvm1qAHdsdkrohFfhA/orders/acuFC_5VSyrbcHTRPPcKhlH3z0jJ5lUAqUeliWPavno/finalize",
+    "auth_urls": [
+      "https://acme.ssl.com/ejbca/acme/sslcom-dv-rsa/acct/edQGPvm1qAHdsdkrohFfhA/authz/fd2ac0c883fc37853c153f925fc68b2d27463382aac4bda09977c97f0e071161"
+    ],
+    "domains": [
+      {
+        "domain": "mail.vuontraicay.online",
+        "auth_url": "https://acme.ssl.com/ejbca/acme/sslcom-dv-rsa/acct/edQGPvm1qAHdsdkrohFfhA/authz/fd2ac0c883fc37853c153f925fc68b2d27463382aac4bda09977c97f0e071161",
+        "challenge_url": "https://acme.ssl.com/ejbca/acme/sslcom-dv-rsa/acct/edQGPvm1qAHdsdkrohFfhA/chall/iwicUnUdDqNpYWv7TJBQYQ",
+        "status": "valid",
+        "last_error": null
+      }
+    ],
+    "progress_logs": [
+      {
+        "time": "2026-07-16 19:46:43",
+        "level": "success",
+        "message": "Order ACME đã tạo. Vui lòng thêm bản ghi xác thực.",
+        "run_id": "init-1784206003383"
+      },
+      {
+        "time": "2026-07-16 19:47:17",
+        "level": "loading",
+        "message": "Đang pre-check bản ghi xác thực...",
+        "run_id": "verify-1784206037170"
+      },
+      {
+        "time": "2026-07-16 19:47:19",
+        "level": "error",
+        "message": "Pre-check chưa đạt (0/1).",
+        "run_id": "verify-1784206037170"
+      },
+      {
+        "time": "2026-07-16 19:47:31",
+        "level": "loading",
+        "message": "Đang pre-check bản ghi xác thực...",
+        "run_id": "verify-1784206051137"
+      },
+      {
+        "time": "2026-07-16 19:47:33",
+        "level": "error",
+        "message": "Pre-check chưa đạt (0/1).",
+        "run_id": "verify-1784206051137"
+      },
+      {
+        "time": "2026-07-16 19:47:52",
+        "level": "loading",
+        "message": "Đang pre-check bản ghi xác thực...",
+        "run_id": "verify-1784206072294"
+      },
+      {
+        "time": "2026-07-16 19:47:57",
+        "level": "success",
+        "message": "Pre-check đạt. Đã gửi challenge, bắt đầu xác thực tự động...",
+        "run_id": "verify-1784206072294"
+      },
+      {
+        "time": "2026-07-16 19:47:57",
+        "level": "loading",
+        "message": "Đã gửi challenge tới ACME. Đang polling authorization...",
+        "run_id": "verify-1784206072294"
+      },
+      {
+        "time": "2026-07-16 19:47:58",
+        "level": "success",
+        "message": "Tất cả authorization đã valid.",
+        "run_id": "verify-1784206072294"
+      },
+      {
+        "time": "2026-07-16 19:47:58",
+        "level": "loading",
+        "message": "Đang finalize order và chờ cấp chứng chỉ...",
+        "run_id": "verify-1784206072294"
+      },
+      {
+        "time": "2026-07-16 19:48:11",
+        "level": "success",
+        "message": "Đã cấp cert thành công.",
+        "run_id": "verify-1784206072294"
+      }
+    ],
+    "progress_text": "Đã cấp cert thành công.",
+    "last_error": null,
+    "current_run_id": "verify-1784206072294",
+    "updated_at": "2026-07-16 19:48:11"
+  },
+  {
+    "id": "985b22d2-77dc-4d6b-a7fb-6fdc518909d8",
+    "session_id": "c7824cdb-d9a5-481d-80ea-c4ab4845055d",
+    "domain": "tuitrunuoctandaihung.com",
+    "sans": [
+      "*.tuitrunuoctandaihung.com",
+      "tuichuanuoctandaihung.com",
+      "*.tuichuanuoctandaihung.com"
+    ],
+    "challenge_type": "dns-01",
+    "issued_at": "2026-07-14 14:55:09",
+    "status": "issued",
+    "certificate": "-----BEGIN CERTIFICATE-----\nMIIFXjCCBEagAwIBAgISBUyJ+xNP8gGqCWwXvh2tOrtUMA0GCSqGSIb3DQEBCwUA\nMDMxCzAJBgNVBAYTAlVTMRYwFAYDVQQKEw1MZXQncyBFbmNyeXB0MQwwCgYDVQQD\nEwNZUjEwHhcNMjYwNzE0MDY1NjM2WhcNMjYxMDEyMDY1NjM1WjAjMSEwHwYDVQQD\nExh0dWl0cnVudW9jdGFuZGFpaHVuZy5jb20wggEiMA0GCSqGSIb3DQEBAQUAA4IB\nDwAwggEKAoIBAQCcN2jRwqRqXdY41uaeRHJoq81uJRmJ19BLMVukXNNnYJDgplNL\nIl8rXALM7MvNi0iGz9ieLgwU36NRKONz6FgGefdRUAAsB5gt0XFpHbavLjECEdxL\n0wcIkLLNwTNoXkOFdxc+XN1PXA+7GIQisxHPwJWSaTvpBlEZvO7W9VW9oVmR+rKS\n2J/4NO7jbTHLZ0um3L/p1yGrJAnvwA1Gl3kecM849TVc36gpxzh8G/0vEFg5pgBE\nCJwWhv7ML0PbgkslGmLhDHgnMWzbBP2+EH8OTuq9F2cWKHMofpi+xTRNDBWg+wJ4\n1KH/hD7lbwMi52/wClQ+P5Lz8H8t2dLEjDHxAgMBAAGjggJ6MIICdjAOBgNVHQ8B\nAf8EBAMCBaAwEwYDVR0lBAwwCgYIKwYBBQUHAwEwDAYDVR0TAQH/BAIwADAdBgNV\nHQ4EFgQUYoEc2DEQqPfvLLiKhCPHqh5UPSMwHwYDVR0jBBgwFoAUHy81vkYUgs1A\nsa55LFV4+vfUaPswMwYIKwYBBQUHAQEEJzAlMCMGCCsGAQUFBzAChhdodHRwOi8v\neXIxLmkubGVuY3Iub3JnLzB3BgNVHREEcDBughsqLnR1aWNodWFudW9jdGFuZGFp\naHVuZy5jb22CGioudHVpdHJ1bnVvY3RhbmRhaWh1bmcuY29tghl0dWljaHVhbnVv\nY3RhbmRhaWh1bmcuY29tghh0dWl0cnVudW9jdGFuZGFpaHVuZy5jb20wEwYDVR0g\nBAwwCjAIBgZngQwBAgEwLgYDVR0fBCcwJTAjoCGgH4YdaHR0cDovL3lyMS5jLmxl\nbmNyLm9yZy84NS5jcmwwggEMBgorBgEEAdZ5AgQCBIH9BIH6APgAdgCvZ4g7V7BO\n3Y+m2X72LqjrgQrHcWDwJF5V1gwv54WHOgAAAZ9fn1qlAAAEAwBHMEUCIHzTBS2l\nHUZjPhSgcGJCiuQkbNjeALhJM7lewb9UagupAiEA1OJWkODUrsSkqjsRjRsQhaqd\nFziiWOg04vSYwGLr35EAfgAai51rD/6/gbR5OcbSMQqG1tEC1PBG4hgsneNfXiYl\n7wAAAZ9fn1p9AAgAAAUAKYQEIwQDAEcwRQIhAOwFw6dac3JcTZeLfoxy/VlUL8y9\nNSu6fOkn13TvFVicAiArpIMP3B1XTMH8RH60RQuK0Oljonr7/fEs+XxWOP/uRDAN\nBgkqhkiG9w0BAQsFAAOCAQEAJ6p4zpsGo7LWD7NH703VrF85n2dsOYQ/OimQ2Mi5\nfjgKLgI9CK55owK0vd3Sfu26zkeusYWSuKnY114vRtmCepc0xk3BDJezdCgdzPBi\nJoy+pV07JmpSGZUSruLU5Q6B0qbJwhGs6sZdcdQl5pfnqzhrU7H1n0wtiOdWo/LZ\njTopFTtrxpEX8knk8oMZ3HoKOvF7xcDuh9S+1KX14uVDx19IPaktColDREKG/lNZ\nFPboXqEmeydyrgFJv+5Ssz73HFiK9skbjas9HKV8ArBT4Boy9Dl/8GDoUIOfcHRa\nb0XhjIBQOoI5wG8sHIsbcZVag0q1zzFmqizqJgTZ6szQCg==\n-----END CERTIFICATE-----",
+    "private_key": "-----BEGIN RSA PRIVATE KEY-----\nMIIEogIBAAKCAQEAnDdo0cKkal3WONbmnkRyaKvNbiUZidfQSzFbpFzTZ2CQ4KZT\nSyJfK1wCzOzLzYtIhs/Yni4MFN+jUSjjc+hYBnn3UVAALAeYLdFxaR22ry4xAhHc\nS9MHCJCyzcEzaF5DhXcXPlzdT1wPuxiEIrMRz8CVkmk76QZRGbzu1vVVvaFZkfqy\nktif+DTu420xy2dLpty/6dchqyQJ78ANRpd5HnDPOPU1XN+oKcc4fBv9LxBYOaYA\nRAicFob+zC9D24JLJRpi4Qx4JzFs2wT9vhB/Dk7qvRdnFihzKH6YvsU0TQwVoPsC\neNSh/4Q+5W8DIudv8ApUPj+S8/B/LdnSxIwx8QIDAQABAoIBABFnnAJY3xQpwcsh\n6F5kTmHqmFAICqUguiiShn0UyYn4SJP6/AdAPF26meZGkLtlJA6/HAmdpEN0GkBZ\n36OjlKEeGCfDU82UCAi8z9ewE5FHgnbSUhrRl3RFGOLTPnzHmdrGJr0QQCkOHwOP\nqvMpw9eDg7alCmN/TGxjcDHbcjLXGWtExlz7aiPvY1/riuTm6IM4RvrrUTMKXICa\n2F0dDs91yGquCNLsHY0i/tSjHN/6v48cjRTyYsCOotfdR97uAQIx/AQpzn4NvOhU\nz8TlYIPizi6WumJFRG1bD5XWClwojYhACziMxUeytrOjD6Lv36nO9qk52L1W6BEI\nfyh1G4UCgYEAzshsDkfsdJjlxiXepLVTRPsIO2uq8SmN1ydRrwPV52hhaoB8Q8JG\nGyCtlzAuWBO/BzGlE7dS+I859JprL97O91CGhtAm483geRSdxbcY+lUOLVRTAZdV\nBj2yAxGE/2FkxO6gTDwxOuxb7R7I1QAsAiuA0uqVJghwDa9J4komahUCgYEAwWXm\nntTxwdjBoNP2kDnfa+BdxVIirxz4jJctUvbPWbg2itdKvkKKLZEdNRQ4RRml4U72\nHCcNztRpJxn27Ksp9JdoH58iDXyEab2zW2nAl1cQjCLREld5chETkN5N4c25XU7F\nsuBnfawSgb5QKxFnQTetxGPfOie4mGnHNrJBq20CgYBGDH0WZWUDppwIAOIoV8iq\nkIOcZX/WDGahYQ95w0neB20gv//YkGJhZDOKCOdaLO5EiJvMTwkLbLGMXBc9czQX\nca7w0miqOR72xXYg+UK74r5Xur4XxuUlpRa9lVzBioOxdsjUqnte45zMeeY8yb8e\nyQ/t40u9Q5R5/kyAHPBgdQKBgGxLfVpPb5jWoYZHavfUEFG974RAu/9Gv78qIE0m\nu3FH//K7H7VuWSWu7qX8To4TEJobtyCIlejNdJxao7RfHD1EUx/x4gWfRh5YBYkY\nrKmSLUfrbxtQNEc1XLlwYjghFL01EOtbUVhD9JEGWqnjMuiIHxuruSI9f9aI1O7B\n3pf5AoGAcLN293i/CP021hr86YbqGUzIl8BzqY5CchbGudMFhdmqrUVnlX1GfwWN\n8NNe4CNor63QAw0WUjY9FFEnPrV0nmV8r2FzhG5F6ANJr+RgY/0QVd10J6V+KOi8\nArcPcj1H20YFeo3mYizlR889o3Mz1th/AUJTs5TGimwWeaVSzHk=\n-----END RSA PRIVATE KEY-----\n",
+    "ca_bundle": "-----BEGIN CERTIFICATE-----\nMIIE2zCCAsOgAwIBAgIRAKICU/FfJpHAXcHOE7m8yk4wDQYJKoZIhvcNAQELBQAw\nLjELMAkGA1UEBhMCVVMxDTALBgNVBAoTBElTUkcxEDAOBgNVBAMTB1Jvb3QgWVIw\nHhcNMjUwOTAzMDAwMDAwWhcNMjgwOTAyMjM1OTU5WjAzMQswCQYDVQQGEwJVUzEW\nMBQGA1UEChMNTGV0J3MgRW5jcnlwdDEMMAoGA1UEAxMDWVIxMIIBIjANBgkqhkiG\n9w0BAQEFAAOCAQ8AMIIBCgKCAQEAoVi8X2xCYgMXvJxNPKp/oF13UMgmPABB07VC\nLNDtoXmt9luEZNJSBV10VyT1Pz6LD8Zq1d2gc43WNl1AdRrj4sEnazbOiz0nPpmG\nBp2hui49oZtDIY6wdKeZAi5BbNU20CH6RSBBMLSQ9cXrH8dxdv4PAJ45ssGML68U\nSE3BsjC2a6cAN9L5CgXVIQi5tfNiTPoFZZ3S0OlXqLmmtdV95udWAb5b6e/F49Di\nCsH0Y00Ag72BVIb1hzynmKe+X0mERBTtsb3BwmpV9ipeBjMLoR/D9cHxHQCWoi5l\nTmXwY015J5rGelz1nZjJuxc2kioaX29XJBnhMkP531rSdG5uMwIDAQABo4HuMIHr\nMA4GA1UdDwEB/wQEAwIBhjATBgNVHSUEDDAKBggrBgEFBQcDATASBgNVHRMBAf8E\nCDAGAQH/AgEAMB0GA1UdDgQWBBQfLzW+RhSCzUCxrnksVXj699Ro+zAfBgNVHSME\nGDAWgBTe51tg0CJtQCh9Pw0B/qS1UrRRlDAyBggrBgEFBQcBAQQmMCQwIgYIKwYB\nBQUHMAKGFmh0dHA6Ly95ci5pLmxlbmNyLm9yZy8wEwYDVR0gBAwwCjAIBgZngQwB\nAgEwJwYDVR0fBCAwHjAcoBqgGIYWaHR0cDovL3lyLmMubGVuY3Iub3JnLzANBgkq\nhkiG9w0BAQsFAAOCAgEA0+zvMq3kHig1ddTmmm+RibTr9/RpX7k4buanMMRqbV/y\nIvP82zAHN3mvaw+cASuVsdpd0ikjhr4hnhJQLQOzOp2ccKrsdGOAgo0vddeISFAq\nEWEV4lmUM3vFF796up+bSgmJ1u6RupDCMxDgF8M3eLvGuj6L0lu3zkQ0KuQLnKxL\ntB0oQqn1Idg5CuuGpMvQzk29Pa3D/qHurc0EIM9SxukQuJqq63lxsYyRQFU8yMBO\nhq1w5LbfaWNRrz1uklOfI/pYkAb2E2MTZrAMQkBIE2S8Jt1F8gRc96o/xOsrgvSk\na84AisX6xq1lz1Z7jGvrnXc4TMcjxZTjiTaihcYI1JIXZiLtEMSCa5l3cu8YWd6z\ndLRQlqRdclVjuQfNHawRJ6GWlkK0QJosivTKwdBw3KxEtzGo8yMHERbsy57gP1UX\nHOMcmZYQC0gtyR3SxfenIM/MxC3Ia2Ypab/kQ/CTnlIn2KQ5JUC6NYrGCbhFN9bp\n5lKJStEwCUnLpntcrXk5XVDCNv/5RyWpRThkGOV7GetKkQ0qAY8hCzWK6oqnAhDZ\ncjlYVdWfqOw3DIOX6EDNBgAqHarRVxyF9QZdOaXSyPJ0ueD2BYJEBgaCGQ8rAaU/\nQc123V5LTXDZW4CcsPBDyhy4v+c8hClAyw/IkJlfBqxB9D+/wvIMHgECZ4ptP6o=\n-----END CERTIFICATE-----\n-----BEGIN CERTIFICATE-----\n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\n-----END CERTIFICATE-----",
+    "full_chain": "-----BEGIN CERTIFICATE-----\nMIIFXjCCBEagAwIBAgISBUyJ+xNP8gGqCWwXvh2tOrtUMA0GCSqGSIb3DQEBCwUA\nMDMxCzAJBgNVBAYTAlVTMRYwFAYDVQQKEw1MZXQncyBFbmNyeXB0MQwwCgYDVQQD\nEwNZUjEwHhcNMjYwNzE0MDY1NjM2WhcNMjYxMDEyMDY1NjM1WjAjMSEwHwYDVQQD\nExh0dWl0cnVudW9jdGFuZGFpaHVuZy5jb20wggEiMA0GCSqGSIb3DQEBAQUAA4IB\nDwAwggEKAoIBAQCcN2jRwqRqXdY41uaeRHJoq81uJRmJ19BLMVukXNNnYJDgplNL\nIl8rXALM7MvNi0iGz9ieLgwU36NRKONz6FgGefdRUAAsB5gt0XFpHbavLjECEdxL\n0wcIkLLNwTNoXkOFdxc+XN1PXA+7GIQisxHPwJWSaTvpBlEZvO7W9VW9oVmR+rKS\n2J/4NO7jbTHLZ0um3L/p1yGrJAnvwA1Gl3kecM849TVc36gpxzh8G/0vEFg5pgBE\nCJwWhv7ML0PbgkslGmLhDHgnMWzbBP2+EH8OTuq9F2cWKHMofpi+xTRNDBWg+wJ4\n1KH/hD7lbwMi52/wClQ+P5Lz8H8t2dLEjDHxAgMBAAGjggJ6MIICdjAOBgNVHQ8B\nAf8EBAMCBaAwEwYDVR0lBAwwCgYIKwYBBQUHAwEwDAYDVR0TAQH/BAIwADAdBgNV\nHQ4EFgQUYoEc2DEQqPfvLLiKhCPHqh5UPSMwHwYDVR0jBBgwFoAUHy81vkYUgs1A\nsa55LFV4+vfUaPswMwYIKwYBBQUHAQEEJzAlMCMGCCsGAQUFBzAChhdodHRwOi8v\neXIxLmkubGVuY3Iub3JnLzB3BgNVHREEcDBughsqLnR1aWNodWFudW9jdGFuZGFp\naHVuZy5jb22CGioudHVpdHJ1bnVvY3RhbmRhaWh1bmcuY29tghl0dWljaHVhbnVv\nY3RhbmRhaWh1bmcuY29tghh0dWl0cnVudW9jdGFuZGFpaHVuZy5jb20wEwYDVR0g\nBAwwCjAIBgZngQwBAgEwLgYDVR0fBCcwJTAjoCGgH4YdaHR0cDovL3lyMS5jLmxl\nbmNyLm9yZy84NS5jcmwwggEMBgorBgEEAdZ5AgQCBIH9BIH6APgAdgCvZ4g7V7BO\n3Y+m2X72LqjrgQrHcWDwJF5V1gwv54WHOgAAAZ9fn1qlAAAEAwBHMEUCIHzTBS2l\nHUZjPhSgcGJCiuQkbNjeALhJM7lewb9UagupAiEA1OJWkODUrsSkqjsRjRsQhaqd\nFziiWOg04vSYwGLr35EAfgAai51rD/6/gbR5OcbSMQqG1tEC1PBG4hgsneNfXiYl\n7wAAAZ9fn1p9AAgAAAUAKYQEIwQDAEcwRQIhAOwFw6dac3JcTZeLfoxy/VlUL8y9\nNSu6fOkn13TvFVicAiArpIMP3B1XTMH8RH60RQuK0Oljonr7/fEs+XxWOP/uRDAN\nBgkqhkiG9w0BAQsFAAOCAQEAJ6p4zpsGo7LWD7NH703VrF85n2dsOYQ/OimQ2Mi5\nfjgKLgI9CK55owK0vd3Sfu26zkeusYWSuKnY114vRtmCepc0xk3BDJezdCgdzPBi\nJoy+pV07JmpSGZUSruLU5Q6B0qbJwhGs6sZdcdQl5pfnqzhrU7H1n0wtiOdWo/LZ\njTopFTtrxpEX8knk8oMZ3HoKOvF7xcDuh9S+1KX14uVDx19IPaktColDREKG/lNZ\nFPboXqEmeydyrgFJv+5Ssz73HFiK9skbjas9HKV8ArBT4Boy9Dl/8GDoUIOfcHRa\nb0XhjIBQOoI5wG8sHIsbcZVag0q1zzFmqizqJgTZ6szQCg==\n-----END CERTIFICATE-----\n\n-----BEGIN CERTIFICATE-----\nMIIE2zCCAsOgAwIBAgIRAKICU/FfJpHAXcHOE7m8yk4wDQYJKoZIhvcNAQELBQAw\nLjELMAkGA1UEBhMCVVMxDTALBgNVBAoTBElTUkcxEDAOBgNVBAMTB1Jvb3QgWVIw\nHhcNMjUwOTAzMDAwMDAwWhcNMjgwOTAyMjM1OTU5WjAzMQswCQYDVQQGEwJVUzEW\nMBQGA1UEChMNTGV0J3MgRW5jcnlwdDEMMAoGA1UEAxMDWVIxMIIBIjANBgkqhkiG\n9w0BAQEFAAOCAQ8AMIIBCgKCAQEAoVi8X2xCYgMXvJxNPKp/oF13UMgmPABB07VC\nLNDtoXmt9luEZNJSBV10VyT1Pz6LD8Zq1d2gc43WNl1AdRrj4sEnazbOiz0nPpmG\nBp2hui49oZtDIY6wdKeZAi5BbNU20CH6RSBBMLSQ9cXrH8dxdv4PAJ45ssGML68U\nSE3BsjC2a6cAN9L5CgXVIQi5tfNiTPoFZZ3S0OlXqLmmtdV95udWAb5b6e/F49Di\nCsH0Y00Ag72BVIb1hzynmKe+X0mERBTtsb3BwmpV9ipeBjMLoR/D9cHxHQCWoi5l\nTmXwY015J5rGelz1nZjJuxc2kioaX29XJBnhMkP531rSdG5uMwIDAQABo4HuMIHr\nMA4GA1UdDwEB/wQEAwIBhjATBgNVHSUEDDAKBggrBgEFBQcDATASBgNVHRMBAf8E\nCDAGAQH/AgEAMB0GA1UdDgQWBBQfLzW+RhSCzUCxrnksVXj699Ro+zAfBgNVHSME\nGDAWgBTe51tg0CJtQCh9Pw0B/qS1UrRRlDAyBggrBgEFBQcBAQQmMCQwIgYIKwYB\nBQUHMAKGFmh0dHA6Ly95ci5pLmxlbmNyLm9yZy8wEwYDVR0gBAwwCjAIBgZngQwB\nAgEwJwYDVR0fBCAwHjAcoBqgGIYWaHR0cDovL3lyLmMubGVuY3Iub3JnLzANBgkq\nhkiG9w0BAQsFAAOCAgEA0+zvMq3kHig1ddTmmm+RibTr9/RpX7k4buanMMRqbV/y\nIvP82zAHN3mvaw+cASuVsdpd0ikjhr4hnhJQLQOzOp2ccKrsdGOAgo0vddeISFAq\nEWEV4lmUM3vFF796up+bSgmJ1u6RupDCMxDgF8M3eLvGuj6L0lu3zkQ0KuQLnKxL\ntB0oQqn1Idg5CuuGpMvQzk29Pa3D/qHurc0EIM9SxukQuJqq63lxsYyRQFU8yMBO\nhq1w5LbfaWNRrz1uklOfI/pYkAb2E2MTZrAMQkBIE2S8Jt1F8gRc96o/xOsrgvSk\na84AisX6xq1lz1Z7jGvrnXc4TMcjxZTjiTaihcYI1JIXZiLtEMSCa5l3cu8YWd6z\ndLRQlqRdclVjuQfNHawRJ6GWlkK0QJosivTKwdBw3KxEtzGo8yMHERbsy57gP1UX\nHOMcmZYQC0gtyR3SxfenIM/MxC3Ia2Ypab/kQ/CTnlIn2KQ5JUC6NYrGCbhFN9bp\n5lKJStEwCUnLpntcrXk5XVDCNv/5RyWpRThkGOV7GetKkQ0qAY8hCzWK6oqnAhDZ\ncjlYVdWfqOw3DIOX6EDNBgAqHarRVxyF9QZdOaXSyPJ0ueD2BYJEBgaCGQ8rAaU/\nQc123V5LTXDZW4CcsPBDyhy4v+c8hClAyw/IkJlfBqxB9D+/wvIMHgECZ4ptP6o=\n-----END CERTIFICATE-----\n\n-----BEGIN CERTIFICATE-----\n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\n-----END CERTIFICATE-----\n",
+    "valid_from": "2026-07-14 06:56:36",
+    "valid_to": "2026-10-12 06:56:35",
+    "subject": "CN=tuitrunuoctandaihung.com",
+    "issuer": "CN=YR1,O=Let's Encrypt,C=US",
+    "serial_number": "461606297438426286864945867933081356909396",
+    "provider": "letsencrypt",
+    "email": "admin@tuitrunuoctandaihung.com",
+    "order_url": "https://acme-v02.api.letsencrypt.org/acme/order/3532005556/532111965636",
+    "finalize_url": "https://acme-v02.api.letsencrypt.org/acme/finalize/3532005556/532111965636",
+    "auth_urls": [
+      "https://acme-v02.api.letsencrypt.org/acme/authz/3532005556/739101958416",
+      "https://acme-v02.api.letsencrypt.org/acme/authz/3532005556/739101958426",
+      "https://acme-v02.api.letsencrypt.org/acme/authz/3532005556/739101958436",
+      "https://acme-v02.api.letsencrypt.org/acme/authz/3532005556/739101958446"
+    ],
+    "domains": [
+      {
+        "domain": "tuichuanuoctandaihung.com",
+        "auth_url": "https://acme-v02.api.letsencrypt.org/acme/authz/3532005556/739101958416",
+        "challenge_url": "https://acme-v02.api.letsencrypt.org/acme/chall/3532005556/739101958416/lWdEVA",
+        "status": "valid",
+        "last_error": null
+      },
+      {
+        "domain": "tuitrunuoctandaihung.com",
+        "auth_url": "https://acme-v02.api.letsencrypt.org/acme/authz/3532005556/739101958426",
+        "challenge_url": "https://acme-v02.api.letsencrypt.org/acme/chall/3532005556/739101958426/7hosQw",
+        "status": "valid",
+        "last_error": null
+      },
+      {
+        "domain": "tuichuanuoctandaihung.com",
+        "auth_url": "https://acme-v02.api.letsencrypt.org/acme/authz/3532005556/739101958436",
+        "challenge_url": "https://acme-v02.api.letsencrypt.org/acme/chall/3532005556/739101958436/xR-LTg",
+        "status": "valid",
+        "last_error": null
+      },
+      {
+        "domain": "tuitrunuoctandaihung.com",
+        "auth_url": "https://acme-v02.api.letsencrypt.org/acme/authz/3532005556/739101958446",
+        "challenge_url": "https://acme-v02.api.letsencrypt.org/acme/chall/3532005556/739101958446/kddYFA",
+        "status": "valid",
+        "last_error": null
+      }
+    ],
+    "progress_logs": [
+      {
+        "time": "2026-07-14 14:48:04",
+        "level": "success",
+        "message": "Order ACME đã tạo. Vui lòng thêm bản ghi xác thực.",
+        "run_id": "init-1784015284762"
+      },
+      {
+        "time": "2026-07-14 14:50:19",
+        "level": "loading",
+        "message": "Đang pre-check bản ghi xác thực...",
+        "run_id": "verify-1784015419761"
+      },
+      {
+        "time": "2026-07-14 14:50:23",
+        "level": "error",
+        "message": "Pre-check chưa đạt (2/4).",
+        "run_id": "verify-1784015419761"
+      },
+      {
+        "time": "2026-07-14 14:54:54",
+        "level": "loading",
+        "message": "Đang pre-check bản ghi xác thực...",
+        "run_id": "verify-1784015694837"
+      },
+      {
+        "time": "2026-07-14 14:55:01",
+        "level": "success",
+        "message": "Pre-check đạt. Đã gửi challenge, bắt đầu xác thực tự động...",
+        "run_id": "verify-1784015694837"
+      },
+      {
+        "time": "2026-07-14 14:55:01",
+        "level": "loading",
+        "message": "Đã gửi challenge tới ACME. Đang polling authorization...",
+        "run_id": "verify-1784015694837"
+      },
+      {
+        "time": "2026-07-14 14:55:05",
+        "level": "success",
+        "message": "Tất cả authorization đã valid.",
+        "run_id": "verify-1784015694837"
+      },
+      {
+        "time": "2026-07-14 14:55:05",
+        "level": "loading",
+        "message": "Đang finalize order và chờ cấp chứng chỉ...",
+        "run_id": "verify-1784015694837"
+      },
+      {
+        "time": "2026-07-14 14:55:09",
+        "level": "success",
+        "message": "Đã cấp cert thành công.",
+        "run_id": "verify-1784015694837"
+      }
+    ],
+    "progress_text": "Đã cấp cert thành công.",
+    "last_error": null,
+    "current_run_id": "verify-1784015694837",
+    "updated_at": "2026-07-14 14:55:09"
+  },
+  {
+    "id": "53edb770-8785-4a9c-b521-6fb765f262aa",
+    "session_id": "9e94a01d-2b70-4657-953c-387f7c9b8fe2",
+    "domain": "tuitrunuoctandaihung.com",
+    "sans": [
+      "*.tuitrunuoctandaihung.com",
+      "tuichuanuoctandaihung.com",
+      "*.tuichuanuoctandaihung.com"
+    ],
+    "challenge_type": "dns-01",
+    "issued_at": null,
+    "status": "processing",
+    "certificate": "",
+    "private_key": "",
+    "ca_bundle": "",
+    "full_chain": "",
+    "valid_from": null,
+    "valid_to": null,
+    "subject": null,
+    "issuer": null,
+    "serial_number": null,
+    "provider": "letsencrypt",
+    "email": "admin@tuitrunuoctandaihung.com",
+    "challenges": [
+      {
+        "type": "dns-01",
+        "domain": "tuichuanuoctandaihung.com",
+        "token": "HKNnkfwm05BW1qirdpuz0gb4eG-isoJ_-frXGBjE3xQ",
+        "key_auth": "HKNnkfwm05BW1qirdpuz0gb4eG-isoJ_-frXGBjE3xQ.bnBmmKBxGcXdyZJmCuIincwOvh60hRpPeNtvJ6UX99g",
+        "dns_name": "_acme-challenge.tuichuanuoctandaihung.com",
+        "dns_value": "Rh_rkIRf_x58hzWdNZ2dk8NGZC33imGjr1j9EFhTM9Q",
+        "auth_url": "https://acme-v02.api.letsencrypt.org/acme/authz/3531966186/739095034076",
+        "challenge_url": "https://acme-v02.api.letsencrypt.org/acme/chall/3531966186/739095034076/M10xjw",
+        "status": "pending"
+      },
+      {
+        "type": "dns-01",
+        "domain": "tuitrunuoctandaihung.com",
+        "token": "14AztOEqR9M61KjamOze82tOpj34jBSAIw8vDrtp0Cc",
+        "key_auth": "14AztOEqR9M61KjamOze82tOpj34jBSAIw8vDrtp0Cc.bnBmmKBxGcXdyZJmCuIincwOvh60hRpPeNtvJ6UX99g",
+        "dns_name": "_acme-challenge.tuitrunuoctandaihung.com",
+        "dns_value": "Htr1vHJdTKJbNpmuqZwBFSBi3Cd7EgA2cWaW9d665FQ",
+        "auth_url": "https://acme-v02.api.letsencrypt.org/acme/authz/3531966186/739095034086",
+        "challenge_url": "https://acme-v02.api.letsencrypt.org/acme/chall/3531966186/739095034086/1pn1iA",
+        "status": "pending"
+      },
+      {
+        "type": "dns-01",
+        "domain": "tuichuanuoctandaihung.com",
+        "token": "XWXw0QMvivFaS1Lebw33s3YJY4O9Ne3ICVB1iykg3Z0",
+        "key_auth": "XWXw0QMvivFaS1Lebw33s3YJY4O9Ne3ICVB1iykg3Z0.bnBmmKBxGcXdyZJmCuIincwOvh60hRpPeNtvJ6UX99g",
+        "dns_name": "_acme-challenge.tuichuanuoctandaihung.com",
+        "dns_value": "PLFehFkCDwROCnDLBKPsvyWrjKOeLUGv_tpWro5Nqb4",
+        "auth_url": "https://acme-v02.api.letsencrypt.org/acme/authz/3531966186/739095034106",
+        "challenge_url": "https://acme-v02.api.letsencrypt.org/acme/chall/3531966186/739095034106/hPGu6g",
+        "status": "pending"
+      },
+      {
+        "type": "dns-01",
+        "domain": "tuitrunuoctandaihung.com",
+        "token": "U-lyyDdvPTyY9lrZc9g51Lr0ARpkIpVDqeSzwDTJ_6M",
+        "key_auth": "U-lyyDdvPTyY9lrZc9g51Lr0ARpkIpVDqeSzwDTJ_6M.bnBmmKBxGcXdyZJmCuIincwOvh60hRpPeNtvJ6UX99g",
+        "dns_name": "_acme-challenge.tuitrunuoctandaihung.com",
+        "dns_value": "W80fds_IHj002XpRGcMK4Xo5OmgEo1mriMzt_DX6ijc",
+        "auth_url": "https://acme-v02.api.letsencrypt.org/acme/authz/3531966186/739095034116",
+        "challenge_url": "https://acme-v02.api.letsencrypt.org/acme/chall/3531966186/739095034116/H-I15A",
+        "status": "pending"
+      }
+    ],
+    "order_url": "https://acme-v02.api.letsencrypt.org/acme/order/3531966186/532107719016",
+    "finalize_url": "https://acme-v02.api.letsencrypt.org/acme/finalize/3531966186/532107719016",
+    "auth_urls": [
+      "https://acme-v02.api.letsencrypt.org/acme/authz/3531966186/739095034076",
+      "https://acme-v02.api.letsencrypt.org/acme/authz/3531966186/739095034086",
+      "https://acme-v02.api.letsencrypt.org/acme/authz/3531966186/739095034106",
+      "https://acme-v02.api.letsencrypt.org/acme/authz/3531966186/739095034116"
+    ],
+    "domains": [
+      {
+        "domain": "tuichuanuoctandaihung.com",
+        "auth_url": "https://acme-v02.api.letsencrypt.org/acme/authz/3531966186/739095034076",
+        "challenge_url": "https://acme-v02.api.letsencrypt.org/acme/chall/3531966186/739095034076/M10xjw",
+        "status": "invalid",
+        "last_error": null
+      },
+      {
+        "domain": "tuitrunuoctandaihung.com",
+        "auth_url": "https://acme-v02.api.letsencrypt.org/acme/authz/3531966186/739095034086",
+        "challenge_url": "https://acme-v02.api.letsencrypt.org/acme/chall/3531966186/739095034086/1pn1iA",
+        "status": "valid",
+        "last_error": null
+      },
+      {
+        "domain": "tuichuanuoctandaihung.com",
+        "auth_url": "https://acme-v02.api.letsencrypt.org/acme/authz/3531966186/739095034106",
+        "challenge_url": "https://acme-v02.api.letsencrypt.org/acme/chall/3531966186/739095034106/hPGu6g",
+        "status": "invalid",
+        "last_error": null
+      },
+      {
+        "domain": "tuitrunuoctandaihung.com",
+        "auth_url": "https://acme-v02.api.letsencrypt.org/acme/authz/3531966186/739095034116",
+        "challenge_url": "https://acme-v02.api.letsencrypt.org/acme/chall/3531966186/739095034116/H-I15A",
+        "status": "valid",
+        "last_error": null
+      }
+    ],
+    "created_at": "2026-07-14 14:30:37",
+    "last_check_at": "2026-07-14 14:47:33",
+    "last_check_results": [
+      {
+        "domain": "tuichuanuoctandaihung.com",
+        "type": "dns-01",
+        "ok": true,
+        "detail": "Tìm thấy TXT record đúng: Rh_rkIRf_x58hzWdNZ2dk8NGZC33imGjr1j9EFhTM9Q"
+      },
+      {
+        "domain": "tuitrunuoctandaihung.com",
+        "type": "dns-01",
+        "ok": true,
+        "detail": "Tìm thấy TXT record đúng: Htr1vHJdTKJbNpmuqZwBFSBi3Cd7EgA2cWaW9d665FQ"
+      },
+      {
+        "domain": "tuichuanuoctandaihung.com",
+        "type": "dns-01",
+        "ok": true,
+        "detail": "Tìm thấy TXT record đúng: PLFehFkCDwROCnDLBKPsvyWrjKOeLUGv_tpWro5Nqb4"
+      },
+      {
+        "domain": "tuitrunuoctandaihung.com",
+        "type": "dns-01",
+        "ok": true,
+        "detail": "Tìm thấy TXT record đúng: W80fds_IHj002XpRGcMK4Xo5OmgEo1mriMzt_DX6ijc"
+      }
+    ],
+    "dns_cache_clear": [
+      {
+        "dns_name": "_acme-challenge.tuichuanuoctandaihung.com",
+        "targets": [
+          {
+            "provider": "Google Public DNS",
+            "resolver": "8.8.8.8",
+            "dns_name": "_acme-challenge.tuichuanuoctandaihung.com",
+            "dns_query": "fail: The DNS query name does not exist: _acme-challenge.tuichuanuoctandaihung.com.",
+            "doh_query": "ok",
+            "ok": true,
+            "note": "Best-effort refresh request sent"
+          },
+          {
+            "provider": "Google Public DNS",
+            "resolver": "8.8.4.4",
+            "dns_name": "_acme-challenge.tuichuanuoctandaihung.com",
+            "dns_query": "ok",
+            "doh_query": "ok",
+            "ok": true,
+            "note": "Best-effort refresh request sent"
+          },
+          {
+            "provider": "Cloudflare DNS",
+            "resolver": "1.1.1.1",
+            "dns_name": "_acme-challenge.tuichuanuoctandaihung.com",
+            "dns_query": "ok",
+            "doh_query": "ok",
+            "ok": true,
+            "note": "Best-effort refresh request sent"
+          },
+          {
+            "provider": "OpenDNS (Cisco)",
+            "resolver": "208.67.222.222",
+            "dns_name": "_acme-challenge.tuichuanuoctandaihung.com",
+            "dns_query": "ok",
+            "doh_query": "fail: HTTP 400",
+            "ok": true,
+            "note": "Best-effort refresh request sent"
+          },
+          {
+            "provider": "Quad9",
+            "resolver": "9.9.9.9",
+            "dns_name": "_acme-challenge.tuichuanuoctandaihung.com",
+            "dns_query": "fail: The DNS query name does not exist: _acme-challenge.tuichuanuoctandaihung.com.",
+            "doh_query": "fail: HTTP 505",
+            "ok": false,
+            "note": "Best-effort refresh request sent"
+          }
+        ]
+      },
+      {
+        "dns_name": "_acme-challenge.tuitrunuoctandaihung.com",
+        "targets": [
+          {
+            "provider": "Google Public DNS",
+            "resolver": "8.8.8.8",
+            "dns_name": "_acme-challenge.tuitrunuoctandaihung.com",
+            "dns_query": "ok",
+            "doh_query": "ok",
+            "ok": true,
+            "note": "Best-effort refresh request sent"
+          },
+          {
+            "provider": "Google Public DNS",
+            "resolver": "8.8.4.4",
+            "dns_name": "_acme-challenge.tuitrunuoctandaihung.com",
+            "dns_query": "ok",
+            "doh_query": "ok",
+            "ok": true,
+            "note": "Best-effort refresh request sent"
+          },
+          {
+            "provider": "Cloudflare DNS",
+            "resolver": "1.1.1.1",
+            "dns_name": "_acme-challenge.tuitrunuoctandaihung.com",
+            "dns_query": "ok",
+            "doh_query": "ok",
+            "ok": true,
+            "note": "Best-effort refresh request sent"
+          },
+          {
+            "provider": "OpenDNS (Cisco)",
+            "resolver": "208.67.222.222",
+            "dns_name": "_acme-challenge.tuitrunuoctandaihung.com",
+            "dns_query": "ok",
+            "doh_query": "fail: HTTP 400",
+            "ok": true,
+            "note": "Best-effort refresh request sent"
+          },
+          {
+            "provider": "Quad9",
+            "resolver": "9.9.9.9",
+            "dns_name": "_acme-challenge.tuitrunuoctandaihung.com",
+            "dns_query": "ok",
+            "doh_query": "fail: HTTP 505",
+            "ok": true,
+            "note": "Best-effort refresh request sent"
+          }
+        ]
+      }
+    ],
+    "progress_logs": [
+      {
+        "time": "2026-07-14 14:30:37",
+        "level": "success",
+        "message": "Order ACME đã tạo. Vui lòng thêm bản ghi xác thực.",
+        "run_id": "init-1784014237340"
+      },
+      {
+        "time": "2026-07-14 14:38:39",
+        "level": "loading",
+        "message": "Đang pre-check bản ghi xác thực...",
+        "run_id": "verify-1784014719542"
+      },
+      {
+        "time": "2026-07-14 14:38:50",
+        "level": "success",
+        "message": "Pre-check đạt. Đã gửi challenge, bắt đầu xác thực tự động...",
+        "run_id": "verify-1784014719542"
+      },
+      {
+        "time": "2026-07-14 14:38:50",
+        "level": "loading",
+        "message": "Đã gửi challenge tới ACME. Đang polling authorization...",
+        "run_id": "verify-1784014719542"
+      },
+      {
+        "time": "2026-07-14 14:38:51",
+        "level": "error",
+        "message": "Authorization invalid. Kiểm tra lại DNS/CAA rồi retry.",
+        "run_id": "verify-1784014719542"
+      },
+      {
+        "time": "2026-07-14 14:39:38",
+        "level": "loading",
+        "message": "Đang pre-check bản ghi xác thực...",
+        "run_id": "verify-1784014778665"
+      },
+      {
+        "time": "2026-07-14 14:39:45",
+        "level": "error",
+        "message": "Pre-check chưa đạt (2/4).",
+        "run_id": "verify-1784014778665"
+      },
+      {
+        "time": "2026-07-14 14:39:59",
+        "level": "loading",
+        "message": "Đang pre-check bản ghi xác thực...",
+        "run_id": "verify-1784014799475"
+      },
+      {
+        "time": "2026-07-14 14:40:04",
+        "level": "error",
+        "message": "Pre-check chưa đạt (2/4).",
+        "run_id": "verify-1784014799475"
+      },
+      {
+        "time": "2026-07-14 14:40:44",
+        "level": "loading",
+        "message": "Đang pre-check bản ghi xác thực...",
+        "run_id": "verify-1784014844209"
+      },
+      {
+        "time": "2026-07-14 14:40:48",
+        "level": "error",
+        "message": "Pre-check chưa đạt (2/4).",
+        "run_id": "verify-1784014844209"
+      },
+      {
+        "time": "2026-07-14 14:43:17",
+        "level": "loading",
+        "message": "Đang pre-check bản ghi xác thực...",
+        "run_id": "verify-1784014997630"
+      },
+      {
+        "time": "2026-07-14 14:43:22",
+        "level": "success",
+        "message": "Pre-check đạt. Đã gửi challenge, bắt đầu xác thực tự động...",
+        "run_id": "verify-1784014997630"
+      },
+      {
+        "time": "2026-07-14 14:43:22",
+        "level": "loading",
+        "message": "Đã gửi challenge tới ACME. Đang polling authorization...",
+        "run_id": "verify-1784014997630"
+      },
+      {
+        "time": "2026-07-14 14:43:23",
+        "level": "error",
+        "message": "Authorization invalid. Kiểm tra lại DNS/CAA rồi retry.",
+        "run_id": "verify-1784014997630"
+      },
+      {
+        "time": "2026-07-14 14:43:29",
+        "level": "loading",
+        "message": "Đang pre-check bản ghi xác thực...",
+        "run_id": "verify-1784015009995"
+      },
+      {
+        "time": "2026-07-14 14:43:39",
+        "level": "success",
+        "message": "Pre-check đạt. Đã gửi challenge, bắt đầu xác thực tự động...",
+        "run_id": "verify-1784015009995"
+      },
+      {
+        "time": "2026-07-14 14:43:39",
+        "level": "loading",
+        "message": "Đã gửi challenge tới ACME. Đang polling authorization...",
+        "run_id": "verify-1784015009995"
+      },
+      {
+        "time": "2026-07-14 14:43:40",
+        "level": "error",
+        "message": "Authorization invalid. Kiểm tra lại DNS/CAA rồi retry.",
+        "run_id": "verify-1784015009995"
+      },
+      {
+        "time": "2026-07-14 14:46:10",
+        "level": "loading",
+        "message": "Đang pre-check bản ghi xác thực...",
+        "run_id": "verify-1784015170198"
+      },
+      {
+        "time": "2026-07-14 14:46:14",
+        "level": "success",
+        "message": "Pre-check đạt. Đã gửi challenge, bắt đầu xác thực tự động...",
+        "run_id": "verify-1784015170198"
+      },
+      {
+        "time": "2026-07-14 14:46:14",
+        "level": "loading",
+        "message": "Đã gửi challenge tới ACME. Đang polling authorization...",
+        "run_id": "verify-1784015170198"
+      },
+      {
+        "time": "2026-07-14 14:46:15",
+        "level": "error",
+        "message": "Authorization invalid. Kiểm tra lại DNS/CAA rồi retry.",
+        "run_id": "verify-1784015170198"
+      },
+      {
+        "time": "2026-07-14 14:47:28",
+        "level": "loading",
+        "message": "Đang pre-check bản ghi xác thực...",
+        "run_id": "verify-1784015248721"
+      },
+      {
+        "time": "2026-07-14 14:47:33",
+        "level": "success",
+        "message": "Pre-check đạt. Đã gửi challenge, bắt đầu xác thực tự động...",
+        "run_id": "verify-1784015248721"
+      }
+    ],
+    "progress_text": "Pre-check đạt. Đã gửi challenge, bắt đầu xác thực tự động...",
+    "last_error": null,
+    "current_run_id": "init-1784014237340",
+    "updated_at": "2026-07-14 14:47:33"
+  },
+  {
+    "id": "f2d78dc0-5d31-41ac-8ac0-c1906d6032ad",
+    "session_id": "7e72331c-5a81-48ab-8b8e-7dc9f9a363a5",
+    "domain": "chatvnpt.com",
+    "sans": [
+      "*.chatvnpt.com"
+    ],
+    "challenge_type": "dns-01",
+    "issued_at": "2026-07-13 01:48:17",
+    "status": "issued",
+    "certificate": "-----BEGIN CERTIFICATE-----\nMIIFAzCCA+ugAwIBAgISBTSdThUMbmjYltHJ7DQzf+kyMA0GCSqGSIb3DQEBCwUA\nMDMxCzAJBgNVBAYTAlVTMRYwFAYDVQQKEw1MZXQncyBFbmNyeXB0MQwwCgYDVQQD\nEwNZUjIwHhcNMjYwNzEyMTc0OTQ0WhcNMjYxMDEwMTc0OTQzWjAXMRUwEwYDVQQD\nEwxjaGF0dm5wdC5jb20wggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQCq\nC1m2cxr1XjbLBvtgaJcxVcmzPCuzdAHmCtpoWjFyKvjXRXQJVxp3ukONS379EDOn\nEFqGPh4QWwspewH/7YdysAVEFjK2QRcuOommsrzlE7Pz1bj09USPM6NHtDWhYxf9\nHDiWS5Xu0mof351ZPYivPNzhPam9jBgiD37PlDB67U+znIkspWGu/SCdnW5ceXrv\nTouOok2WrCm4hHVyZj/fD1iKYE0tah0OYfi+j6Z5MYqTFFIpUHAd7DFVCZXJhSLN\nx4lV+q/cjRgekyUFFPK7ruS0BwMn1t+E3A4Sm7CJLB696UCogyzou7TjpWihfhXl\nRmImV6FHUH53POWdhOKfAgMBAAGjggIrMIICJzAOBgNVHQ8BAf8EBAMCBaAwEwYD\nVR0lBAwwCgYIKwYBBQUHAwEwDAYDVR0TAQH/BAIwADAdBgNVHQ4EFgQUC9q9ndR/\nFYW8w6FcNsDByUFsToEwHwYDVR0jBBgwFoAUQBUtJnntMiCe35pyHdYyH4EMgQww\nMwYIKwYBBQUHAQEEJzAlMCMGCCsGAQUFBzAChhdodHRwOi8veXIyLmkubGVuY3Iu\nb3JnLzAnBgNVHREEIDAegg4qLmNoYXR2bnB0LmNvbYIMY2hhdHZucHQuY29tMBMG\nA1UdIAQMMAowCAYGZ4EMAQIBMC4GA1UdHwQnMCUwI6AhoB+GHWh0dHA6Ly95cjIu\nYy5sZW5jci5vcmcvNTEuY3JsMIIBDQYKKwYBBAHWeQIEAgSB/gSB+wD5AHYAyKPE\nf8ezrbk1awE/anoSbeM6TkOlxkb5l605dZkdz5oAAAGfV6iYUgAABAMARzBFAiAP\nroWq42Ux7XbX3RBgQx/oBL6jSro1tKvBmhhLKWinNwIhANMDcesGrC++PeF/nCRM\n7gn7fmRmSFIEhLVWT554UJqFAH8AbP5QGUOoXqkWvFLRM+TcyR7xQRx9JYQg0XOA\nnhgY6zoAAAGfV6ibAwAIAAAFABTqdLYEAwBIMEYCIQCb4/CJhb17wMAEbsvVO5/e\nYMPBzf3vN1UA8YWo1Irf0AIhAJbqm7uWEMn/DUIIOH3bKbFJVcUgjhbsO/ZPqQkR\neqPlMA0GCSqGSIb3DQEBCwUAA4IBAQAb6FqvdBWAbEU9W/gog1osRCDb6jq90CHF\nw4+6u4MYw5kPDRpS4cWXvyvBdtm+LVqxBRDZwvD9KgpKbOdmXsvxk+Y03fhbyINb\nWohX3iPh4b46Us+eUB2OOdqYuKfRF23rJtaJtUeUqsKmxqcxVhmp/EZUJvlwL7yd\nTpMLArE4QlJ075uw0mGDHfu4zWfVw8PT9PyYJ+J6skithML+uTy4Npzv8NAWun7N\n4OkTKBd7nreiJBJmJLWLu8aGdaZhkzb2rfFqnhERCIiXeg1Oko592zkCMhpYYsnW\nwwzk1tX5decseCuBhdZljz/3H7boJYi0oe32aSmvd6my6Od6KYaC\n-----END CERTIFICATE-----",
+    "private_key": "-----BEGIN RSA PRIVATE KEY-----\nMIIEpQIBAAKCAQEAqgtZtnMa9V42ywb7YGiXMVXJszwrs3QB5graaFoxcir410V0\nCVcad7pDjUt+/RAzpxBahj4eEFsLKXsB/+2HcrAFRBYytkEXLjqJprK85ROz89W4\n9PVEjzOjR7Q1oWMX/Rw4lkuV7tJqH9+dWT2Irzzc4T2pvYwYIg9+z5Qweu1Ps5yJ\nLKVhrv0gnZ1uXHl6706LjqJNlqwpuIR1cmY/3w9YimBNLWodDmH4vo+meTGKkxRS\nKVBwHewxVQmVyYUizceJVfqv3I0YHpMlBRTyu67ktAcDJ9bfhNwOEpuwiSwevelA\nqIMs6Lu046VooX4V5UZiJlehR1B+dzzlnYTinwIDAQABAoIBAEz4QE6OwbgpQkIa\nUfTswutI+rjP1rQvIaDgbsZndRRJkUPYI1MLA2cIgAVYFA42pDrN8zvqqC8dFuta\ny6ft+66VMH0GU0QeKID7bE1xgIFsrrsDleoDj1oGtLUDRHdd5IDkolSduCtXQURW\nMuIvMUypDw5BnDC5Vj8spmkNmfg58BlFzxhFwzoIJM0HANxQz7f8lZlr+kMhnziq\npa3kv98Kvl2OX9fb+lQ7tEgUQF5ycH+xSl8ArJVbVBdG1ZInD6WLky7yfRyOlw4X\nRoqAlU9mm64z8gzmE1w4NrfuRewz172NcHHt2W6YhcNSVDR63fYiHilu/4+ywEVi\nvVmYiOkCgYEA2aXdF0pCvvL9NXovux+WLlTE9zkCWf1/N8EYwM/FHsEh7OeaDvW2\nCa2aPkbKmKU4Uzdxwh6RlPUf2Kvb4jdTjy6lIZKBXALOZhD59N1XTyriDlFL0OjF\nEjNPyS/MhOUL8cpYJS3EzrLnMeRncEF7ph6G9zd1hmQdNDs57sw8iEMCgYEAyAIU\nzoGUHTNAErip4EGYChIHvZWZtNVnOiSOIGGKX/gDCMnnV9ZPaJycDsO9spjysVIB\njs4ukjQhOWPmYw5cZiEWTNoGsuFif8myc04JzmdRYVnw2Ezkqp2xAZlWCWK/xhLJ\nmyKqmCEEA92cgQcoU2kY+WMvLUnkHN3uNkTPNHUCgYEAteW9JV3W8qc5n5wCkC0R\n4p7ODqACqxsFW59yBJKgd9eJdukJBD+uZ+BC7JFVeMV8kW/hDw9lNEy41Ois2B7N\nIvkk4S4EFtXxkbPWcyMZePyp+LVQ28PuEAv6PnZIQzj6BpXJnSjnNqimODhfip3v\nrSIOQkaDXlIFZkWpYT4nyOkCgYEAxVKQVoAusXRLpWy8ZDwylNTfACKk52yXEBza\nf4Xb7/yOedBARj9wToQbztE8yQPuhBSk5s/x0FpP4P/3XwjfDf9cset0Km0EMZC7\nVtjKAfGar1H9tFiATPeQl0RBRrc+/lqwvjZAWiBQhsPP0NhP56LLeddpxuOcgwJN\nLwtJ5bUCgYEAnhk1cV3OwaxM7UaRuoKbrp8EwAyDHcbuB2EiqRQQ5ruv3L+846XS\n+AlXuHcMRVjB4k7lZ+LuTqYy9Hsk6GjkOGeHKM+j6k1ihAY6QN+q5Sk+s7wxk+nM\n5monU+QjhNem8H43tGLWHqa2874XeOB0J+mwFRfUJu1TDjKmbHhWOjo=\n-----END RSA PRIVATE KEY-----\n",
+    "ca_bundle": "-----BEGIN CERTIFICATE-----\nMIIE2jCCAsKgAwIBAgIQTr0klH4k05SALYSlL9WzGTANBgkqhkiG9w0BAQsFADAu\nMQswCQYDVQQGEwJVUzENMAsGA1UEChMESVNSRzEQMA4GA1UEAxMHUm9vdCBZUjAe\nFw0yNTA5MDMwMDAwMDBaFw0yODA5MDIyMzU5NTlaMDMxCzAJBgNVBAYTAlVTMRYw\nFAYDVQQKEw1MZXQncyBFbmNyeXB0MQwwCgYDVQQDEwNZUjIwggEiMA0GCSqGSIb3\nDQEBAQUAA4IBDwAwggEKAoIBAQDZ0LxwBppqh84luqMerV/eeL/fXQ7mLQQv1Lnp\nWKZbyvGpx6wh6AfnslAnF6ewTkcHA+gSOoBvm3Dfm06AuGiF+KRut4fAcowqnAQQ\nCW98+QPP/eOv/wug7Iyk4NkOxf2I6g2f55T6nJoOTLFcukeRq80JGQEYan+dPFr9\nOGUgQK2hGKgNkW87pappsOAuUJcroYhRt5uUis4qaZireiseu32gzDJNBAiKtsvd\n6HX4v25bpkRNcS/B/Gtc9kVbUpD+2PLPxdei3Tim55k4tfAEXwD2qyiPTxrTNq6l\nN+AMr5g2c1dNqkOTwjxeV6L5lpP1rGiYvLnRaPlOqyZRPW+5AgMBAAGjge4wgesw\nDgYDVR0PAQH/BAQDAgGGMBMGA1UdJQQMMAoGCCsGAQUFBwMBMBIGA1UdEwEB/wQI\nMAYBAf8CAQAwHQYDVR0OBBYEFEAVLSZ57TIgnt+ach3WMh+BDIEMMB8GA1UdIwQY\nMBaAFN7nW2DQIm1AKH0/DQH+pLVStFGUMDIGCCsGAQUFBwEBBCYwJDAiBggrBgEF\nBQcwAoYWaHR0cDovL3lyLmkubGVuY3Iub3JnLzATBgNVHSAEDDAKMAgGBmeBDAEC\nATAnBgNVHR8EIDAeMBygGqAYhhZodHRwOi8veXIuYy5sZW5jci5vcmcvMA0GCSqG\nSIb3DQEBCwUAA4ICAQB0ZUQWZ9/Yn9COEpo+JfecMnB0h0vwDm/M66IqXqw3LoaL\nmx9lZvRTeDIS67PUeI3yCA2W6PKRD0/FE/G57lOmS+Xy5AaaL00ICGOqjNcCaMWW\n8o8nevHOd4i4lqgtznE/28QwlcdJyF8yBiWHpnyjhEpmNWJURgOCOg2xpwRMBCsj\nMScqYPtOhBeuYQvSwAEeTML2Ukh6uGuX4E14q65Ja8cdjF5bAldnP1eE4FBaAwsZ\nG2fOqqrKV03Y85Nw2btedP1AtliQuJZs/Jo/gXxXdc7LrH3McgnpnbTiAncX7yES\nhP6kzQejllqMCIt52HOjxDGWafS7Xw+DKwqmH+Eqy8dcbOuag/1AYlQoKNVK3F5q\nHh6tEDiMqQcLIibGKteE6iHo4A/bIScbzrhXUYuism42ZYzmc48FMVIH3qy4L84E\nTdAH2gtxw0PAhvRVXp8HP7wfngpzsN/8xOTpeRSbM4+Qbc56G6+Bifmv6sk1ieQb\nNA3wJdl4DDUuQSV8hBgx6zoI1ZSGORprDFux7c6rhc77QZMSRrEgomBeklervEve\n86ylWmZ3WWHV6RLMi8xNvjd71r4EPIGgY7BZU/VPBkq+uA7Gb6mbJnFgV43uh3xy\nLRFgxIAphIukwTGSMZZR+AI+Qnp0BYTWovHXozOf3H8r6hozEoT02JHn0AeTfA==\n-----END CERTIFICATE-----\n-----BEGIN CERTIFICATE-----\n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\n-----END CERTIFICATE-----",
+    "full_chain": "-----BEGIN CERTIFICATE-----\nMIIFAzCCA+ugAwIBAgISBTSdThUMbmjYltHJ7DQzf+kyMA0GCSqGSIb3DQEBCwUA\nMDMxCzAJBgNVBAYTAlVTMRYwFAYDVQQKEw1MZXQncyBFbmNyeXB0MQwwCgYDVQQD\nEwNZUjIwHhcNMjYwNzEyMTc0OTQ0WhcNMjYxMDEwMTc0OTQzWjAXMRUwEwYDVQQD\nEwxjaGF0dm5wdC5jb20wggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQCq\nC1m2cxr1XjbLBvtgaJcxVcmzPCuzdAHmCtpoWjFyKvjXRXQJVxp3ukONS379EDOn\nEFqGPh4QWwspewH/7YdysAVEFjK2QRcuOommsrzlE7Pz1bj09USPM6NHtDWhYxf9\nHDiWS5Xu0mof351ZPYivPNzhPam9jBgiD37PlDB67U+znIkspWGu/SCdnW5ceXrv\nTouOok2WrCm4hHVyZj/fD1iKYE0tah0OYfi+j6Z5MYqTFFIpUHAd7DFVCZXJhSLN\nx4lV+q/cjRgekyUFFPK7ruS0BwMn1t+E3A4Sm7CJLB696UCogyzou7TjpWihfhXl\nRmImV6FHUH53POWdhOKfAgMBAAGjggIrMIICJzAOBgNVHQ8BAf8EBAMCBaAwEwYD\nVR0lBAwwCgYIKwYBBQUHAwEwDAYDVR0TAQH/BAIwADAdBgNVHQ4EFgQUC9q9ndR/\nFYW8w6FcNsDByUFsToEwHwYDVR0jBBgwFoAUQBUtJnntMiCe35pyHdYyH4EMgQww\nMwYIKwYBBQUHAQEEJzAlMCMGCCsGAQUFBzAChhdodHRwOi8veXIyLmkubGVuY3Iu\nb3JnLzAnBgNVHREEIDAegg4qLmNoYXR2bnB0LmNvbYIMY2hhdHZucHQuY29tMBMG\nA1UdIAQMMAowCAYGZ4EMAQIBMC4GA1UdHwQnMCUwI6AhoB+GHWh0dHA6Ly95cjIu\nYy5sZW5jci5vcmcvNTEuY3JsMIIBDQYKKwYBBAHWeQIEAgSB/gSB+wD5AHYAyKPE\nf8ezrbk1awE/anoSbeM6TkOlxkb5l605dZkdz5oAAAGfV6iYUgAABAMARzBFAiAP\nroWq42Ux7XbX3RBgQx/oBL6jSro1tKvBmhhLKWinNwIhANMDcesGrC++PeF/nCRM\n7gn7fmRmSFIEhLVWT554UJqFAH8AbP5QGUOoXqkWvFLRM+TcyR7xQRx9JYQg0XOA\nnhgY6zoAAAGfV6ibAwAIAAAFABTqdLYEAwBIMEYCIQCb4/CJhb17wMAEbsvVO5/e\nYMPBzf3vN1UA8YWo1Irf0AIhAJbqm7uWEMn/DUIIOH3bKbFJVcUgjhbsO/ZPqQkR\neqPlMA0GCSqGSIb3DQEBCwUAA4IBAQAb6FqvdBWAbEU9W/gog1osRCDb6jq90CHF\nw4+6u4MYw5kPDRpS4cWXvyvBdtm+LVqxBRDZwvD9KgpKbOdmXsvxk+Y03fhbyINb\nWohX3iPh4b46Us+eUB2OOdqYuKfRF23rJtaJtUeUqsKmxqcxVhmp/EZUJvlwL7yd\nTpMLArE4QlJ075uw0mGDHfu4zWfVw8PT9PyYJ+J6skithML+uTy4Npzv8NAWun7N\n4OkTKBd7nreiJBJmJLWLu8aGdaZhkzb2rfFqnhERCIiXeg1Oko592zkCMhpYYsnW\nwwzk1tX5decseCuBhdZljz/3H7boJYi0oe32aSmvd6my6Od6KYaC\n-----END CERTIFICATE-----\n\n-----BEGIN CERTIFICATE-----\nMIIE2jCCAsKgAwIBAgIQTr0klH4k05SALYSlL9WzGTANBgkqhkiG9w0BAQsFADAu\nMQswCQYDVQQGEwJVUzENMAsGA1UEChMESVNSRzEQMA4GA1UEAxMHUm9vdCBZUjAe\nFw0yNTA5MDMwMDAwMDBaFw0yODA5MDIyMzU5NTlaMDMxCzAJBgNVBAYTAlVTMRYw\nFAYDVQQKEw1MZXQncyBFbmNyeXB0MQwwCgYDVQQDEwNZUjIwggEiMA0GCSqGSIb3\nDQEBAQUAA4IBDwAwggEKAoIBAQDZ0LxwBppqh84luqMerV/eeL/fXQ7mLQQv1Lnp\nWKZbyvGpx6wh6AfnslAnF6ewTkcHA+gSOoBvm3Dfm06AuGiF+KRut4fAcowqnAQQ\nCW98+QPP/eOv/wug7Iyk4NkOxf2I6g2f55T6nJoOTLFcukeRq80JGQEYan+dPFr9\nOGUgQK2hGKgNkW87pappsOAuUJcroYhRt5uUis4qaZireiseu32gzDJNBAiKtsvd\n6HX4v25bpkRNcS/B/Gtc9kVbUpD+2PLPxdei3Tim55k4tfAEXwD2qyiPTxrTNq6l\nN+AMr5g2c1dNqkOTwjxeV6L5lpP1rGiYvLnRaPlOqyZRPW+5AgMBAAGjge4wgesw\nDgYDVR0PAQH/BAQDAgGGMBMGA1UdJQQMMAoGCCsGAQUFBwMBMBIGA1UdEwEB/wQI\nMAYBAf8CAQAwHQYDVR0OBBYEFEAVLSZ57TIgnt+ach3WMh+BDIEMMB8GA1UdIwQY\nMBaAFN7nW2DQIm1AKH0/DQH+pLVStFGUMDIGCCsGAQUFBwEBBCYwJDAiBggrBgEF\nBQcwAoYWaHR0cDovL3lyLmkubGVuY3Iub3JnLzATBgNVHSAEDDAKMAgGBmeBDAEC\nATAnBgNVHR8EIDAeMBygGqAYhhZodHRwOi8veXIuYy5sZW5jci5vcmcvMA0GCSqG\nSIb3DQEBCwUAA4ICAQB0ZUQWZ9/Yn9COEpo+JfecMnB0h0vwDm/M66IqXqw3LoaL\nmx9lZvRTeDIS67PUeI3yCA2W6PKRD0/FE/G57lOmS+Xy5AaaL00ICGOqjNcCaMWW\n8o8nevHOd4i4lqgtznE/28QwlcdJyF8yBiWHpnyjhEpmNWJURgOCOg2xpwRMBCsj\nMScqYPtOhBeuYQvSwAEeTML2Ukh6uGuX4E14q65Ja8cdjF5bAldnP1eE4FBaAwsZ\nG2fOqqrKV03Y85Nw2btedP1AtliQuJZs/Jo/gXxXdc7LrH3McgnpnbTiAncX7yES\nhP6kzQejllqMCIt52HOjxDGWafS7Xw+DKwqmH+Eqy8dcbOuag/1AYlQoKNVK3F5q\nHh6tEDiMqQcLIibGKteE6iHo4A/bIScbzrhXUYuism42ZYzmc48FMVIH3qy4L84E\nTdAH2gtxw0PAhvRVXp8HP7wfngpzsN/8xOTpeRSbM4+Qbc56G6+Bifmv6sk1ieQb\nNA3wJdl4DDUuQSV8hBgx6zoI1ZSGORprDFux7c6rhc77QZMSRrEgomBeklervEve\n86ylWmZ3WWHV6RLMi8xNvjd71r4EPIGgY7BZU/VPBkq+uA7Gb6mbJnFgV43uh3xy\nLRFgxIAphIukwTGSMZZR+AI+Qnp0BYTWovHXozOf3H8r6hozEoT02JHn0AeTfA==\n-----END CERTIFICATE-----\n\n-----BEGIN CERTIFICATE-----\n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\n-----END CERTIFICATE-----\n",
+    "valid_from": "2026-07-12 17:49:44",
+    "valid_to": "2026-10-10 17:49:43",
+    "subject": "CN=chatvnpt.com",
+    "issuer": "CN=YR2,O=Let's Encrypt,C=US",
+    "serial_number": "453465206960098740570851027803534641850674",
+    "provider": "letsencrypt",
+    "email": "admin@chatvnpt.com",
+    "order_url": "https://acme-v02.api.letsencrypt.org/acme/order/3527154776/531541280266",
+    "finalize_url": "https://acme-v02.api.letsencrypt.org/acme/finalize/3527154776/531541280266",
+    "auth_urls": [
+      "https://acme-v02.api.letsencrypt.org/acme/authz/3527154776/738175616126",
+      "https://acme-v02.api.letsencrypt.org/acme/authz/3527154776/738175616156"
+    ],
+    "domains": [
+      {
+        "domain": "chatvnpt.com",
+        "auth_url": "https://acme-v02.api.letsencrypt.org/acme/authz/3527154776/738175616126",
+        "challenge_url": "https://acme-v02.api.letsencrypt.org/acme/chall/3527154776/738175616126/m7J_nw",
+        "status": "valid",
+        "last_error": null
+      },
+      {
+        "domain": "chatvnpt.com",
+        "auth_url": "https://acme-v02.api.letsencrypt.org/acme/authz/3527154776/738175616156",
+        "challenge_url": "https://acme-v02.api.letsencrypt.org/acme/chall/3527154776/738175616156/OOCa9Q",
+        "status": "valid",
+        "last_error": null
+      }
+    ],
+    "progress_logs": [
+      {
+        "time": "2026-07-13 01:46:30",
+        "level": "success",
+        "message": "Order ACME đã tạo. Vui lòng thêm bản ghi xác thực.",
+        "run_id": "init-1783881990090"
+      },
+      {
+        "time": "2026-07-13 01:48:07",
+        "level": "loading",
+        "message": "Đang pre-check bản ghi xác thực...",
+        "run_id": "verify-1783882087414"
+      },
+      {
+        "time": "2026-07-13 01:48:10",
+        "level": "success",
+        "message": "Pre-check đạt. Đã gửi challenge, bắt đầu xác thực tự động...",
+        "run_id": "verify-1783882087414"
+      },
+      {
+        "time": "2026-07-13 01:48:10",
+        "level": "loading",
+        "message": "Đã gửi challenge tới ACME. Đang polling authorization...",
+        "run_id": "verify-1783882087414"
+      },
+      {
+        "time": "2026-07-13 01:48:13",
+        "level": "success",
+        "message": "Tất cả authorization đã valid.",
+        "run_id": "verify-1783882087414"
+      },
+      {
+        "time": "2026-07-13 01:48:13",
+        "level": "loading",
+        "message": "Đang finalize order và chờ cấp chứng chỉ...",
+        "run_id": "verify-1783882087414"
+      },
+      {
+        "time": "2026-07-13 01:48:17",
+        "level": "success",
+        "message": "Đã cấp cert thành công.",
+        "run_id": "verify-1783882087414"
+      }
+    ],
+    "progress_text": "Đã cấp cert thành công.",
+    "last_error": null,
+    "current_run_id": "verify-1783882087414",
+    "updated_at": "2026-07-13 01:48:17"
+  },
+  {
+    "id": "696ad66c-9e5f-4786-a550-70a42ee7a10d",
+    "session_id": "c1238d2a-af50-4512-a8e3-2d527e8e94ff",
+    "domain": "bosuavietnam.vn",
+    "sans": [
+      "www.bosuavietnam.vn"
+    ],
+    "challenge_type": "dns-01",
+    "issued_at": null,
+    "status": "pending",
+    "certificate": "",
+    "private_key": "",
+    "ca_bundle": "",
+    "full_chain": "",
+    "valid_from": null,
+    "valid_to": null,
+    "subject": null,
+    "issuer": null,
+    "serial_number": null,
+    "provider": "letsencrypt",
+    "email": "admin@bosuavietnam.vn",
+    "challenges": [
+      {
+        "type": "dns-01",
+        "domain": "bosuavietnam.vn",
+        "token": "xeUhhGeH3810IXSowQhKUxqrV29hIO70uoONM14zaOk",
+        "key_auth": "xeUhhGeH3810IXSowQhKUxqrV29hIO70uoONM14zaOk.rtpzMXJ6mMaBJB7a0mPD3x6X9GwuFDS1G2hfbC-lRrU",
+        "dns_name": "_acme-challenge.bosuavietnam.vn",
+        "dns_value": "bsnk787f5IMdA4vXCWPx6w1_1Sw5EoAGVUdkuuec2Ec",
+        "auth_url": "https://acme-v02.api.letsencrypt.org/acme/authz/3516388556/735967454866",
+        "challenge_url": "https://acme-v02.api.letsencrypt.org/acme/chall/3516388556/735967454866/aR_6pg",
+        "status": "pending"
+      },
+      {
+        "type": "dns-01",
+        "domain": "www.bosuavietnam.vn",
+        "token": "8pmnUyp_txr9MQM2AkZjjSrndrrsDCbBFCbA2Kpw9VI",
+        "key_auth": "8pmnUyp_txr9MQM2AkZjjSrndrrsDCbBFCbA2Kpw9VI.rtpzMXJ6mMaBJB7a0mPD3x6X9GwuFDS1G2hfbC-lRrU",
+        "dns_name": "_acme-challenge.www.bosuavietnam.vn",
+        "dns_value": "3oaV-siHyPNOwKACb7GuWS3-dd0j2Bik6JmjKIpBbHM",
+        "auth_url": "https://acme-v02.api.letsencrypt.org/acme/authz/3516388556/735967454886",
+        "challenge_url": "https://acme-v02.api.letsencrypt.org/acme/chall/3516388556/735967454886/6NMfYw",
+        "status": "pending"
+      }
+    ],
+    "order_url": "https://acme-v02.api.letsencrypt.org/acme/order/3516388556/530188535196",
+    "finalize_url": "https://acme-v02.api.letsencrypt.org/acme/finalize/3516388556/530188535196",
+    "auth_urls": [
+      "https://acme-v02.api.letsencrypt.org/acme/authz/3516388556/735967454866",
+      "https://acme-v02.api.letsencrypt.org/acme/authz/3516388556/735967454886"
+    ],
+    "domains": [
+      {
+        "domain": "bosuavietnam.vn",
+        "auth_url": "https://acme-v02.api.letsencrypt.org/acme/authz/3516388556/735967454866",
+        "challenge_url": "https://acme-v02.api.letsencrypt.org/acme/chall/3516388556/735967454866/aR_6pg",
+        "status": "pending",
+        "last_error": null
+      },
+      {
+        "domain": "www.bosuavietnam.vn",
+        "auth_url": "https://acme-v02.api.letsencrypt.org/acme/authz/3516388556/735967454886",
+        "challenge_url": "https://acme-v02.api.letsencrypt.org/acme/chall/3516388556/735967454886/6NMfYw",
+        "status": "pending",
+        "last_error": null
+      }
+    ],
+    "created_at": "2026-07-09 09:07:16",
+    "last_check_at": null,
+    "last_check_results": [],
+    "dns_cache_clear": [],
+    "progress_logs": [
+      {
+        "time": "2026-07-09 09:07:16",
+        "level": "success",
+        "message": "Order ACME đã tạo. Vui lòng thêm bản ghi xác thực.",
+        "run_id": "init-1783562836174"
+      }
+    ],
+    "progress_text": "Order ACME đã tạo. Vui lòng thêm bản ghi xác thực.",
+    "last_error": null,
+    "current_run_id": "init-1783562836174",
+    "updated_at": "2026-07-09 09:07:16"
+  },
+  {
+    "id": "4222ffb3-c620-4d28-9b7b-791d604ad667",
+    "session_id": "6679caf4-6e2c-47a8-b4b0-276a5c291329",
+    "domain": "bosuavietnam.vn",
+    "sans": [
+      "*.bosuavietnam.vn"
+    ],
+    "challenge_type": "dns-01",
+    "issued_at": "2026-07-05 09:32:20",
+    "status": "issued",
+    "certificate": "-----BEGIN CERTIFICATE-----\nMIIFCzCCA/OgAwIBAgISBXcrBphc8NEgOrvWDpDaTo6PMA0GCSqGSIb3DQEBCwUA\nMDMxCzAJBgNVBAYTAlVTMRYwFAYDVQQKEw1MZXQncyBFbmNyeXB0MQwwCgYDVQQD\nEwNZUjEwHhcNMjYwNzA1MDEzMzQ3WhcNMjYxMDAzMDEzMzQ2WjAaMRgwFgYDVQQD\nEw9ib3N1YXZpZXRuYW0udm4wggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIB\nAQCja+Iz6Fb0y9NGYlx9Jk15BMv2EhZkChmV0LNtntuIatihiphTc6NA+8xvIEiY\nxvP7kgDcyCGPI1xZI8cKG8v3ppDcSwxtAgL8EcC1lkHOWKCr2wgVJiOqwGZuh6U+\ns1ZcQr3DN07A3w0K55OnQsX4um/MLTojguQzybEyb+O3K1QK0nPPM73+m7vtJvMy\nuPxPPTZMvRvbqavFiNZdOqu6QBVJg5Hhl0Gc0uDKZkQmCYMOeOrxl3i39z1FtTB3\nomeM4XMZTvAGRV9b/N3ed3FJsbOdQAcs4TA+kWGpEydlwISJHxcnFJMznDTDcmqg\nMZwlNB7ETemuBKDWiYjWFdyPAgMBAAGjggIwMIICLDAOBgNVHQ8BAf8EBAMCBaAw\nEwYDVR0lBAwwCgYIKwYBBQUHAwEwDAYDVR0TAQH/BAIwADAdBgNVHQ4EFgQUMoPC\nPcC5YKFH9yy2GNFkfxryoBEwHwYDVR0jBBgwFoAUHy81vkYUgs1Asa55LFV4+vfU\naPswMwYIKwYBBQUHAQEEJzAlMCMGCCsGAQUFBzAChhdodHRwOi8veXIxLmkubGVu\nY3Iub3JnLzAtBgNVHREEJjAkghEqLmJvc3VhdmlldG5hbS52boIPYm9zdWF2aWV0\nbmFtLnZuMBMGA1UdIAQMMAowCAYGZ4EMAQIBMC4GA1UdHwQnMCUwI6AhoB+GHWh0\ndHA6Ly95cjEuYy5sZW5jci5vcmcvMTYuY3JsMIIBDAYKKwYBBAHWeQIEAgSB/QSB\n+gD4AHYAlE5Dh/rswe+B8xkkJqgYZQHH0184AgE/cmd9VTcuGdgAAAGfMB6RmAAA\nBAMARzBFAiEAnSzVjzLRwEAROk+SufX7mwQ50yuJoIkpAy3XefV7GcMCIBqtOcqC\nOHFkXHq6nNSibQrbTTWH8+sS0rFdVq62i5qAAH4AJuNkblhpISO8ND9HJDWbN5LN\nJFqI2BXTkzP9mRirRyMAAAGfMB6PjwAIAAAFACWESyMEAwBHMEUCIEFGuAwrOmdx\nEv8qNkLJM6am1KYZ5czAn8Y9SmsalKUxAiEA/ooEIzWPGOPVylC4kxyBFpFMV7K3\nmWun9OIPXTehOpQwDQYJKoZIhvcNAQELBQADggEBAIsfvnjjvU1XLUj2DwvDW/tB\n4Vgd1UPCDuKdg3l0PFT9nGTGELB/Ib02dic/sWz2iJ0/y+iS1OUNa7zmOZamRxq/\nCXW/WBEmrs88L08qDclcIfIEc2pxTH5rbDThBynY7Z8yesgA3EGYtOFFLz1IURbI\nJDNaQsbaOfrTpAOUv2MGp9SzsJi2TsjKoJSxrsQqnvifkExHFzAFRzlgZwI6xYNr\nb2kY9dbjaEcvjgUlETT3/XQcB76+PLOyKCoOL35dOQh6Gew/DAnFjLG0iNMTl7TG\niljjn7h+OPDUez41cHfK1BfoopM1TKEOWJ6LQp1oe8At6t73d2nBfgjhmN/C+XE=\n-----END CERTIFICATE-----",
+    "private_key": "-----BEGIN RSA PRIVATE KEY-----\nMIIEpAIBAAKCAQEAo2viM+hW9MvTRmJcfSZNeQTL9hIWZAoZldCzbZ7biGrYoYqY\nU3OjQPvMbyBImMbz+5IA3MghjyNcWSPHChvL96aQ3EsMbQIC/BHAtZZBzligq9sI\nFSYjqsBmboelPrNWXEK9wzdOwN8NCueTp0LF+LpvzC06I4LkM8mxMm/jtytUCtJz\nzzO9/pu77SbzMrj8Tz02TL0b26mrxYjWXTqrukAVSYOR4ZdBnNLgymZEJgmDDnjq\n8Zd4t/c9RbUwd6JnjOFzGU7wBkVfW/zd3ndxSbGznUAHLOEwPpFhqRMnZcCEiR8X\nJxSTM5w0w3JqoDGcJTQexE3prgSg1omI1hXcjwIDAQABAoIBAAwLd+Oi3JiJrAEZ\ntNQV46CSJZpLC6gZ7817/A2N/NjuzxgGSA3hOFzMx5eVMI9EyAIjE7ncwk8eKGtQ\nLhZk+sE+X0TtVHV1sCn2AQHL7lO6x9+CyEi5bpLiQBUmHZwjya9ed/AQfoHMBCu+\nlRe/Myo5oOMn84tfKq9VI/X3YI2adKnIGhPDDLd6WypYYQvLR+32x5/8rQmStKle\n5vKp/IgrpgKGkifQsxDVHFWGfIY8zajhalGXTMPhYITTykm2zeIxc3XUEjbPShf+\n9rtrmsuhNuXvm+UETdA9NYoDZwayQxUvsqKwYt3TmEB9VZNVoxICp/ImAdcdFc6q\nTX/RZYECgYEA38WLB4ds9lrYNSxJYtjH+V+jtWuR9thks5rvlG5owiVhaMIupfi3\no59gvSp+jlbOAp2CXlVlsZcyt5fgDOdgGb61CPXLMW30Wnw7RmHRND9ip6D4s4Dg\nMJrO7UxABatcdQttW5FNIe9wK20Rwzs+nBNrfJIbMAcwp5tkP9zDbc8CgYEAuvU6\nf7Pi8xsTtta5l7D3Fen/SDyTKVhvDiyivrtYJaNYs7opaLfXCaeUPl9u6BEOh3iy\nZoECQTWJFv1m8vj6nk9iMOc+s/dec06/3/fn5FyLS7MCCBSlx5dx8aykuIDayeXi\nE6XfLIijoc8zVjfjqYqwBudHTo2az2SnvaJ7FUECgYB5G0OkXoH1TrNHC+Hn0mVg\nLIfAbyh/TRwrLEZPsfWWZX6zoKx4fQR+VIqZtn7p8EbsmWxuO4+fLrJvNI44zZxw\nMott/wDqjpS5yBSYgeYkfc2Z5X/UPoKXK6GkQilAKD8QxY95CEmTfS/bANulKtI2\nzDfXIof+VVXa0DnQal2GdwKBgQCP1WKwJMERr183Z3NZlLhDj8bq2E+Pm421Jfn/\nKzrhmg4AF9ULz4QM1XRjmCBHQfgfmWgHHHGToZBas5GklJCbgw9T+FRxOHrd01Qj\nByLMubYhAxMpDFmOeKEdAWmo2Nl6QvXvj8lnBah+MF6akl0AbsaGSSC++oqDzDiQ\n2JRBAQKBgQCg59WUP775DjePVoQgm2CKgnto+rzNBjC6anoTnfIqkqrPjIba8nJh\n5dgQTfIl7G0nFqZz4XxLao/1iu8A6vAhgDBWOS4616yGW/qaE3vlx258lKhf+ygH\n99d0dDSmb0bUEWuQXoPVxV4RzzrRRwfyLZmSp5D7NFXlWAP7EHJD5A==\n-----END RSA PRIVATE KEY-----\n",
+    "ca_bundle": "-----BEGIN CERTIFICATE-----\nMIIE2zCCAsOgAwIBAgIRAKICU/FfJpHAXcHOE7m8yk4wDQYJKoZIhvcNAQELBQAw\nLjELMAkGA1UEBhMCVVMxDTALBgNVBAoTBElTUkcxEDAOBgNVBAMTB1Jvb3QgWVIw\nHhcNMjUwOTAzMDAwMDAwWhcNMjgwOTAyMjM1OTU5WjAzMQswCQYDVQQGEwJVUzEW\nMBQGA1UEChMNTGV0J3MgRW5jcnlwdDEMMAoGA1UEAxMDWVIxMIIBIjANBgkqhkiG\n9w0BAQEFAAOCAQ8AMIIBCgKCAQEAoVi8X2xCYgMXvJxNPKp/oF13UMgmPABB07VC\nLNDtoXmt9luEZNJSBV10VyT1Pz6LD8Zq1d2gc43WNl1AdRrj4sEnazbOiz0nPpmG\nBp2hui49oZtDIY6wdKeZAi5BbNU20CH6RSBBMLSQ9cXrH8dxdv4PAJ45ssGML68U\nSE3BsjC2a6cAN9L5CgXVIQi5tfNiTPoFZZ3S0OlXqLmmtdV95udWAb5b6e/F49Di\nCsH0Y00Ag72BVIb1hzynmKe+X0mERBTtsb3BwmpV9ipeBjMLoR/D9cHxHQCWoi5l\nTmXwY015J5rGelz1nZjJuxc2kioaX29XJBnhMkP531rSdG5uMwIDAQABo4HuMIHr\nMA4GA1UdDwEB/wQEAwIBhjATBgNVHSUEDDAKBggrBgEFBQcDATASBgNVHRMBAf8E\nCDAGAQH/AgEAMB0GA1UdDgQWBBQfLzW+RhSCzUCxrnksVXj699Ro+zAfBgNVHSME\nGDAWgBTe51tg0CJtQCh9Pw0B/qS1UrRRlDAyBggrBgEFBQcBAQQmMCQwIgYIKwYB\nBQUHMAKGFmh0dHA6Ly95ci5pLmxlbmNyLm9yZy8wEwYDVR0gBAwwCjAIBgZngQwB\nAgEwJwYDVR0fBCAwHjAcoBqgGIYWaHR0cDovL3lyLmMubGVuY3Iub3JnLzANBgkq\nhkiG9w0BAQsFAAOCAgEA0+zvMq3kHig1ddTmmm+RibTr9/RpX7k4buanMMRqbV/y\nIvP82zAHN3mvaw+cASuVsdpd0ikjhr4hnhJQLQOzOp2ccKrsdGOAgo0vddeISFAq\nEWEV4lmUM3vFF796up+bSgmJ1u6RupDCMxDgF8M3eLvGuj6L0lu3zkQ0KuQLnKxL\ntB0oQqn1Idg5CuuGpMvQzk29Pa3D/qHurc0EIM9SxukQuJqq63lxsYyRQFU8yMBO\nhq1w5LbfaWNRrz1uklOfI/pYkAb2E2MTZrAMQkBIE2S8Jt1F8gRc96o/xOsrgvSk\na84AisX6xq1lz1Z7jGvrnXc4TMcjxZTjiTaihcYI1JIXZiLtEMSCa5l3cu8YWd6z\ndLRQlqRdclVjuQfNHawRJ6GWlkK0QJosivTKwdBw3KxEtzGo8yMHERbsy57gP1UX\nHOMcmZYQC0gtyR3SxfenIM/MxC3Ia2Ypab/kQ/CTnlIn2KQ5JUC6NYrGCbhFN9bp\n5lKJStEwCUnLpntcrXk5XVDCNv/5RyWpRThkGOV7GetKkQ0qAY8hCzWK6oqnAhDZ\ncjlYVdWfqOw3DIOX6EDNBgAqHarRVxyF9QZdOaXSyPJ0ueD2BYJEBgaCGQ8rAaU/\nQc123V5LTXDZW4CcsPBDyhy4v+c8hClAyw/IkJlfBqxB9D+/wvIMHgECZ4ptP6o=\n-----END CERTIFICATE-----\n-----BEGIN CERTIFICATE-----\n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\n-----END CERTIFICATE-----",
+    "full_chain": "-----BEGIN CERTIFICATE-----\nMIIFCzCCA/OgAwIBAgISBXcrBphc8NEgOrvWDpDaTo6PMA0GCSqGSIb3DQEBCwUA\nMDMxCzAJBgNVBAYTAlVTMRYwFAYDVQQKEw1MZXQncyBFbmNyeXB0MQwwCgYDVQQD\nEwNZUjEwHhcNMjYwNzA1MDEzMzQ3WhcNMjYxMDAzMDEzMzQ2WjAaMRgwFgYDVQQD\nEw9ib3N1YXZpZXRuYW0udm4wggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIB\nAQCja+Iz6Fb0y9NGYlx9Jk15BMv2EhZkChmV0LNtntuIatihiphTc6NA+8xvIEiY\nxvP7kgDcyCGPI1xZI8cKG8v3ppDcSwxtAgL8EcC1lkHOWKCr2wgVJiOqwGZuh6U+\ns1ZcQr3DN07A3w0K55OnQsX4um/MLTojguQzybEyb+O3K1QK0nPPM73+m7vtJvMy\nuPxPPTZMvRvbqavFiNZdOqu6QBVJg5Hhl0Gc0uDKZkQmCYMOeOrxl3i39z1FtTB3\nomeM4XMZTvAGRV9b/N3ed3FJsbOdQAcs4TA+kWGpEydlwISJHxcnFJMznDTDcmqg\nMZwlNB7ETemuBKDWiYjWFdyPAgMBAAGjggIwMIICLDAOBgNVHQ8BAf8EBAMCBaAw\nEwYDVR0lBAwwCgYIKwYBBQUHAwEwDAYDVR0TAQH/BAIwADAdBgNVHQ4EFgQUMoPC\nPcC5YKFH9yy2GNFkfxryoBEwHwYDVR0jBBgwFoAUHy81vkYUgs1Asa55LFV4+vfU\naPswMwYIKwYBBQUHAQEEJzAlMCMGCCsGAQUFBzAChhdodHRwOi8veXIxLmkubGVu\nY3Iub3JnLzAtBgNVHREEJjAkghEqLmJvc3VhdmlldG5hbS52boIPYm9zdWF2aWV0\nbmFtLnZuMBMGA1UdIAQMMAowCAYGZ4EMAQIBMC4GA1UdHwQnMCUwI6AhoB+GHWh0\ndHA6Ly95cjEuYy5sZW5jci5vcmcvMTYuY3JsMIIBDAYKKwYBBAHWeQIEAgSB/QSB\n+gD4AHYAlE5Dh/rswe+B8xkkJqgYZQHH0184AgE/cmd9VTcuGdgAAAGfMB6RmAAA\nBAMARzBFAiEAnSzVjzLRwEAROk+SufX7mwQ50yuJoIkpAy3XefV7GcMCIBqtOcqC\nOHFkXHq6nNSibQrbTTWH8+sS0rFdVq62i5qAAH4AJuNkblhpISO8ND9HJDWbN5LN\nJFqI2BXTkzP9mRirRyMAAAGfMB6PjwAIAAAFACWESyMEAwBHMEUCIEFGuAwrOmdx\nEv8qNkLJM6am1KYZ5czAn8Y9SmsalKUxAiEA/ooEIzWPGOPVylC4kxyBFpFMV7K3\nmWun9OIPXTehOpQwDQYJKoZIhvcNAQELBQADggEBAIsfvnjjvU1XLUj2DwvDW/tB\n4Vgd1UPCDuKdg3l0PFT9nGTGELB/Ib02dic/sWz2iJ0/y+iS1OUNa7zmOZamRxq/\nCXW/WBEmrs88L08qDclcIfIEc2pxTH5rbDThBynY7Z8yesgA3EGYtOFFLz1IURbI\nJDNaQsbaOfrTpAOUv2MGp9SzsJi2TsjKoJSxrsQqnvifkExHFzAFRzlgZwI6xYNr\nb2kY9dbjaEcvjgUlETT3/XQcB76+PLOyKCoOL35dOQh6Gew/DAnFjLG0iNMTl7TG\niljjn7h+OPDUez41cHfK1BfoopM1TKEOWJ6LQp1oe8At6t73d2nBfgjhmN/C+XE=\n-----END CERTIFICATE-----\n\n-----BEGIN CERTIFICATE-----\nMIIE2zCCAsOgAwIBAgIRAKICU/FfJpHAXcHOE7m8yk4wDQYJKoZIhvcNAQELBQAw\nLjELMAkGA1UEBhMCVVMxDTALBgNVBAoTBElTUkcxEDAOBgNVBAMTB1Jvb3QgWVIw\nHhcNMjUwOTAzMDAwMDAwWhcNMjgwOTAyMjM1OTU5WjAzMQswCQYDVQQGEwJVUzEW\nMBQGA1UEChMNTGV0J3MgRW5jcnlwdDEMMAoGA1UEAxMDWVIxMIIBIjANBgkqhkiG\n9w0BAQEFAAOCAQ8AMIIBCgKCAQEAoVi8X2xCYgMXvJxNPKp/oF13UMgmPABB07VC\nLNDtoXmt9luEZNJSBV10VyT1Pz6LD8Zq1d2gc43WNl1AdRrj4sEnazbOiz0nPpmG\nBp2hui49oZtDIY6wdKeZAi5BbNU20CH6RSBBMLSQ9cXrH8dxdv4PAJ45ssGML68U\nSE3BsjC2a6cAN9L5CgXVIQi5tfNiTPoFZZ3S0OlXqLmmtdV95udWAb5b6e/F49Di\nCsH0Y00Ag72BVIb1hzynmKe+X0mERBTtsb3BwmpV9ipeBjMLoR/D9cHxHQCWoi5l\nTmXwY015J5rGelz1nZjJuxc2kioaX29XJBnhMkP531rSdG5uMwIDAQABo4HuMIHr\nMA4GA1UdDwEB/wQEAwIBhjATBgNVHSUEDDAKBggrBgEFBQcDATASBgNVHRMBAf8E\nCDAGAQH/AgEAMB0GA1UdDgQWBBQfLzW+RhSCzUCxrnksVXj699Ro+zAfBgNVHSME\nGDAWgBTe51tg0CJtQCh9Pw0B/qS1UrRRlDAyBggrBgEFBQcBAQQmMCQwIgYIKwYB\nBQUHMAKGFmh0dHA6Ly95ci5pLmxlbmNyLm9yZy8wEwYDVR0gBAwwCjAIBgZngQwB\nAgEwJwYDVR0fBCAwHjAcoBqgGIYWaHR0cDovL3lyLmMubGVuY3Iub3JnLzANBgkq\nhkiG9w0BAQsFAAOCAgEA0+zvMq3kHig1ddTmmm+RibTr9/RpX7k4buanMMRqbV/y\nIvP82zAHN3mvaw+cASuVsdpd0ikjhr4hnhJQLQOzOp2ccKrsdGOAgo0vddeISFAq\nEWEV4lmUM3vFF796up+bSgmJ1u6RupDCMxDgF8M3eLvGuj6L0lu3zkQ0KuQLnKxL\ntB0oQqn1Idg5CuuGpMvQzk29Pa3D/qHurc0EIM9SxukQuJqq63lxsYyRQFU8yMBO\nhq1w5LbfaWNRrz1uklOfI/pYkAb2E2MTZrAMQkBIE2S8Jt1F8gRc96o/xOsrgvSk\na84AisX6xq1lz1Z7jGvrnXc4TMcjxZTjiTaihcYI1JIXZiLtEMSCa5l3cu8YWd6z\ndLRQlqRdclVjuQfNHawRJ6GWlkK0QJosivTKwdBw3KxEtzGo8yMHERbsy57gP1UX\nHOMcmZYQC0gtyR3SxfenIM/MxC3Ia2Ypab/kQ/CTnlIn2KQ5JUC6NYrGCbhFN9bp\n5lKJStEwCUnLpntcrXk5XVDCNv/5RyWpRThkGOV7GetKkQ0qAY8hCzWK6oqnAhDZ\ncjlYVdWfqOw3DIOX6EDNBgAqHarRVxyF9QZdOaXSyPJ0ueD2BYJEBgaCGQ8rAaU/\nQc123V5LTXDZW4CcsPBDyhy4v+c8hClAyw/IkJlfBqxB9D+/wvIMHgECZ4ptP6o=\n-----END CERTIFICATE-----\n\n-----BEGIN CERTIFICATE-----\n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\n-----END CERTIFICATE-----\n",
+    "valid_from": "2026-07-05 01:33:47",
+    "valid_to": "2026-10-03 01:33:46",
+    "subject": "CN=bosuavietnam.vn",
+    "issuer": "CN=YR1,O=Let's Encrypt,C=US",
+    "serial_number": "476112222370282592903180530086042668011151",
+    "provider": "letsencrypt",
+    "email": "admin@bosuavietnam.vn",
+    "order_url": "https://acme-v02.api.letsencrypt.org/acme/order/3503449356/528723057196",
+    "finalize_url": "https://acme-v02.api.letsencrypt.org/acme/finalize/3503449356/528723057196",
+    "auth_urls": [
+      "https://acme-v02.api.letsencrypt.org/acme/authz/3503449356/733567319486",
+      "https://acme-v02.api.letsencrypt.org/acme/authz/3503449356/733567319496"
+    ],
+    "domains": [
+      {
+        "domain": "bosuavietnam.vn",
+        "auth_url": "https://acme-v02.api.letsencrypt.org/acme/authz/3503449356/733567319486",
+        "challenge_url": "https://acme-v02.api.letsencrypt.org/acme/chall/3503449356/733567319486/M0knEQ",
+        "status": "valid",
+        "last_error": null
+      },
+      {
+        "domain": "bosuavietnam.vn",
+        "auth_url": "https://acme-v02.api.letsencrypt.org/acme/authz/3503449356/733567319496",
+        "challenge_url": "https://acme-v02.api.letsencrypt.org/acme/chall/3503449356/733567319496/MRUF5w",
+        "status": "valid",
+        "last_error": null
+      }
+    ],
+    "progress_logs": [
+      {
+        "time": "2026-07-05 09:20:30",
+        "level": "success",
+        "message": "Order ACME đã tạo. Vui lòng thêm bản ghi xác thực.",
+        "run_id": "init-1783218030812"
+      },
+      {
+        "time": "2026-07-05 09:32:04",
+        "level": "loading",
+        "message": "Đang pre-check bản ghi xác thực...",
+        "run_id": "verify-1783218724170"
+      },
+      {
+        "time": "2026-07-05 09:32:13",
+        "level": "success",
+        "message": "Pre-check đạt. Đã gửi challenge, bắt đầu xác thực tự động...",
+        "run_id": "verify-1783218724170"
+      },
+      {
+        "time": "2026-07-05 09:32:13",
+        "level": "loading",
+        "message": "Đã gửi challenge tới ACME. Đang polling authorization...",
+        "run_id": "verify-1783218724170"
+      },
+      {
+        "time": "2026-07-05 09:32:16",
+        "level": "success",
+        "message": "Tất cả authorization đã valid.",
+        "run_id": "verify-1783218724170"
+      },
+      {
+        "time": "2026-07-05 09:32:16",
+        "level": "loading",
+        "message": "Đang finalize order và chờ cấp chứng chỉ...",
+        "run_id": "verify-1783218724170"
+      },
+      {
+        "time": "2026-07-05 09:32:20",
+        "level": "success",
+        "message": "Đã cấp cert thành công.",
+        "run_id": "verify-1783218724170"
+      }
+    ],
+    "progress_text": "Đã cấp cert thành công.",
+    "last_error": null,
+    "current_run_id": "verify-1783218724170",
+    "updated_at": "2026-07-05 09:32:20"
+  },
+  {
+    "id": "3d7588e7-6844-423b-a34d-e9daf4eda31e",
+    "session_id": "e0299e47-6308-4d6b-8df2-417d12f48b63",
+    "domain": "shvietnam.com",
+    "sans": [],
+    "challenge_type": "http-01",
+    "issued_at": "2026-07-04 14:42:09",
+    "status": "issued",
+    "certificate": "-----BEGIN CERTIFICATE-----\nMIIF5zCCBE+gAwIBAgIQY31IFgRQ0lkCrJi5tcTmTzANBgkqhkiG9w0BAQsFADBP\nMQswCQYDVQQGEwJVUzEYMBYGA1UECgwPU1NMIENvcnBvcmF0aW9uMSYwJAYDVQQD\nDB1TU0wuY29tIFRMUyBJc3N1aW5nIFJTQSBDQSBSMTAeFw0yNjA3MDQwNzMxNTFa\nFw0yNjEwMTYwNzIwMTlaMBgxFjAUBgNVBAMMDXNodmlldG5hbS5jb20wggEiMA0G\nCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQClCfsGL5jWbYrjYMXdom+utUshraLm\n/MtmvGUMUudLyB6wtk8lQRimICerohuj7zphH/Czr8jlYshwL1VWronfxPsaLVrh\nlYBHPAw7xr5P3FmPnPQc/GuWs2Gd3pla7QtaAywsGhcW5REqJV7MYcMhN2L2fE7W\nffJtloq34SDjgCFj0BNKS8BbmrcBcqGPI0uIa4PVJsVdsH5Lq5c3yF3TUwFwYxBj\nkLW7J/d6Kyi3S5EiOgA9pQ1/ttEs862HALIvNaAM1UYy8u6tMWPROKjqSBMUGZMj\ncniwnx8nBvoIEZLX10NvxDNEpBJr0DeQwEtMSrPwXR/Zxf7jwY5MxnlDAgMBAAGj\nggJ0MIICcDAMBgNVHRMBAf8EAjAAMB8GA1UdIwQYMBaAFHm6lHegDRndNOY5pPxM\npdJabfWMMGoGCCsGAQUFBwEBBF4wXDA4BggrBgEFBQcwAoYsaHR0cDovL2NlcnQu\nc3NsLmNvbS9TU0wuY29tLVRMUy1JLVJTQS1SMS5jZXIwIAYIKwYBBQUHMAGGFGh0\ndHA6Ly9vY3Nwcy5zc2wuY29tMBgGA1UdEQQRMA+CDXNodmlldG5hbS5jb20wIwYD\nVR0gBBwwGjAIBgZngQwBAgEwDgYMKwYBBAGCqTABAwEBMB0GA1UdJQQWMBQGCCsG\nAQUFBwMCBggrBgEFBQcDATA9BgNVHR8ENjA0MDKgMKAuhixodHRwOi8vY3Jscy5z\nc2wuY29tL1NTTC5jb20tVExTLUktUlNBLVIxLmNybDAdBgNVHQ4EFgQUSGAt5G/c\nWv+j+mux1SXyPdyzOoUwDgYDVR0PAQH/BAQDAgWgMIIBBQYKKwYBBAHWeQIEAgSB\n9gSB8wDxAHcAwjF+V0UZo0XufzjespBB68fCIVoiv3/Vta12mtkOUs0AAAGfLBOl\ntgAABAMASDBGAiEAsvrUDoe4/SDuLk+4bb16t2Dx4KENW64ev2WjjvkSI/MCIQCB\nZd45RO0baVOtz4LNT4IS1nkdItFPl8yGwBYv10r5pgB2ANdtfRDRp/V3wsfpX9cA\nv/mCyTNaZeHQswFzF8DIxWl3AAABnywTpVUAAAQDAEcwRQIhAL2FI8fHxp04N8Ep\nlRiVBfyEMyyPMw0s/ZRqs+PO7fwpAiAZBwAaOapXsJNAgbf5TnT7WW9s52Y3BapO\nnjNSDl9gjjANBgkqhkiG9w0BAQsFAAOCAYEANHJV2gNUDXimMbzf6KkQQoPOTya1\nr0dGIMJcbQjAnrChScXwX1QnTAmamFSFK5MpLAkoEKgEAu2Hx3qKlPacdhgT972o\n1Lhs6UWf9Uxr/ybr2ltiVDVW3nzE1fsl1dTtMsaAgeO7rZhbOUoEhZFdBBfTb7xk\ndgEcy0z7BCKKchND/FWcoU8QxbhD3Br4rbBhxmuK6PXu6q/9yq8i+GdRV9pYR0kj\n1gcGdaMBI9F9gm+3Vosm7iBeBZYtL2C4i6rBfKKImf4RXmzRgyu12Whm1x/vZrZD\n/t2CRMbAkg6wK9Ccw8vvjeKwi38jQ0xBzxHfQsXpEYV+JtVo/eMAg2a0BQtRFklq\nSGuPvPieD4TQnjdDz8AelMJhbsQZF7WQdovG2NRSSORdcX4e+S095JNiTY7pzgc+\n9q6XvAb6927c0eE8Uvb3iIJvARjbDwTL3f/ZJShwkjt+Hqr5tQBmw9foTB1WQ3L2\ngjl5SIspyetT+JLMHGqMx+j5m+Jm8GP66s7q\n-----END CERTIFICATE-----",
+    "private_key": "-----BEGIN RSA PRIVATE KEY-----\nMIIEogIBAAKCAQEApQn7Bi+Y1m2K42DF3aJvrrVLIa2i5vzLZrxlDFLnS8gesLZP\nJUEYpiAnq6Ibo+86YR/ws6/I5WLIcC9VVq6J38T7Gi1a4ZWARzwMO8a+T9xZj5z0\nHPxrlrNhnd6ZWu0LWgMsLBoXFuURKiVezGHDITdi9nxO1n3ybZaKt+Eg44AhY9AT\nSkvAW5q3AXKhjyNLiGuD1SbFXbB+S6uXN8hd01MBcGMQY5C1uyf3eisot0uRIjoA\nPaUNf7bRLPOthwCyLzWgDNVGMvLurTFj0Tio6kgTFBmTI3J4sJ8fJwb6CBGS19dD\nb8QzRKQSa9A3kMBLTEqz8F0f2cX+48GOTMZ5QwIDAQABAoIBAAle1LLYNvxNweoB\nD5ry4xZvUrG50xr8VWwi3DXj6yABX8S2xS2fUY/1GWuES792EMF898SsAWMMxcag\n2V6PkGJ1I7CrzJIsU9k3jpZCRYHxR+CAj9epeU5YJv24qspf1RoqPfLPFGqHXP8g\nmg5Oqq6TH3pROoSxJ/eS6ZNhI+XmxCaRJ5eRRandFKWj+bis9+MAJ66VWmaw9W23\nfrmsD2o3Y3Ww9gfwRV/cdda3xNb1KOeZfw4yprpxOOfnoGrhQWab1V2Y13kTeEj9\nIQ1Dpeeru+h4Mueg3o2DLRUgOy77bvNYPek/Vg3ulcpwu+AUPx/1AzpC2yTHqSF9\nXaNWgPkCgYEA0JneQGhG4BYitxdZVzY3IIHWM55DrJWw/snktJpXJHc/upH5MrGw\n+ccNhk0kLhF7VvyMAcGmIGBCFsOQ6agcFdc/coT9UzRrLnll7JAg7J9/AjVtk4FM\nqMtrs590SUHebztBamIsSTYlFVUiAO/ewOJDrjqB54mh9mqwJIzWshUCgYEAyool\nr+IqfjlPGR0sZD1bCGwO+KbR94xkwvO2ew+7UHT+c/7J7ZgfWfmeWZDP+HcHwdW1\nPd53iRVG8/zI6LZBZp8Du6OfvF+tkLMc2hdIo8chKD9ToqEhmlf5y2oJanJ/gqNQ\ney2RW45ZTlaO9QHg+exBAcUftzPyXdd+ln1Cy/cCgYAK+/87DwKkbCX51C3tLLqs\naInZ//x6Swud7w2vAO2Tyv+9GFCx/a9fB79LkiZUkrEW/Id21DamP8tbHYM0+pg4\nAjSiGCSqy/jU4qmeUlyZeTCb8ipJ+SYLQWLze3MJJIHNA6bHLlI8rLA5NllrCTaG\nm6OKuiP7CEFSE34g/pWTnQKBgD7LjBm29lPCMurnZ58AgtvenNms5wZoKcljxFzt\nKLcuPsH56eNXOcksolLEmiY/yVDokFPJSKhgx2nYIvY7o5VMkdy4Q0slIuvtDHH1\nrBjTIU2YLLcMXB29Tv4pNxggvbXkKoy2OQ342Wl3XsVJutXh0NnaoxWq7mb37BB+\nb5pLAoGAG9DqzHlc0UcAve4p/zrxyvGHqo0kOpEvCkk7WSK9BaePMOdm2lD//KrH\neZ8RlV1fM3uXqJ1ZAqa9Xc+G45eyGCcwZCwoZUm97b18o7NE6BYd959kS2izjOv6\nNfnSrI+xtZFyLeDtmkUOq7Fey2oO4UDAMdesji+T6n9nDj1gjvo=\n-----END RSA PRIVATE KEY-----\n",
+    "ca_bundle": "-----BEGIN CERTIFICATE-----\n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\niTZinEPk\n-----END CERTIFICATE-----\n-----BEGIN CERTIFICATE-----\nMIIF7TCCBNWgAwIBAgIRAP+ygvcoMZtiuvS4Tw3+kzkwDQYJKoZIhvcNAQELBQAw\nezELMAkGA1UEBhMCR0IxGzAZBgNVBAgMEkdyZWF0ZXIgTWFuY2hlc3RlcjEQMA4G\nA1UEBwwHU2FsZm9yZDEaMBgGA1UECgwRQ29tb2RvIENBIExpbWl0ZWQxITAfBgNV\nBAMMGEFBQSBDZXJ0aWZpY2F0ZSBTZXJ2aWNlczAeFw0yNTA4MDEwMDAwMDBaFw0y\nODEyMzEyMzU5NTlaME4xCzAJBgNVBAYTAlVTMRgwFgYDVQQKDA9TU0wgQ29ycG9y\nYXRpb24xJTAjBgNVBAMMHFNTTC5jb20gVExTIFJTQSBSb290IENBIDIwMjIwggIi\nMA0GCSqGSIb3DQEBAQUAA4ICDwAwggIKAoICAQDQpAlyT0CIEmE+NSOe7vZ0zy97\nWD3OPA0QKJAvl/eMSNig2CWxTLARTBdzUNAiSmO7gdMpbtW1CT4mGH+yEn+TmLev\n8Da/8u4Ynpw7UsVHGV1082Rm1V3HaLS/GxwGo7yPQCO2HsaEvVHEGznBldIp7Euu\ney2/Of20Yt6We0HGnKDgBnL78AeXCTmBdK/3NFkRVwrCW8Ek9DFzMILGnboC9z58\nRF+DDfPx3SBpFglQ4tRVtuCAcnZuTEe3dVVZtFN02ZTGQa1YijFmDx6iGylATi/f\ne+YWLC38v+zztPq+GPabSdTuBW7ZNPOc8ewBi9Egxg+gtbwXTkh7UcL86VxpN0dm\ns2j4FSjwudOkFcxaT7pScKMSRd3Guk77wtD3qFInbW55tYz8e4zBFkzugH++8Ha+\nQVMSM65aOEKr1w8+QY12BzLVq4n2TmfZsUJ1I27zzUKy/FX1U4cXO8AzWPFS0vmA\npPDo8DuLOMykxpB/D5z9i9Gjz9qDp2nJUDbVXAXSCkF022MRN8GloJZLHowWEneu\nlDR7Hn/CZgDkqoPqipCtzjZETdFR6bwf82oF/cB0HyUZQFFu6oJRQN+buQgqBgLV\nIxwT1unb28awest7J5v74NVGJO0QS2NLpQWPurgdK6b6keKSUr3s62eXbZotn4Ey\nBWcy+0gIP9kluAQlLwIDAQABo4IBlzCCAZMwHwYDVR0jBBgwFoAUoBEKIz6W8Qfs\n4q8p74Klf9AwpLQwHQYDVR0OBBYEFPsuN+7jhHonLs0ZNbEzfP/UREK5MA4GA1Ud\nDwEB/wQEAwIBhjASBgNVHRMBAf8ECDAGAQH/AgECMB0GA1UdJQQWMBQGCCsGAQUF\nBwMBBggrBgEFBQcDAjCBkgYDVR0gBIGKMIGHMAcGBWeBDAEBMAgGBmeBDAECATAI\nBgZngQwBAgIwCAYGZ4EMAQIDMA4GDCsGAQQBgqkwAQMBATAOBgwrBgEEAYKpMAED\nAQIwDgYMKwYBBAGCqTABAwEDMA4GDCsGAQQBgqkwAQMBBDAOBgwrBgEEAYKpMAED\nAQUwDgYMKwYBBAGCqTABAwEGMEMGA1UdHwQ8MDowOKA2oDSGMmh0dHA6Ly9jcmwu\nY29tb2RvY2EuY29tL0FBQUNlcnRpZmljYXRlU2VydmljZXMuY3JsMDQGCCsGAQUF\nBwEBBCgwJjAkBggrBgEFBQcwAYYYaHR0cDovL29jc3AuY29tb2RvY2EuY29tMA0G\nCSqGSIb3DQEBCwUAA4IBAQB6GuqiV0P/BPtHYkhy1lSqbHGhAzwVtRPpcFqPQjYV\nw9wvwBxex/7dzzsCLHIIH+TGv3JpmTtUSNTKhm1EXRR9Uc9h8l6OALhNK70oVEzw\nOLRfAdLc0oaczE8/aVWxxGWUF9i4TXrklD7psIlUUX0x/AbcuJGOjTgZWw4iHAMM\nfLuw20YqGNXZAL8hiQnDXI5WtaIAw8rGkLiaFBOhdwPHl+1CdLGxXVzafaXFI3BS\nSXKXq2AgdbjVmkM6yj2cihLBlLGBDtkXdZ4bRMYxUMQTX5057SzRk8NxIurm+4W6\nZrI4zH+N6ocqOwihhYe05n/JEcim7g6wZjA1KHFv2ajA\n-----END CERTIFICATE-----\n-----BEGIN CERTIFICATE-----\nMIIEMjCCAxqgAwIBAgIBATANBgkqhkiG9w0BAQUFADB7MQswCQYDVQQGEwJHQjEb\nMBkGA1UECAwSR3JlYXRlciBNYW5jaGVzdGVyMRAwDgYDVQQHDAdTYWxmb3JkMRow\nGAYDVQQKDBFDb21vZG8gQ0EgTGltaXRlZDEhMB8GA1UEAwwYQUFBIENlcnRpZmlj\nYXRlIFNlcnZpY2VzMB4XDTA0MDEwMTAwMDAwMFoXDTI4MTIzMTIzNTk1OVowezEL\nMAkGA1UEBhMCR0IxGzAZBgNVBAgMEkdyZWF0ZXIgTWFuY2hlc3RlcjEQMA4GA1UE\nBwwHU2FsZm9yZDEaMBgGA1UECgwRQ29tb2RvIENBIExpbWl0ZWQxITAfBgNVBAMM\nGEFBQSBDZXJ0aWZpY2F0ZSBTZXJ2aWNlczCCASIwDQYJKoZIhvcNAQEBBQADggEP\nADCCAQoCggEBAL5AnfRu4ep2hxxNRUSOvkbIgwadwSr+GB+O5AL686tdUIoWMQua\nBtDFcCLNSS1UY8y2bmhGC1Pqy0wkwLxyTurxFa70VJoSCsN6sjNg4tqJVfMiWPPe\n3M/vg4aijJRPn2jymJBGhCfHdr/jzDUsi14HZGWCwEiwqJH5YZ92IFCokcdmtet4\nYgNW8IoaE+oxox6gmf049vYnMlhvB/VruPsUK6+3qszWY19zjNoFmag4qMsXeDZR\nrOme9Hg6jc8P2ULimAyrL58OAd7vn5lJ8S3frHRNG5i1R8XlKdH5kBjHYpy+g8cm\nez6KJcfA3Z3mNWgQIJ2P2N7Sw4ScDV7oL8kCAwEAAaOBwDCBvTAdBgNVHQ4EFgQU\noBEKIz6W8Qfs4q8p74Klf9AwpLQwDgYDVR0PAQH/BAQDAgEGMA8GA1UdEwEB/wQF\nMAMBAf8wewYDVR0fBHQwcjA4oDagNIYyaHR0cDovL2NybC5jb21vZG9jYS5jb20v\nQUFBQ2VydGlmaWNhdGVTZXJ2aWNlcy5jcmwwNqA0oDKGMGh0dHA6Ly9jcmwuY29t\nb2RvLm5ldC9BQUFDZXJ0aWZpY2F0ZVNlcnZpY2VzLmNybDANBgkqhkiG9w0BAQUF\nAAOCAQEACFb8AvCb6P+k+tZ7xkSAzk/ExfYAWMymtrwUSWgEdujm7l3sAg9g1o1Q\nGE8mTgHj5rCl7r+8dFRBv/38ErjHT1r0iWAFf2C3BUrz9vHCv8S5dIa2LX1rzNLz\nRt0vxuBqw8M0Ayx9lt1awg6nCpnBBYurDC/zXDrPbDdVCYfeU0BsWO/8tqtlbgT2\nG9w84FoVxp7Z8VlIMCFlA2zs6SFz7JsDoeA3raAVGI/6ugLOpyypEBMs1OUIJqsi\nl2D4kF501KKaU73yqWjgom7C12yxow+ev+to51byrvLjKzg6CYG1a4XXvi3tPxq3\nsmPi9WIsgtRqAEFQ8TmDn5XpNpaYbg==\n-----END CERTIFICATE-----",
+    "full_chain": "-----BEGIN CERTIFICATE-----\nMIIF5zCCBE+gAwIBAgIQY31IFgRQ0lkCrJi5tcTmTzANBgkqhkiG9w0BAQsFADBP\nMQswCQYDVQQGEwJVUzEYMBYGA1UECgwPU1NMIENvcnBvcmF0aW9uMSYwJAYDVQQD\nDB1TU0wuY29tIFRMUyBJc3N1aW5nIFJTQSBDQSBSMTAeFw0yNjA3MDQwNzMxNTFa\nFw0yNjEwMTYwNzIwMTlaMBgxFjAUBgNVBAMMDXNodmlldG5hbS5jb20wggEiMA0G\nCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQClCfsGL5jWbYrjYMXdom+utUshraLm\n/MtmvGUMUudLyB6wtk8lQRimICerohuj7zphH/Czr8jlYshwL1VWronfxPsaLVrh\nlYBHPAw7xr5P3FmPnPQc/GuWs2Gd3pla7QtaAywsGhcW5REqJV7MYcMhN2L2fE7W\nffJtloq34SDjgCFj0BNKS8BbmrcBcqGPI0uIa4PVJsVdsH5Lq5c3yF3TUwFwYxBj\nkLW7J/d6Kyi3S5EiOgA9pQ1/ttEs862HALIvNaAM1UYy8u6tMWPROKjqSBMUGZMj\ncniwnx8nBvoIEZLX10NvxDNEpBJr0DeQwEtMSrPwXR/Zxf7jwY5MxnlDAgMBAAGj\nggJ0MIICcDAMBgNVHRMBAf8EAjAAMB8GA1UdIwQYMBaAFHm6lHegDRndNOY5pPxM\npdJabfWMMGoGCCsGAQUFBwEBBF4wXDA4BggrBgEFBQcwAoYsaHR0cDovL2NlcnQu\nc3NsLmNvbS9TU0wuY29tLVRMUy1JLVJTQS1SMS5jZXIwIAYIKwYBBQUHMAGGFGh0\ndHA6Ly9vY3Nwcy5zc2wuY29tMBgGA1UdEQQRMA+CDXNodmlldG5hbS5jb20wIwYD\nVR0gBBwwGjAIBgZngQwBAgEwDgYMKwYBBAGCqTABAwEBMB0GA1UdJQQWMBQGCCsG\nAQUFBwMCBggrBgEFBQcDATA9BgNVHR8ENjA0MDKgMKAuhixodHRwOi8vY3Jscy5z\nc2wuY29tL1NTTC5jb20tVExTLUktUlNBLVIxLmNybDAdBgNVHQ4EFgQUSGAt5G/c\nWv+j+mux1SXyPdyzOoUwDgYDVR0PAQH/BAQDAgWgMIIBBQYKKwYBBAHWeQIEAgSB\n9gSB8wDxAHcAwjF+V0UZo0XufzjespBB68fCIVoiv3/Vta12mtkOUs0AAAGfLBOl\ntgAABAMASDBGAiEAsvrUDoe4/SDuLk+4bb16t2Dx4KENW64ev2WjjvkSI/MCIQCB\nZd45RO0baVOtz4LNT4IS1nkdItFPl8yGwBYv10r5pgB2ANdtfRDRp/V3wsfpX9cA\nv/mCyTNaZeHQswFzF8DIxWl3AAABnywTpVUAAAQDAEcwRQIhAL2FI8fHxp04N8Ep\nlRiVBfyEMyyPMw0s/ZRqs+PO7fwpAiAZBwAaOapXsJNAgbf5TnT7WW9s52Y3BapO\nnjNSDl9gjjANBgkqhkiG9w0BAQsFAAOCAYEANHJV2gNUDXimMbzf6KkQQoPOTya1\nr0dGIMJcbQjAnrChScXwX1QnTAmamFSFK5MpLAkoEKgEAu2Hx3qKlPacdhgT972o\n1Lhs6UWf9Uxr/ybr2ltiVDVW3nzE1fsl1dTtMsaAgeO7rZhbOUoEhZFdBBfTb7xk\ndgEcy0z7BCKKchND/FWcoU8QxbhD3Br4rbBhxmuK6PXu6q/9yq8i+GdRV9pYR0kj\n1gcGdaMBI9F9gm+3Vosm7iBeBZYtL2C4i6rBfKKImf4RXmzRgyu12Whm1x/vZrZD\n/t2CRMbAkg6wK9Ccw8vvjeKwi38jQ0xBzxHfQsXpEYV+JtVo/eMAg2a0BQtRFklq\nSGuPvPieD4TQnjdDz8AelMJhbsQZF7WQdovG2NRSSORdcX4e+S095JNiTY7pzgc+\n9q6XvAb6927c0eE8Uvb3iIJvARjbDwTL3f/ZJShwkjt+Hqr5tQBmw9foTB1WQ3L2\ngjl5SIspyetT+JLMHGqMx+j5m+Jm8GP66s7q\n-----END CERTIFICATE-----\n-----BEGIN CERTIFICATE-----\n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\niTZinEPk\n-----END CERTIFICATE-----\n-----BEGIN CERTIFICATE-----\nMIIF7TCCBNWgAwIBAgIRAP+ygvcoMZtiuvS4Tw3+kzkwDQYJKoZIhvcNAQELBQAw\nezELMAkGA1UEBhMCR0IxGzAZBgNVBAgMEkdyZWF0ZXIgTWFuY2hlc3RlcjEQMA4G\nA1UEBwwHU2FsZm9yZDEaMBgGA1UECgwRQ29tb2RvIENBIExpbWl0ZWQxITAfBgNV\nBAMMGEFBQSBDZXJ0aWZpY2F0ZSBTZXJ2aWNlczAeFw0yNTA4MDEwMDAwMDBaFw0y\nODEyMzEyMzU5NTlaME4xCzAJBgNVBAYTAlVTMRgwFgYDVQQKDA9TU0wgQ29ycG9y\nYXRpb24xJTAjBgNVBAMMHFNTTC5jb20gVExTIFJTQSBSb290IENBIDIwMjIwggIi\nMA0GCSqGSIb3DQEBAQUAA4ICDwAwggIKAoICAQDQpAlyT0CIEmE+NSOe7vZ0zy97\nWD3OPA0QKJAvl/eMSNig2CWxTLARTBdzUNAiSmO7gdMpbtW1CT4mGH+yEn+TmLev\n8Da/8u4Ynpw7UsVHGV1082Rm1V3HaLS/GxwGo7yPQCO2HsaEvVHEGznBldIp7Euu\ney2/Of20Yt6We0HGnKDgBnL78AeXCTmBdK/3NFkRVwrCW8Ek9DFzMILGnboC9z58\nRF+DDfPx3SBpFglQ4tRVtuCAcnZuTEe3dVVZtFN02ZTGQa1YijFmDx6iGylATi/f\ne+YWLC38v+zztPq+GPabSdTuBW7ZNPOc8ewBi9Egxg+gtbwXTkh7UcL86VxpN0dm\ns2j4FSjwudOkFcxaT7pScKMSRd3Guk77wtD3qFInbW55tYz8e4zBFkzugH++8Ha+\nQVMSM65aOEKr1w8+QY12BzLVq4n2TmfZsUJ1I27zzUKy/FX1U4cXO8AzWPFS0vmA\npPDo8DuLOMykxpB/D5z9i9Gjz9qDp2nJUDbVXAXSCkF022MRN8GloJZLHowWEneu\nlDR7Hn/CZgDkqoPqipCtzjZETdFR6bwf82oF/cB0HyUZQFFu6oJRQN+buQgqBgLV\nIxwT1unb28awest7J5v74NVGJO0QS2NLpQWPurgdK6b6keKSUr3s62eXbZotn4Ey\nBWcy+0gIP9kluAQlLwIDAQABo4IBlzCCAZMwHwYDVR0jBBgwFoAUoBEKIz6W8Qfs\n4q8p74Klf9AwpLQwHQYDVR0OBBYEFPsuN+7jhHonLs0ZNbEzfP/UREK5MA4GA1Ud\nDwEB/wQEAwIBhjASBgNVHRMBAf8ECDAGAQH/AgECMB0GA1UdJQQWMBQGCCsGAQUF\nBwMBBggrBgEFBQcDAjCBkgYDVR0gBIGKMIGHMAcGBWeBDAEBMAgGBmeBDAECATAI\nBgZngQwBAgIwCAYGZ4EMAQIDMA4GDCsGAQQBgqkwAQMBATAOBgwrBgEEAYKpMAED\nAQIwDgYMKwYBBAGCqTABAwEDMA4GDCsGAQQBgqkwAQMBBDAOBgwrBgEEAYKpMAED\nAQUwDgYMKwYBBAGCqTABAwEGMEMGA1UdHwQ8MDowOKA2oDSGMmh0dHA6Ly9jcmwu\nY29tb2RvY2EuY29tL0FBQUNlcnRpZmljYXRlU2VydmljZXMuY3JsMDQGCCsGAQUF\nBwEBBCgwJjAkBggrBgEFBQcwAYYYaHR0cDovL29jc3AuY29tb2RvY2EuY29tMA0G\nCSqGSIb3DQEBCwUAA4IBAQB6GuqiV0P/BPtHYkhy1lSqbHGhAzwVtRPpcFqPQjYV\nw9wvwBxex/7dzzsCLHIIH+TGv3JpmTtUSNTKhm1EXRR9Uc9h8l6OALhNK70oVEzw\nOLRfAdLc0oaczE8/aVWxxGWUF9i4TXrklD7psIlUUX0x/AbcuJGOjTgZWw4iHAMM\nfLuw20YqGNXZAL8hiQnDXI5WtaIAw8rGkLiaFBOhdwPHl+1CdLGxXVzafaXFI3BS\nSXKXq2AgdbjVmkM6yj2cihLBlLGBDtkXdZ4bRMYxUMQTX5057SzRk8NxIurm+4W6\nZrI4zH+N6ocqOwihhYe05n/JEcim7g6wZjA1KHFv2ajA\n-----END CERTIFICATE-----\n-----BEGIN CERTIFICATE-----\nMIIEMjCCAxqgAwIBAgIBATANBgkqhkiG9w0BAQUFADB7MQswCQYDVQQGEwJHQjEb\nMBkGA1UECAwSR3JlYXRlciBNYW5jaGVzdGVyMRAwDgYDVQQHDAdTYWxmb3JkMRow\nGAYDVQQKDBFDb21vZG8gQ0EgTGltaXRlZDEhMB8GA1UEAwwYQUFBIENlcnRpZmlj\nYXRlIFNlcnZpY2VzMB4XDTA0MDEwMTAwMDAwMFoXDTI4MTIzMTIzNTk1OVowezEL\nMAkGA1UEBhMCR0IxGzAZBgNVBAgMEkdyZWF0ZXIgTWFuY2hlc3RlcjEQMA4GA1UE\nBwwHU2FsZm9yZDEaMBgGA1UECgwRQ29tb2RvIENBIExpbWl0ZWQxITAfBgNVBAMM\nGEFBQSBDZXJ0aWZpY2F0ZSBTZXJ2aWNlczCCASIwDQYJKoZIhvcNAQEBBQADggEP\nADCCAQoCggEBAL5AnfRu4ep2hxxNRUSOvkbIgwadwSr+GB+O5AL686tdUIoWMQua\nBtDFcCLNSS1UY8y2bmhGC1Pqy0wkwLxyTurxFa70VJoSCsN6sjNg4tqJVfMiWPPe\n3M/vg4aijJRPn2jymJBGhCfHdr/jzDUsi14HZGWCwEiwqJH5YZ92IFCokcdmtet4\nYgNW8IoaE+oxox6gmf049vYnMlhvB/VruPsUK6+3qszWY19zjNoFmag4qMsXeDZR\nrOme9Hg6jc8P2ULimAyrL58OAd7vn5lJ8S3frHRNG5i1R8XlKdH5kBjHYpy+g8cm\nez6KJcfA3Z3mNWgQIJ2P2N7Sw4ScDV7oL8kCAwEAAaOBwDCBvTAdBgNVHQ4EFgQU\noBEKIz6W8Qfs4q8p74Klf9AwpLQwDgYDVR0PAQH/BAQDAgEGMA8GA1UdEwEB/wQF\nMAMBAf8wewYDVR0fBHQwcjA4oDagNIYyaHR0cDovL2NybC5jb21vZG9jYS5jb20v\nQUFBQ2VydGlmaWNhdGVTZXJ2aWNlcy5jcmwwNqA0oDKGMGh0dHA6Ly9jcmwuY29t\nb2RvLm5ldC9BQUFDZXJ0aWZpY2F0ZVNlcnZpY2VzLmNybDANBgkqhkiG9w0BAQUF\nAAOCAQEACFb8AvCb6P+k+tZ7xkSAzk/ExfYAWMymtrwUSWgEdujm7l3sAg9g1o1Q\nGE8mTgHj5rCl7r+8dFRBv/38ErjHT1r0iWAFf2C3BUrz9vHCv8S5dIa2LX1rzNLz\nRt0vxuBqw8M0Ayx9lt1awg6nCpnBBYurDC/zXDrPbDdVCYfeU0BsWO/8tqtlbgT2\nG9w84FoVxp7Z8VlIMCFlA2zs6SFz7JsDoeA3raAVGI/6ugLOpyypEBMs1OUIJqsi\nl2D4kF501KKaU73yqWjgom7C12yxow+ev+to51byrvLjKzg6CYG1a4XXvi3tPxq3\nsmPi9WIsgtRqAEFQ8TmDn5XpNpaYbg==\n-----END CERTIFICATE-----\n",
+    "valid_from": "2026-07-04 07:31:51",
+    "valid_to": "2026-10-16 07:20:19",
+    "subject": "CN=shvietnam.com",
+    "issuer": "CN=SSL.com TLS Issuing RSA CA R1,O=SSL Corporation,C=US",
+    "serial_number": "132244070767870210548898034870942754383",
+    "provider": "sslcom",
+    "email": "admin@shvietnam.com",
+    "order_url": "https://acme.ssl.com/ejbca/acme/sslcom-dv-rsa/acct/1U7s_TiWKMxVKpfwhx98YA/orders/pfRP43IM_fRDlmXoADl84ha5Q3nnSKXjV2XJCqHrKtM",
+    "finalize_url": "https://acme.ssl.com/ejbca/acme/sslcom-dv-rsa/acct/1U7s_TiWKMxVKpfwhx98YA/orders/pfRP43IM_fRDlmXoADl84ha5Q3nnSKXjV2XJCqHrKtM/finalize",
+    "auth_urls": [
+      "https://acme.ssl.com/ejbca/acme/sslcom-dv-rsa/acct/1U7s_TiWKMxVKpfwhx98YA/authz/88f347ce4659ee11f456b6a64d6b99eac365a7659e844cf87802560011359909"
+    ],
+    "domains": [
+      {
+        "domain": "shvietnam.com",
+        "auth_url": "https://acme.ssl.com/ejbca/acme/sslcom-dv-rsa/acct/1U7s_TiWKMxVKpfwhx98YA/authz/88f347ce4659ee11f456b6a64d6b99eac365a7659e844cf87802560011359909",
+        "challenge_url": "https://acme.ssl.com/ejbca/acme/sslcom-dv-rsa/acct/1U7s_TiWKMxVKpfwhx98YA/chall/HMIsOgZV1iojwJilBex4Nw",
+        "status": "valid",
+        "last_error": null
+      }
+    ],
+    "progress_logs": [
+      {
+        "time": "2026-07-04 14:30:20",
+        "level": "success",
+        "message": "Order ACME đã tạo. Vui lòng thêm bản ghi xác thực.",
+        "run_id": "init-1783150220418"
+      },
+      {
+        "time": "2026-07-04 14:41:16",
+        "level": "loading",
+        "message": "Đang pre-check bản ghi xác thực...",
+        "run_id": "verify-1783150876838"
+      },
+      {
+        "time": "2026-07-04 14:41:46",
+        "level": "success",
+        "message": "Pre-check đạt. Đã gửi challenge, bắt đầu xác thực tự động...",
+        "run_id": "verify-1783150876838"
+      },
+      {
+        "time": "2026-07-04 14:41:46",
+        "level": "loading",
+        "message": "Đã gửi challenge tới ACME. Đang polling authorization...",
+        "run_id": "verify-1783150876838"
+      },
+      {
+        "time": "2026-07-04 14:41:46",
+        "level": "success",
+        "message": "Tất cả authorization đã valid.",
+        "run_id": "verify-1783150876838"
+      },
+      {
+        "time": "2026-07-04 14:41:46",
+        "level": "loading",
+        "message": "Đang finalize order và chờ cấp chứng chỉ...",
+        "run_id": "verify-1783150876838"
+      },
+      {
+        "time": "2026-07-04 14:42:09",
+        "level": "success",
+        "message": "Đã cấp cert thành công.",
+        "run_id": "verify-1783150876838"
+      }
+    ],
+    "progress_text": "Đã cấp cert thành công.",
+    "last_error": null,
+    "current_run_id": "verify-1783150876838",
+    "updated_at": "2026-07-04 14:42:09"
+  }
+]

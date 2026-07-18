@@ -7,10 +7,11 @@ DNS Checker Tool - Ultra Fast Version
 Parallel queries, no WHOIS, minimal timeouts
 """
 
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, Response, stream_with_context
 import os
 from cryptography import x509
 from cryptography.hazmat.backends import default_backend
+import fcntl
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import rsa, ec
 from cryptography import x509 as cx509
@@ -23,6 +24,7 @@ from typing import Dict, List, Optional
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import threading
 import ssl
+import tempfile
 import socket
 import requests
 import re
@@ -33,7 +35,7 @@ import hashlib
 import base64
 import ipaddress
 import copy
-from urllib.parse import urlparse
+from urllib.parse import urlparse, quote
 from dataclasses import asdict
 import whois_lookup
 
@@ -53,6 +55,10 @@ CACHE_TTL = int(os.environ.get('CACHE_TTL_SECONDS', '0'))  # seconds
 _cache_lock = threading.Lock()
 _cache: dict = {}
 
+DNS_HISTORY_CACHE_TTL = int(os.environ.get('DNS_HISTORY_CACHE_TTL_SECONDS', '900'))  # seconds
+_dns_history_cache_lock = threading.Lock()
+_dns_history_cache: dict = {}
+
 def cache_get(key: str):
     with _cache_lock:
         v = _cache.get(key)
@@ -68,11 +74,183 @@ def cache_set(key: str, value):
     with _cache_lock:
         _cache[key] = (time.time(), value)
 
+
+def dns_history_cache_get(key: str):
+    if DNS_HISTORY_CACHE_TTL <= 0:
+        return None
+
+    with _dns_history_cache_lock:
+        v = _dns_history_cache.get(key)
+        if not v:
+            return None
+        ts, val = v
+        if time.time() - ts > DNS_HISTORY_CACHE_TTL:
+            del _dns_history_cache[key]
+            return None
+        return val
+
+
+def dns_history_cache_set(key: str, value):
+    if DNS_HISTORY_CACHE_TTL <= 0:
+        return
+
+    with _dns_history_cache_lock:
+        _dns_history_cache[key] = (time.time(), value)
+
 @app.route('/ping')
 def ping():
     return 'OK', 200  # Response siêu ngắn
 
 # --- API: Check certificate files on server ---
+def _pick_ssl_file(files: List[str], candidates: List[str], *, allow_generic: bool = True) -> Optional[str]:
+    lowered = {name.lower(): name for name in files}
+    for candidate in candidates:
+        match = lowered.get(candidate.lower())
+        if match:
+            return match
+
+    if not allow_generic:
+        return None
+
+    for name in files:
+        lower_name = name.lower()
+        if any(token in lower_name for token in ['cert', 'bundle', 'chain', 'fullchain']):
+            if any(lower_name.endswith(ext) for ext in ['.crt', '.pem', '.cer', '.txt']):
+                return name
+    return None
+
+
+def _read_text_file(path: str) -> str:
+    if not os.path.isfile(path):
+        return ''
+    try:
+        with open(path, 'r', encoding='utf-8') as handle:
+            return handle.read()
+    except Exception:
+        return ''
+
+
+def _scan_ssl_catalog(base_dir: str) -> List[dict]:
+    results: List[dict] = []
+    if not os.path.isdir(base_dir):
+        return results
+
+    for root, dirs, files in os.walk(base_dir):
+        dirs.sort()
+        if root.count(os.sep) - base_dir.count(os.sep) > 1:
+            dirs[:] = []
+
+        folder_name = os.path.basename(root)
+        server_value = ''
+        for candidate in ['server.txt', 'server_ip.txt', 'server-host.txt']:
+            path = os.path.join(root, candidate)
+            if os.path.isfile(path):
+                try:
+                    with open(path, 'r', encoding='utf-8') as handle:
+                        server_value = (handle.read() or '').strip()
+                    if server_value:
+                        break
+                except Exception:
+                    continue
+
+        key_name = _pick_ssl_file(
+            files,
+            ['key.txt', 'key.pem', 'key.key', 'private.key', 'private.pem', 'privkey.pem', 'server.key', 'domain.key'],
+            allow_generic=False,
+        )
+        cert_name = _pick_ssl_file(
+            files,
+            ['cert.txt', 'cert.crt', 'cert.pem', 'certificate.pem', 'certificate.crt', 'fullchain.pem', 'fullchain.crt'],
+        )
+        bundle_name = _pick_ssl_file(
+            files,
+            ['bundle.txt', 'bundle.crt', 'bundle.pem', 'ca-bundle.crt', 'ca-bundle.pem', 'cabundle.crt', 'cabundle.pem', 'fullchain.pem', 'fullchain.crt', 'chain.pem', 'chain.crt'],
+        )
+
+        if not cert_name and not bundle_name and not key_name:
+            continue
+
+        entry = {
+            "name": folder_name,
+            "path": root,
+            "domain": folder_name,
+            "server": server_value,
+            "key": _read_text_file(os.path.join(root, key_name)) if key_name else '',
+            "cert": _read_text_file(os.path.join(root, cert_name)) if cert_name else '',
+            "bundle": _read_text_file(os.path.join(root, bundle_name)) if bundle_name else '',
+        }
+        results.append(entry)
+    results.sort(key=lambda item: item['name'].lower())
+    return results
+
+
+@app.route('/api/ssl-catalog', methods=['GET'])
+def api_ssl_catalog():
+    requested_dir = request.args.get('path', '').strip()
+    if requested_dir:
+        base_dir = os.path.abspath(os.path.expanduser(requested_dir))
+    else:
+        base_dir = '/home/nvpa/Desktop/ssl'
+
+    if not os.path.isdir(base_dir):
+        return jsonify({"items": [], "error": f"Thư mục không tồn tại: {base_dir}"}), 200
+
+    results = _scan_ssl_catalog(base_dir)
+    return jsonify({
+        "items": results,
+        "base_dir": base_dir
+    }), 200
+
+
+def _secure_relative_path(path: str) -> str:
+    # Keep browser uploads safe by stripping out traversal components.
+    components = []
+    for part in path.replace('\\', '/').split('/'):
+        if part in ('', '.', '..'):
+            continue
+        components.append(os.path.basename(part))
+    return os.path.join(*components) if components else ''
+
+
+@app.route('/api/ssl-upload', methods=['POST'])
+def api_ssl_upload():
+    try:
+        files = request.files.getlist('files')
+        if not files:
+            return jsonify({"error": "No files uploaded"}), 400
+
+        target_dir = tempfile.mkdtemp(prefix='alltool-ssl-upload-', dir='/tmp')
+        saved_count = 0
+        for uploaded in files:
+            rel_path = uploaded.filename or ''
+            rel_path = _secure_relative_path(rel_path)
+            if not rel_path:
+                continue
+            dest_path = os.path.join(target_dir, rel_path)
+            os.makedirs(os.path.dirname(dest_path), exist_ok=True)
+            uploaded.save(dest_path)
+            saved_count += 1
+
+        if saved_count == 0:
+            return jsonify({"error": "Uploaded files were empty or invalid"}), 400
+
+        results = _scan_ssl_catalog(target_dir)
+        return jsonify({
+            "items": results,
+            "base_dir": target_dir,
+            "saved_files": saved_count
+        }), 200
+    except Exception as exc:
+        logger.exception('Error in /api/ssl-upload')
+        return jsonify({"error": str(exc)}), 500
+
+
+@app.route('/api/install-ssl', methods=['POST'])
+def api_install_ssl():
+    # Removed public install-ssl API handler for sanitized public release.
+    return jsonify({"error": "install-ssl endpoint removed in public release"}), 404
+
+
 @app.route('/api/check-cert-file', methods=['POST'])
 def api_check_cert_file():
     """Check and parse 3 certificate files: cert domain, ca bundle 1, ca bundle 2"""
@@ -457,6 +635,416 @@ def build_dns_basic_result(domain: str, record_types: List[str], include_dnssec:
         pass
 
     return result
+
+
+DNS_HISTORY_RECORD_TYPES = ['A', 'AAAA', 'MX', 'NS', 'TXT', 'CNAME', 'SOA', 'CAA']
+
+
+def _parse_history_timestamp(value) -> Optional[datetime]:
+    try:
+        if value in (None, '', 0):
+            return None
+        ts = float(value)
+        if ts > 10**12:
+            ts /= 1000.0
+        return datetime.fromtimestamp(ts, timezone.utc)
+    except Exception:
+        return None
+
+
+def _history_bucket_key(dt: Optional[datetime]) -> str:
+    if not dt:
+        return 'unknown'
+    return str(int(dt.timestamp()))
+
+
+def _history_bucket_label(dt: Optional[datetime]) -> str:
+    if not dt:
+        return 'Không rõ thời gian'
+    return dt.strftime('%Y-%m-%d %H:%M:%S UTC')
+
+
+def _format_history_time(dt: Optional[datetime]) -> str:
+    if not dt:
+        return '-'
+    return dt.strftime('%Y-%m-%d %H:%M:%S UTC')
+
+
+def _is_history_domain_related(candidate: str, domain: str) -> bool:
+    candidate = (candidate or '').strip().rstrip('.').lower()
+    domain = (domain or '').strip().rstrip('.').lower()
+    if not candidate or not domain:
+        return False
+    return candidate == domain or candidate.endswith('.' + domain)
+
+
+def _normalize_history_record(
+    *,
+    source_id: str,
+    source_label: str,
+    rrclass: str,
+    rrtype: str,
+    query: str,
+    answer: str,
+    first_seen,
+    last_seen,
+    created_ts=None,
+    updated_ts=None,
+    count=None,
+    ttl_min=None,
+    ttl_max=None,
+    flags=None,
+    tlp=None,
+    customer=None,
+    note: str = '',
+) -> dict:
+    first_dt = _parse_history_timestamp(first_seen) or _parse_history_timestamp(created_ts)
+    last_dt = _parse_history_timestamp(last_seen) or _parse_history_timestamp(updated_ts)
+    if not last_dt:
+        last_dt = first_dt
+
+    return {
+        'source_id': source_id,
+        'source_label': source_label,
+        'rrclass': (rrclass or 'in').upper(),
+        'rrtype': (rrtype or '').upper(),
+        'query': query or '',
+        'answer': answer or '',
+        'first_seen': first_dt.isoformat() if first_dt else None,
+        'last_seen': last_dt.isoformat() if last_dt else None,
+        'first_seen_ts': int(first_dt.timestamp()) if first_dt else None,
+        'last_seen_ts': int(last_dt.timestamp()) if last_dt else None,
+        'count': int(count) if count not in (None, '') else None,
+        'ttl_min': ttl_min,
+        'ttl_max': ttl_max,
+        'flags': flags or [],
+        'tlp': tlp,
+        'customer': customer,
+        'note': note,
+    }
+
+
+def _group_history_records(records: List[dict]) -> List[dict]:
+    buckets: dict = {}
+
+    for record in records:
+        last_dt = _parse_history_timestamp(record.get('last_seen_ts')) or _parse_history_timestamp(record.get('first_seen_ts'))
+        bucket_key = _history_bucket_key(last_dt)
+        bucket_label = _history_bucket_label(last_dt)
+
+        bucket = buckets.setdefault(bucket_key, {
+            'bucket_key': bucket_key,
+            'bucket_label': bucket_label,
+            'record_count': 0,
+            'type_counts': {},
+            'records': [],
+        })
+
+        bucket['record_count'] += 1
+        rrtype = (record.get('rrtype') or 'UNKNOWN').upper()
+        bucket['type_counts'][rrtype] = bucket['type_counts'].get(rrtype, 0) + 1
+        bucket['records'].append(record)
+
+    ordered_buckets = []
+    ordered_keys = sorted([key for key in buckets.keys() if key != 'unknown'], reverse=True)
+    if 'unknown' in buckets:
+        ordered_keys.append('unknown')
+
+    for bucket_key in ordered_keys:
+        bucket = buckets[bucket_key]
+        bucket['records'] = sorted(
+            bucket['records'],
+            key=lambda item: (
+                item.get('last_seen_ts') or 0,
+                item.get('first_seen_ts') or 0,
+                item.get('count') or 0,
+            ),
+            reverse=True,
+        )
+        bucket['type_counts'] = dict(sorted(bucket['type_counts'].items(), key=lambda item: item[0]))
+        ordered_buckets.append(bucket)
+
+    return ordered_buckets
+
+
+def _summarize_history_records(records: List[dict]) -> dict:
+    summary: dict = {}
+    for record in records:
+        rrtype = (record.get('rrtype') or 'UNKNOWN').upper()
+        summary[rrtype] = summary.get(rrtype, 0) + 1
+    return dict(sorted(summary.items(), key=lambda item: item[0]))
+
+
+def _build_history_source(source_id: str, source_label: str, records: List[dict], *, error: str = '', endpoint: str = '') -> dict:
+    ordered_records = sorted(
+        records,
+        key=lambda item: (
+            item.get('last_seen_ts') or 0,
+            item.get('first_seen_ts') or 0,
+            item.get('count') or 0,
+        ),
+        reverse=True,
+    )
+
+    return {
+        'id': source_id,
+        'label': source_label,
+        'endpoint': endpoint,
+        'status': 'error' if error else 'ok',
+        'error': error,
+        'record_count': len(ordered_records),
+        'type_counts': _summarize_history_records(ordered_records),
+        'timeline': _group_history_records(ordered_records),
+        'records': ordered_records,
+    }
+
+
+def _fetch_mnemonic_history(domain: str, limit: int = 1000) -> dict:
+    endpoint = f'https://api.mnemonic.no/pdns/v3/{quote(domain)}'
+    try:
+        resp = requests.get(endpoint, params={'limit': min(max(limit, 1), 1000)}, timeout=12)
+        payload = resp.json() if resp.content else {}
+        if resp.status_code != 200:
+            message = None
+            if isinstance(payload, dict):
+                messages = payload.get('messages') or []
+                if messages and isinstance(messages, list):
+                    message = messages[0].get('message') or messages[0].get('messageTemplate')
+                if not message and payload.get('responseCode'):
+                    message = f"HTTP {payload.get('responseCode')}"
+            return _build_history_source('mnemonic', 'Mnemonic PDNS', [], error=message or f'HTTP {resp.status_code}', endpoint=endpoint)
+
+        data = payload.get('data') if isinstance(payload, dict) else []
+        records = []
+        for item in data or []:
+            rrtype = (item.get('rrtype') or '').upper()
+            if rrtype and rrtype not in DNS_HISTORY_RECORD_TYPES:
+                continue
+            records.append(_normalize_history_record(
+                source_id='mnemonic',
+                source_label='Mnemonic PDNS',
+                rrclass=item.get('rrclass', 'in'),
+                rrtype=rrtype,
+                query=item.get('query', domain),
+                answer=item.get('answer', ''),
+                first_seen=item.get('firstSeenTimestamp'),
+                last_seen=item.get('lastSeenTimestamp'),
+                created_ts=item.get('createdTimestamp'),
+                updated_ts=item.get('lastUpdatedTimestamp'),
+                count=item.get('times'),
+                ttl_min=item.get('minTtl'),
+                ttl_max=item.get('maxTtl'),
+                flags=item.get('flags') or [],
+                tlp=item.get('tlp'),
+                customer=item.get('customer'),
+            ))
+
+        return _build_history_source('mnemonic', 'Mnemonic PDNS', records, endpoint=endpoint)
+    except Exception as exc:
+        return _build_history_source('mnemonic', 'Mnemonic PDNS', [], error=str(exc), endpoint=endpoint)
+
+
+def _fetch_robtex_history(domain: str) -> dict:
+    endpoint = f'https://freeapi.robtex.com/pdns/forward/{quote(domain)}'
+    try:
+        resp = requests.get(endpoint, params={'format': 'json'}, timeout=12)
+        payload = resp.json() if resp.content else {}
+        if resp.status_code != 200 or (isinstance(payload, dict) and payload.get('status') not in (None, 'ok')):
+            message = None
+            if isinstance(payload, dict):
+                message = payload.get('message') or payload.get('status')
+            return _build_history_source('robtex', 'Robtex PDNS', [], error=message or f'HTTP {resp.status_code}', endpoint=endpoint)
+
+        records = []
+        for item in payload.get('records', []) if isinstance(payload, dict) else []:
+            rrtype = (item.get('rrtype') or '').upper()
+            if rrtype and rrtype not in DNS_HISTORY_RECORD_TYPES:
+                continue
+            records.append(_normalize_history_record(
+                source_id='robtex',
+                source_label='Robtex PDNS',
+                rrclass='IN',
+                rrtype=rrtype,
+                query=item.get('rrname', domain),
+                answer=item.get('rrdata', ''),
+                first_seen=item.get('time_first'),
+                last_seen=item.get('time_last'),
+                count=item.get('count'),
+            ))
+
+        return _build_history_source('robtex', 'Robtex PDNS', records, endpoint=endpoint)
+    except Exception as exc:
+        return _build_history_source('robtex', 'Robtex PDNS', [], error=str(exc), endpoint=endpoint)
+
+
+def _merge_history_sources(domain: str, sources: List[dict]) -> dict:
+    combined_records = []
+    seen = set()
+
+    for source in sources:
+        for record in source.get('records', []):
+            signature = (
+                record.get('source_id'),
+                record.get('rrtype'),
+                record.get('query'),
+                record.get('answer'),
+                record.get('first_seen_ts'),
+                record.get('last_seen_ts'),
+            )
+            if signature in seen:
+                continue
+            seen.add(signature)
+            combined_records.append(record)
+
+    return _build_history_source('combined', 'Tổng hợp', combined_records, endpoint='mnemonic + robtex')
+
+
+def _augment_history_sources(domain: str, sources: List[dict]) -> List[dict]:
+    robtex_source = next((item for item in sources if item.get('id') == 'robtex'), None)
+    if not robtex_source:
+        return sources
+
+    related_queries = []
+    seen_targets = set()
+    for record in robtex_source.get('records', []):
+        rrtype = (record.get('rrtype') or '').upper()
+        answer = (record.get('answer') or '').strip()
+        if not answer:
+            continue
+
+        lookup_type = None
+        lookup_endpoint = None
+        lookup_params = None
+
+        if rrtype in ('A', 'AAAA'):
+            lookup_type = 'ip'
+            lookup_endpoint = f'https://freeapi.robtex.com/pdns/reverse-historic/{quote(answer)}'
+            lookup_params = {'type': 'a', 'format': 'json'}
+        elif rrtype == 'NS':
+            lookup_type = 'ns'
+            lookup_endpoint = f'https://freeapi.robtex.com/historic_reverse_lookup_ns'
+            lookup_params = {'nameserver': answer, 'format': 'json'}
+        elif rrtype == 'MX':
+            lookup_type = 'mx'
+            lookup_endpoint = f'https://freeapi.robtex.com/historic_reverse_lookup_mx'
+            lookup_params = {'mx_server': answer, 'format': 'json'}
+        elif rrtype == 'CNAME':
+            lookup_type = 'cname'
+            lookup_endpoint = f'https://freeapi.robtex.com/historic_reverse_lookup_cname'
+            lookup_params = {'target': answer, 'format': 'json'}
+
+        if not lookup_endpoint or not lookup_type:
+            continue
+
+        target_key = (lookup_type, answer.lower())
+        if target_key in seen_targets:
+            continue
+        seen_targets.add(target_key)
+        related_queries.append((lookup_type, answer, lookup_endpoint, lookup_params))
+
+    related_queries = related_queries[:6]
+    if not related_queries:
+        return sources
+
+    related_records = []
+    for lookup_type, answer, endpoint, params in related_queries:
+        try:
+            resp = requests.get(endpoint, params=params, timeout=12)
+            payload = resp.json() if resp.content else {}
+            if resp.status_code != 200:
+                continue
+
+            if isinstance(payload, dict) and payload.get('records'):
+                for item in payload.get('records', []):
+                    rrtype = (item.get('rrtype') or '').upper()
+                    if rrtype and rrtype not in DNS_HISTORY_RECORD_TYPES:
+                        continue
+                    rrname = item.get('rrname', '')
+                    if not _is_history_domain_related(rrname, domain):
+                        continue
+                    related_records.append(_normalize_history_record(
+                        source_id='robtex_related',
+                        source_label='Robtex Historic Reverse',
+                        rrclass='IN',
+                        rrtype=rrtype,
+                        query=item.get('rrname', domain),
+                        answer=item.get('rrdata', ''),
+                        first_seen=item.get('time_first'),
+                        last_seen=item.get('time_last'),
+                        count=item.get('count'),
+                        note=f'{lookup_type}:{answer}',
+                    ))
+            elif isinstance(payload, list):
+                for item in payload:
+                    rrtype = (item.get('rrtype') or '').upper()
+                    if rrtype and rrtype not in DNS_HISTORY_RECORD_TYPES:
+                        continue
+                    rrname = item.get('rrname', '')
+                    if not _is_history_domain_related(rrname, domain):
+                        continue
+                    related_records.append(_normalize_history_record(
+                        source_id='robtex_related',
+                        source_label='Robtex Historic Reverse',
+                        rrclass='IN',
+                        rrtype=rrtype,
+                        query=item.get('rrname', domain),
+                        answer=item.get('rrdata', ''),
+                        first_seen=item.get('time_first'),
+                        last_seen=item.get('time_last'),
+                        count=item.get('count'),
+                        note=f'{lookup_type}:{answer}',
+                    ))
+        except Exception:
+            continue
+
+    if related_records:
+        sources.append(_build_history_source('robtex_related', 'Robtex Historic Reverse', related_records, endpoint='pdns/reverse-historic + historic reverse lookup'))
+
+    return sources
+
+
+@app.route('/api/check-dns-history', methods=['POST'])
+def api_check_dns_history():
+    try:
+        data = request.get_json(silent=True) or {}
+        domain = _normalize_domain_input(data.get('domain', ''))
+
+        if not domain:
+            return jsonify({"error": "Domain is required"}), 400
+
+        cache_key = f'history:{domain}'
+        cached = dns_history_cache_get(cache_key)
+        if cached is not None:
+            cached_copy = copy.deepcopy(cached)
+            cached_copy['cached'] = True
+            cached_copy['timestamp'] = datetime.now(timezone.utc).isoformat()
+            return jsonify(cached_copy), 200
+
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            mnemonic_future = pool.submit(_fetch_mnemonic_history, domain)
+            robtex_future = pool.submit(_fetch_robtex_history, domain)
+            mnemonic_source = mnemonic_future.result()
+            robtex_source = robtex_future.result()
+
+        sources = [mnemonic_source, robtex_source]
+        sources = _augment_history_sources(domain, sources)
+        combined_source = _merge_history_sources(domain, sources)
+
+        payload = {
+            'domain': domain,
+            'timestamp': datetime.now(timezone.utc).isoformat(),
+            'cached': False,
+            'sources': [combined_source] + sources,
+            'total_records': sum(source.get('record_count', 0) for source in sources),
+            'provider_count': len(sources),
+        }
+
+        dns_history_cache_set(cache_key, payload)
+        return jsonify(payload), 200
+
+    except Exception as exc:
+        logger.error(f'Exception in /api/check-dns-history: {exc}', exc_info=True)
+        return jsonify({"error": str(exc)}), 500
 
 
 @app.route('/')
@@ -998,6 +1586,8 @@ DNS_CACHE_CLEAR_TARGETS = [
 ]
 
 ISSUED_SSL_STORE_PATH = os.path.join(app.root_path, 'acme', 'issued_ssl_store.json')
+ISSUED_SSL_STORE_BACKUP_PATH = f"{ISSUED_SSL_STORE_PATH}.bak"
+ISSUED_SSL_STORE_LOCK_PATH = f"{ISSUED_SSL_STORE_PATH}.lock"
 
 # In-memory session store  { session_id -> {...} }
 _ssl_sessions: Dict[str, dict] = {}
@@ -1210,18 +1800,81 @@ def _ensure_issued_ssl_store() -> None:
 
 def _load_issued_ssl_store() -> List[dict]:
     _ensure_issued_ssl_store()
+    # Use a file lock so multiple processes don't clobber the store concurrently.
+    lock_fd = None
     try:
-        with open(ISSUED_SSL_STORE_PATH, 'r', encoding='utf-8') as f:
-            data = json.load(f)
-            return data if isinstance(data, list) else []
-    except Exception:
+        os.makedirs(os.path.dirname(ISSUED_SSL_STORE_LOCK_PATH), exist_ok=True)
+        lock_fd = open(ISSUED_SSL_STORE_LOCK_PATH, 'w')
+        fcntl.flock(lock_fd.fileno(), fcntl.LOCK_EX)
+
+        try:
+            with open(ISSUED_SSL_STORE_PATH, 'r', encoding='utf-8') as f:
+                content = f.read()
+            if not content.strip():
+                raise ValueError("SSL store file is empty")
+            data = json.loads(content)
+            if isinstance(data, list):
+                return data
+        except Exception as exc:
+            logger.warning(f"Failed to load SSL store from main file: {exc}")
+
+        try:
+            with open(ISSUED_SSL_STORE_BACKUP_PATH, 'r', encoding='utf-8') as f:
+                content = f.read()
+            if not content.strip():
+                raise ValueError("SSL store backup file is empty")
+            data = json.loads(content)
+            if isinstance(data, list):
+                logger.warning("Recovered SSL store from backup file")
+                return data
+        except Exception as backup_exc:
+            logger.warning(f"Failed to load SSL store from backup file: {backup_exc}")
+
         return []
+    finally:
+        try:
+            if lock_fd:
+                fcntl.flock(lock_fd.fileno(), fcntl.LOCK_UN)
+                lock_fd.close()
+        except Exception:
+            pass
 
 
 def _save_issued_ssl_store(items: List[dict]) -> None:
     _ensure_issued_ssl_store()
-    with open(ISSUED_SSL_STORE_PATH, 'w', encoding='utf-8') as f:
-        json.dump(items, f, ensure_ascii=False, indent=2)
+    # Acquire file lock to prevent inter-process write races
+    lock_fd = None
+    try:
+        os.makedirs(os.path.dirname(ISSUED_SSL_STORE_LOCK_PATH), exist_ok=True)
+        lock_fd = open(ISSUED_SSL_STORE_LOCK_PATH, 'w')
+        fcntl.flock(lock_fd.fileno(), fcntl.LOCK_EX)
+
+        if os.path.isfile(ISSUED_SSL_STORE_PATH):
+            try:
+                with open(ISSUED_SSL_STORE_PATH, 'r', encoding='utf-8') as f:
+                    existing_content = f.read()
+                with open(ISSUED_SSL_STORE_BACKUP_PATH, 'w', encoding='utf-8') as f:
+                    f.write(existing_content)
+            except Exception as exc:
+                logger.warning(f"Unable to backup SSL store before write: {exc}")
+
+        tmp_path = f"{ISSUED_SSL_STORE_PATH}.tmp"
+        try:
+            with open(tmp_path, 'w', encoding='utf-8') as f:
+                json.dump(items, f, ensure_ascii=False, indent=2)
+                f.flush()
+                os.fsync(f.fileno())
+            os.replace(tmp_path, ISSUED_SSL_STORE_PATH)
+        finally:
+            if os.path.exists(tmp_path):
+                os.remove(tmp_path)
+    finally:
+        try:
+            if lock_fd:
+                fcntl.flock(lock_fd.fileno(), fcntl.LOCK_UN)
+                lock_fd.close()
+        except Exception:
+            pass
 
 
 def _ensure_ssl_store_writable() -> None:
