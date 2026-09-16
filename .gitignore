@@ -1,10 +1,10 @@
-# Ignore sensitive files not intended for public repo
-pass.csv
-import-ssl.sh
-install-ssl.sh
-
-# Environment / local
-.env
-*.pem
-*.key# Local SSL issued store (do not commit)
+# Local SSL issued store (do not commit)
 acme/issued_ssl_store.json
+# Sensitive files / tabs to hide before pushing to GitHub
+# Install SSL UI and related data
+templates/tabs/tab_installssl.html
+acme/
+pass.csv
+# AI chat UI and helper files
+templates/tabs/tab_ai.html
+ai_tab.html

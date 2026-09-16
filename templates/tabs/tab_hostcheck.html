@@ -1,0 +1,45 @@
+<div aria-labelledby="tabbtn-hostcheck" class="tab-content" hidden="" id="tab-hostcheck" role="tabpanel">
+<div class="hostcheck-header">
+<h2><span class="icon" data-lucide="monitor"></span> Host Check</h2>
+</div>
+<div class="search-box">
+<div class="search-row">
+<input class="search-input" id="hostInput" onkeypress="if(event.key==='Enter')checkHost()" placeholder="Nhập IP hoặc Domain (vd: 8.8.8.8 hoặc google.com)" type="text"/>
+<button class="btn btn-primary" onclick="checkHost()"><span class="icon" data-lucide="monitor"></span></button>
+</div>
+</div>
+<div class="loading" id="hostLoading">
+<div class="spinner"></div>
+<p>Đang kiểm tra host...</p>
+</div>
+<div class="message" id="hostCheckMessage"></div>
+<div class="results-container" id="hostCheckResults">
+<div class="host-info-grid">
+<div class="host-info-card">
+<div class="card-title">IP Address</div>
+<div class="card-value mono highlight" id="hostIP">-</div>
+</div>
+<div class="host-info-card">
+<div class="card-title">Hostname</div>
+<div class="card-value mono" id="hostHostname">-</div>
+</div>
+<div class="host-info-card full">
+<div class="card-title">Nhà cung cấp Hosting (ISP)</div>
+<div class="card-value highlight" id="hostProvider">-</div>
+<div class="card-sub" id="hostOrg">-</div>
+</div>
+<div class="host-info-card full">
+<div class="card-title">ASN</div>
+<div class="card-value mono" id="hostASN">-</div>
+</div>
+<div class="host-info-card">
+<div class="card-title">Reverse DNS</div>
+<div class="card-value mono mono-sm" id="hostReverseDNS">-</div>
+</div>
+<div class="host-info-card">
+<div class="card-title">Vị trí</div>
+<div id="hostLocation">-</div>
+</div>
+</div>
+</div>
+</div>

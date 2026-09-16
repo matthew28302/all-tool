@@ -1,0 +1,195 @@
+<div aria-labelledby="tabbtn-freessl" class="tab-content" hidden="" id="tab-freessl" role="tabpanel">
+<div class="freessl-header">
+<h2><span class="icon" data-lucide="gift"></span> Nhận SSL Miễn Phí (ACME)</h2>
+<p>Tự động tạo CSR/Key &amp; xác thực để cấp chứng chỉ SSL 90 ngày</p>
+</div>
+<div class="freessl-toolbar-row">
+<div class="freessl-toolbar-actions">
+<button class="btn btn-green" onclick="freeSslNewOrder()">+ Thêm order mới</button>
+</div>
+<button class="freessl-hamburger-btn" id="freesslOpenSidebarBtn" onclick="freeSslToggleStorage(true)">☰ Danh sách SSL đã cấp</button>
+</div>
+<!-- Progress Steps -->
+<div class="freessl-steps">
+<div class="freessl-step active" id="step1">
+<div class="step-num">1</div>
+<span>Nhập Domain</span>
+</div>
+<div class="freessl-step" id="step2">
+<div class="step-num">2</div>
+<span>Xác thực</span>
+</div>
+<div class="freessl-step" id="step3">
+<div class="step-num">3</div>
+<span>Pre-check</span>
+</div>
+<div class="freessl-step" id="step4">
+<div class="step-num">4</div>
+<span>Nhận Cert</span>
+</div>
+<div class="freessl-step" id="step5">
+<div class="step-num">5</div>
+<span>Hoàn tất</span>
+</div>
+</div>
+<!-- Step 1: Input -->
+<div class="freessl-card" id="freesslInputCard">
+<h3><span class="icon" data-lucide="settings"></span> Bước 1: Cấu hình tên miền</h3>
+<div class="field-block">
+<label class="field-label">
+                        Tên miền <span class="required-star">*</span>
+</label>
+<input class="freessl-input" id="freesslDomain" oninput="freeSslUpdateSANsPreview()" placeholder="vd: example.com hoặc example.com, *.example.com" type="text"/>
+<div class="field-help">
+<b>💡 Để cấp SSL cho wildcard, nhập cả hai: </b><code class="code-chip">example.com, *.example.com</code>
+</div>
+</div>
+<div class="field-block tight">
+<label class="field-label">
+                        Tên miền phụ (SANs) — nhấn Enter để thêm
+                    </label>
+<div class="inline-input-row">
+<input class="freessl-input" id="freesslSanInput" onkeydown="if(event.key==='Enter'){freeSslAddSan();event.preventDefault();}" placeholder="vd: www.example.com" type="text"/>
+<button class="btn btn-secondary" onclick="freeSslAddSan()">+ Thêm</button>
+</div>
+<div class="sans-tags" id="freesslSansTags"></div>
+</div>
+<div class="field-block loose">
+<label class="field-label">
+                        Nhà cung cấp SSL <span class="required-star">*</span>
+</label>
+<div class="challenge-type-row">
+<div class="challenge-type-btn selected" id="btnProvLe" onclick="freeSslSelectProvider('letsencrypt')">
+                            <span class="icon" data-lucide="lock"></span> Let's Encrypt
+                            <div class="provider-caption">Miễn phí, phổ biến nhất</div>
+</div>
+<div class="challenge-type-btn" id="btnProvZero" onclick="freeSslSelectProvider('zerossl')">
+                            <span class="icon" data-lucide="globe"></span> ZeroSSL
+                            <div class="provider-caption">Miễn phí, có dashboard quản lý</div>
+</div>
+<div class="challenge-type-btn" id="btnProvSslcom" onclick="freeSslSelectProvider('sslcom')">
+                            <span class="icon" data-lucide="shield"></span> SSL.com
+                            <div class="provider-caption">Yêu cầu EAB</div>
+</div>
+</div>
+<div class="message-info field-help" id="freesslProviderNote">
+                        🔎 <strong>Let's Encrypt:</strong> hỗ trợ wildcard + multi-domain. Nếu chỉ nhập domain gốc, hệ thống tự thêm <strong>www</strong>.
+                    </div>
+</div>
+<div class="field-block loose">
+<label class="field-label">
+                        Phương thức xác thực
+                    </label>
+<div class="challenge-type-row">
+<div class="challenge-type-btn selected" id="btnDns01" onclick="freeSslSelectChallenge('dns-01')">
+                            <span class="icon" data-lucide="globe"></span> DNS-01
+                            <div class="provider-caption">Thêm TXT record vào DNS</div>
+</div>
+<div class="challenge-type-btn" id="btnHttp01" onclick="freeSslSelectChallenge('http-01')">
+                            <span class="icon" data-lucide="folder-plus"></span> HTTP-01 (File-based)
+                            <div class="provider-caption">Upload file lên webserver</div>
+</div>
+</div>
+</div>
+<button class="btn btn-green" id="freesslStartBtn" onclick="freeSslStart()">
+                    <span class="icon" data-lucide="rocket"></span> Bắt đầu — Tạo CSR &amp; Gửi Order
+                </button>
+</div>
+<div aria-hidden="true" class="freessl-storage-backdrop" id="freesslStorageBackdrop" onclick="freeSslToggleStorage(false)"></div>
+<aside aria-hidden="true" aria-label="Danh sách SSL đã lưu" class="freessl-storage-sidebar" id="freesslStorageSidebar">
+<div class="freessl-storage-sidebar-header">
+<h3><span class="icon" data-lucide="archive"></span> Danh sách SSL đã lưu</h3>
+<button class="btn btn-secondary btn-compact" onclick="freeSslToggleStorage(false)">✕</button>
+</div>
+<div class="freessl-storage-sidebar-body">
+<div class="freessl-storage-toolbar">
+<input class="freessl-input" id="freesslStoredSearch" onkeydown="if(event.key==='Enter'){freeSslLoadStoredList();}" placeholder="Tìm domain đã lưu..." type="text"/>
+<button class="btn btn-secondary" onclick="freeSslLoadStoredList()">🔄 Tải danh sách</button>
+</div>
+<div class="freessl-storage-list" id="freesslStoredList">
+<div class="freessl-storage-empty">Chưa có SSL nào được lưu.</div>
+</div>
+</div>
+</aside>
+<!-- Step 2: Show Challenges -->
+<div class="freessl-card" id="freesslChallengeCard" style="display:none;">
+<h3><span class="icon" data-lucide="clipboard"></span> Bước 2: Thực hiện xác thực</h3>
+<div class="message-info mb-16">
+                    ⚠️ Vui lòng thực hiện cấu hình bên dưới trước khi nhấn <strong>Check</strong>.
+                    Hệ thống sẽ kiểm tra trước khi gửi yêu cầu xác thực đến nhà cung cấp ACME.
+                </div>
+<div id="freesslChallengeList"></div>
+<!-- Step 3: Pre-check -->
+<div class="freessl-action-row">
+<button class="btn btn-primary" id="freesslVerifyBtn" onclick="freeSslCheck()">
+                        🔎 Bước 3: Kiểm tra xác thực (Pre-check)
+                    </button>
+<button class="btn btn-orange" id="freesslRetryBtn" onclick="freeSslRetryCurrentStep()" style="display:none;">
+                        🔁 Retry bước xác thực
+                    </button>
+</div>
+<div class="freessl-log-box" id="freesslLogBox" style="display:none;"></div>
+<div class="mt-12" id="freesslCheckResults"></div>
+</div>
+<!-- Step 4: Finalize -->
+<div class="freessl-card" id="freesslFinalizeCard" style="display:none;">
+<h3><span class="icon" data-lucide="flag"></span> Bước 4: Nhận chứng chỉ</h3>
+<div class="message-success mb-16">
+                    ✅ Xác thực đã sẵn sàng! Nhấn nút bên dưới để nhà cung cấp ACME cấp chứng chỉ.
+                    Quá trình có thể mất 10–60 giây.
+                </div>
+<button class="btn btn-green" id="freesslFinalizeBtn" onclick="freeSslFinalize()">
+                    <span class="icon" data-lucide="gift"></span> Nhận Chứng Chỉ SSL
+                </button>
+</div>
+<!-- Loading + Message (đặt phía dưới để không chen giữa form) -->
+<div class="freessl-loading" id="freesslLoading">
+<div class="spinner"></div>
+<p id="freesslLoadingText">Đang xử lý...</p>
+</div>
+<div class="message" id="freesslMessage"></div>
+<!-- Step 5: Result -->
+<div class="freessl-result-area" id="freesslResultArea">
+<div class="freessl-cert-box">
+<h4>
+                        <span class="icon" data-lucide="award"></span> Chứng chỉ đã được cấp thành công!
+                        <button class="btn btn-green btn-download-all" onclick="freeSslDownloadAll()">
+                            <span class="icon" data-lucide="download"></span> Tải Tất Cả (ZIP)
+                        </button>
+</h4>
+<div class="cert-stack">
+<div>
+<label class="cert-label">
+                                Certificate (cert.crt)
+                                <button class="copy-btn-small" onclick="freeSslCopy('freesslCert')"><span class="icon" data-lucide="clipboard"></span> Copy</button>
+</label>
+<textarea id="freesslCert" readonly=""></textarea>
+</div>
+<div>
+<label class="cert-label">
+                                Private Key (private.key)
+                                <button class="copy-btn-small" onclick="freeSslCopy('freesslPrivKey')"><span class="icon" data-lucide="clipboard"></span> Copy</button>
+</label>
+<textarea id="freesslPrivKey" readonly=""></textarea>
+</div>
+<div>
+<label class="cert-label">
+                                CA Bundle (ca-bundle.crt)
+                                <button class="copy-btn-small" onclick="freeSslCopy('freesslCaBundle')"><span class="icon" data-lucide="clipboard"></span> Copy</button>
+</label>
+<textarea id="freesslCaBundle" readonly=""></textarea>
+</div>
+<div>
+<label class="cert-label">
+                                Full Chain (fullchain.pem)
+                                <button class="copy-btn-small" onclick="freeSslCopy('freesslFullChain')"><span class="icon" data-lucide="clipboard"></span> Copy</button>
+</label>
+<textarea id="freesslFullChain" readonly=""></textarea>
+</div>
+</div>
+</div>
+<div class="center-reset">
+<button class="btn btn-green" onclick="freeSslReset()">🔄 Cấp chứng chỉ mới</button>
+</div>
+</div>
+</div>

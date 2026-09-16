@@ -1,0 +1,54 @@
+<div aria-labelledby="tabbtn-dnshistory" class="tab-content" hidden="" id="tab-dnshistory" role="tabpanel">
+<div class="dnshistory-shell">
+<div class="dns-card dns-search-card">
+<div class="dns-panel-header">
+<div>
+<div class="dns-panel-title">DNS History</div>
+</div>
+</div>
+<div class="dns-search-row">
+<input class="dns-input" id="dnsHistoryInput" onkeypress="if(event.key==='Enter')checkDNSHistory()" placeholder="Nhập tên miền (vd: example.com)" type="text"/>
+<div class="dns-actions">
+<button class="btn btn-primary" onclick="checkDNSHistory()">🔎</button>
+<button class="btn btn-secondary" onclick="clearDNSHistory()"><span class="icon" data-lucide="trash-2"></span></button>
+</div>
+</div>
+</div>
+<div class="dns-card dns-stats-card">
+<div class="history-source-summary">
+<div class="history-summary-card">
+<div class="history-summary-label">Domain</div>
+<div class="history-summary-value" id="historySummaryDomain">-</div>
+</div>
+<div class="history-summary-card">
+<div class="history-summary-label">Sources</div>
+<div class="history-summary-value success" id="historySummarySources">-</div>
+</div>
+<div class="history-summary-card">
+<div class="history-summary-label">Records</div>
+<div class="history-summary-value warning" id="historySummaryRecords">-</div>
+</div>
+<div class="history-summary-card">
+<div class="history-summary-label">Updated</div>
+<div class="history-summary-value" id="historySummaryUpdated">-</div>
+</div>
+</div>
+</div>
+<div class="loading" id="dnsHistoryLoading">
+<div class="spinner"></div>
+<p class="dns-loading-note">Đang truy vấn Mnemonic và Robtex...</p>
+</div>
+<div class="results-container" id="dnsHistoryResults">
+<div class="dns-card dns-results-panel">
+<div class="dns-section-head">
+<div class="section-title">🕰️ DNS History Results</div>
+<div class="dns-head-actions">
+<div class="dns-section-chip" id="dnsHistoryCountChip">0 records</div>
+</div>
+</div>
+<div class="history-source-tabs" id="dnsHistorySourceTabs"></div>
+<div class="history-source-panels" id="dnsHistorySourcePanels"></div>
+</div>
+</div>
+</div>
+</div>

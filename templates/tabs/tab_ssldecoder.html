@@ -1,0 +1,59 @@
+<div aria-labelledby="tabbtn-ssldecoder" class="tab-content" hidden="" id="tab-ssldecoder" role="tabpanel">
+<div class="ssldecoder-header">
+<h2><span class="icon" data-lucide="unlock"></span> SSL Decoder &amp; Matcher</h2>
+</div>
+<div class="ssldecoder-switch">
+<button class="ssldecoder-mode-btn active" id="ssldecoderBtnMatch" onclick="setSSLDecoderMode('match')"><span class="icon" data-lucide="link"></span> Match Checker</button>
+<button class="ssldecoder-mode-btn" id="ssldecoderBtnCert" onclick="setSSLDecoderMode('cert')"><span class="icon" data-lucide="file-text"></span> Certificate Decoder</button>
+<button class="ssldecoder-mode-btn" id="ssldecoderBtnCsr" onclick="setSSLDecoderMode('csr')"><span class="icon" data-lucide="edit-3"></span> CSR Decoder</button>
+</div>
+<!-- Cert + Key Match Checker -->
+<div class="decoder-panel active" id="decoderPanelMatch">
+<div class="decoder-section">
+<h3><span class="icon" data-lucide="link"></span> Cert &amp; Key Match Checker <span class="badge badge-match">MATCH CHECK</span></h3>
+<div class="decoder-row">
+<div class="decoder-col">
+<label>Certificate (PEM)</label>
+<textarea id="matchCertInput" placeholder="-----BEGIN CERTIFICATE-----
+...
+-----END CERTIFICATE-----"></textarea>
+</div>
+<div class="decoder-col">
+<label>Private Key (PEM)</label>
+<textarea id="matchKeyInput" placeholder="-----BEGIN PRIVATE KEY-----
+or
+-----BEGIN RSA PRIVATE KEY-----
+...
+-----END PRIVATE KEY-----"></textarea>
+</div>
+</div>
+<div class="match-result pending" id="matchResult">Nhập Certificate và Private Key để kiểm tra</div>
+</div>
+</div>
+<!-- Certificate Decoder -->
+<div class="decoder-panel" id="decoderPanelCert">
+<div class="decoder-section">
+<h3><span class="icon" data-lucide="file-text"></span> Certificate Decoder <span class="badge badge-decode">DECODE</span></h3>
+<div class="decoder-col mb-16">
+<label>Certificate (PEM)</label>
+<textarea id="decodeCertInput" placeholder="-----BEGIN CERTIFICATE-----
+...
+-----END CERTIFICATE-----"></textarea>
+</div>
+<div class="decode-result" id="certDecodeResult"></div>
+</div>
+</div>
+<!-- CSR Decoder -->
+<div class="decoder-panel" id="decoderPanelCsr">
+<div class="decoder-section">
+<h3><span class="icon" data-lucide="edit-3"></span> CSR Decoder <span class="badge badge-decode">DECODE</span></h3>
+<div class="decoder-col mb-16">
+<label>CSR (Certificate Signing Request)</label>
+<textarea id="decodeCSRInput" placeholder="-----BEGIN CERTIFICATE REQUEST-----
+...
+-----END CERTIFICATE REQUEST-----"></textarea>
+</div>
+<div class="decode-result" id="csrDecodeResult"></div>
+</div>
+</div>
+</div>

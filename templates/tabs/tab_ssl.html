@@ -1,0 +1,108 @@
+<div aria-labelledby="tabbtn-ssl" class="tab-content" hidden="" id="tab-ssl" role="tabpanel">
+<div class="ssl-header">
+<h2><span class="icon" data-lucide="lock"></span> SSL Certificate Bundle Tool</h2>
+<p>Công cụ gộp chứng chỉ SSL tự động</p>
+</div>
+<div class="ssl-shell">
+<div class="ssl-choice-grid" id="sslModeChooser">
+<button class="ssl-choice-card" onclick="setSSLInputMode('zip')" type="button">
+<div class="ssl-choice-icon">📤</div>
+<div class="ssl-choice-title">Upload ZIP</div>
+<div class="ssl-choice-copy">Kéo thả hoặc chọn file ZIP để tự tách certificate bundle.</div>
+</button>
+<button class="ssl-choice-card" onclick="setSSLInputMode('folder')" type="button">
+<div class="ssl-choice-icon"><span class="icon" data-lucide="folder-plus"></span></div>
+<div class="ssl-choice-title">Scan Folder</div>
+<div class="ssl-choice-copy">Chọn thư mục chứa cert, CA bundle và private key để tự phân loại.</div>
+</button>
+<button class="ssl-choice-card" onclick="setSSLInputMode('paste')" type="button">
+<div class="ssl-choice-icon"><span class="icon" data-lucide="clipboard"></span></div>
+<div class="ssl-choice-title">Paste SSL Content</div>
+<div class="ssl-choice-copy">Dán trực tiếp Private Key, Certificate và CA Bundle theo PEM multiline.</div>
+</button>
+</div>
+<div class="ssl-mode-panel is-hidden" id="sslModePanel">
+<div class="ssl-mode-toolbar">
+<div class="ssl-mode-pill" id="sslModeLabel">Chọn phương thức nhập</div>
+<button class="btn btn-secondary btn-compact" onclick="resetSSLInputMode()" type="button">↩ Chọn lại phương thức</button>
+</div>
+<div class="ssl-mode-section is-hidden-mode" id="sslZipSection">
+<div class="ssl-mode-card ssl-upload-card">
+<h3>
+<span><span class="icon" data-lucide="folder-plus"></span> Upload ZIP</span>
+<span class="ssl-detect-chip muted">ZIP only</span>
+</h3>
+<div class="upload-area" id="uploadArea">
+<div class="upload-icon"><span class="icon" data-lucide="folder-plus"></span></div>
+<p><strong>Kéo thả file ZIP vào đây</strong></p>
+<p class="text-muted mt-10">hoặc</p>
+<button class="btn btn-primary mt-10" onclick="document.getElementById('fileInput').click()" type="button">
+                                    Chọn file ZIP
+                                </button>
+<input accept=".zip" class="is-hidden" id="fileInput" type="file"/>
+</div>
+</div>
+</div>
+<div class="ssl-mode-section is-hidden-mode" id="sslFolderSection">
+<div class="ssl-mode-card ssl-upload-card">
+<h3>
+<span><span class="icon" data-lucide="folder"></span> Scan Folder</span>
+<span class="ssl-detect-chip muted">Directory</span>
+</h3>
+<div class="upload-area" id="folderUploadArea">
+<div class="upload-icon"><span class="icon" data-lucide="folder"></span></div>
+<p><strong>Chọn thư mục chứa SSL files</strong></p>
+<p class="text-muted mt-10">hoặc</p>
+<button class="btn btn-primary mt-10" onclick="document.getElementById('folderInput').click()" type="button">
+                                    Chọn thư mục
+                                </button>
+<input class="is-hidden" directory="" id="folderInput" multiple="" type="file" webkitdirectory=""/>
+</div>
+<p class="ssl-paste-help">Hệ thống sẽ đọc các file trong thư mục, phân loại certificate và CA bundle, đồng thời tự điền private key nếu tìm thấy file như private.key hoặc private.pem.</p>
+</div>
+</div>
+<div class="ssl-mode-section is-hidden-mode" id="sslPasteSection">
+<div class="ssl-mode-card">
+<h3>
+<span><span class="icon" data-lucide="edit-3"></span> Paste SSL Content</span>
+<span class="ssl-detect-chip">Auto detect PEM</span>
+</h3>
+<p>Dán theo format mẫu bên dưới. Hệ thống sẽ tự nhận diện Private Key, Cert và CA Bundle.</p>
+<textarea class="ssl-paste-input" id="sslPasteInput" placeholder="Private Key:\n-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n\nCert:\n-----BEGIN CERTIFICATE-----\n...\n-----END CERTIFICATE-----\n\nCA Bundle:\n-----BEGIN CERTIFICATE-----\n...\n-----END CERTIFICATE-----\n-----BEGIN CERTIFICATE-----\n...\n-----END CERTIFICATE-----"></textarea>
+<div class="ssl-paste-help">
+                                CA Bundle có thể chứa nhiều block certificate liên tiếp. Nếu paste không đúng format, hệ thống sẽ báo lỗi và giữ nút xử lý ở trạng thái tắt.
+                            </div>
+<div class="ssl-detect-summary" id="sslPasteSummary"></div>
+</div>
+</div>
+</div>
+</div>
+<div class="message" id="sslMessage"></div>
+<div class="ssl-result-area" id="sslResultArea">
+<div class="result-box">
+<h3>
+                        Certificate Bundle
+                        <div class="btn-group">
+<button class="btn btn-secondary" onclick="copySslBundlePart('cert')"><span class="icon" data-lucide="file"></span> Copy Cert</button>
+<button class="btn btn-secondary" onclick="copySslBundlePart('bundle')"><span class="icon" data-lucide="files"></span> Copy Bundle</button>
+<button class="btn btn-success" onclick="copySslBundlePart('all')"><span class="icon" data-lucide="clipboard"></span> Copy All</button>
+<button class="btn btn-info" onclick="downloadBundle()"><span class="icon" data-lucide="download"></span> Download</button>
+</div>
+</h3>
+<textarea id="bundleOutput" readonly=""></textarea>
+</div>
+<div class="result-box">
+<h3><span class="icon" data-lucide="key"></span> Private Key (Optional)</h3>
+<p class="input-note">Dán private key để tạo PEM và PFX files</p>
+<textarea id="privateKeyInput" placeholder="-----BEGIN PRIVATE KEY-----
+...
+-----END PRIVATE KEY-----"></textarea>
+<div class="mt-12">
+<button class="btn btn-primary" disabled="" id="generateBtn" onclick="generatePemAndPfx()">
+                            🔧 Generate PEM, PFX &amp; ZIP Package
+                        </button>
+</div>
+</div>
+<div id="additionalResults"></div>
+</div>
+</div>

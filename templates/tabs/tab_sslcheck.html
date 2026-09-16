@@ -1,0 +1,65 @@
+<div aria-labelledby="tabbtn-sslcheck" class="tab-content" hidden="" id="tab-sslcheck" role="tabpanel">
+<div class="sslcheck-header">
+<h2><span class="icon" data-lucide="shield"></span> SSL Certificate Check</h2>
+</div>
+<div class="search-box">
+<div class="search-row">
+<input class="search-input" id="sslDomainInput" onkeypress="if(event.key==='Enter')checkSSL()" placeholder="Nhập tên miền (vd: google.com)" type="text"/>
+<button class="btn btn-primary" onclick="checkSSL()"><span class="icon" data-lucide="shield"></span></button>
+</div>
+</div>
+<div class="loading" id="sslLoading">
+<div class="spinner"></div>
+<p>Đang kiểm tra SSL...</p>
+</div>
+<div class="message" id="sslCheckMessage"></div>
+<div class="results-container" id="sslCheckResults">
+<div class="ssl-info-grid">
+<div class="ssl-info-card">
+<div class="card-title">Trạng thái</div>
+<div id="sslStatus"></div>
+</div>
+<div class="ssl-info-card">
+<div class="card-title">Còn lại</div>
+<div class="card-value large" id="sslDaysRemaining">-</div>
+<div class="card-sub">ngày</div>
+</div>
+<div class="ssl-info-card full">
+<div class="card-title">DATE CERT</div>
+<div class="cert-date-grid">
+<div class="cert-date-label">Valid From :</div>
+<div class="cert-date-value" id="sslValidFrom">-</div>
+<div class="cert-date-label">Valid To   :</div>
+<div class="cert-date-value" id="sslValidTo">-</div>
+</div>
+</div>
+<div class="ssl-info-card full">
+<div class="card-title">Nhà cung cấp SSL (Issuer)</div>
+<div class="card-value" id="sslIssuer">-</div>
+<div class="card-sub" id="sslIssuerOrg">-</div>
+</div>
+<div class="ssl-info-card full">
+<div class="card-title">Domain / Subject</div>
+<div class="card-value" id="sslSubject">-</div>
+<div class="card-sub" id="sslSubjectOrg">-</div>
+</div>
+<div class="ssl-info-card full">
+<div class="card-title">HTTP Redirect</div>
+<div class="card-value" id="sslRedirectFinal">-</div>
+<div class="card-sub" id="sslRedirectChain">-</div>
+</div>
+<div class="ssl-info-card full">
+<div class="card-title">Subject Alternative Names (SAN)</div>
+<div class="san-list" id="sslSAN">-</div>
+</div>
+<div class="ssl-info-card">
+<div class="card-title">Serial Number</div>
+<div class="card-value mono-sm" id="sslSerial">-</div>
+</div>
+<div class="ssl-info-card">
+<div class="card-title">Version</div>
+<div class="card-value" id="sslVersion">-</div>
+</div>
+</div>
+</div>
+</div>

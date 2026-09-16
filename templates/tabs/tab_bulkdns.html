@@ -1,0 +1,63 @@
+<div aria-labelledby="tabbtn-bulkdns" class="tab-content" hidden="" id="tab-bulkdns" role="tabpanel">
+<div class="dns-shell">
+<div class="dns-hero">
+<div class="dns-card dns-search-card">
+<div class="dns-panel-header">
+<div>
+<div class="dns-panel-title">Bulk DNS</div>
+</div>
+</div>
+<div class="bulk-input-wrap">
+<textarea class="bulk-input" id="bulkDomainsInput" placeholder="example.com, example.vn
+google.com
+openai.com"></textarea>
+</div>
+<div class="dns-search-row">
+<div class="dns-actions">
+<button class="btn btn-primary" onclick="checkBulkDNS()"><span class="icon" data-lucide="search"></span></button>
+<button class="btn btn-secondary" onclick="clearBulkDNS()"><span class="icon" data-lucide="trash-2"></span></button>
+</div>
+</div>
+</div>
+<div class="dns-card dns-stats-card">
+<div class="dns-stat-row">
+<span class="dns-stat-label">Domains</span>
+<span class="dns-stat-value accent" id="bulkSummaryTotal">-</span>
+</div>
+<div class="dns-stat-row">
+<span class="dns-stat-label">Có IP</span>
+<span class="dns-stat-value success" id="bulkSummaryResolved">-</span>
+</div>
+<div class="dns-stat-row">
+<span class="dns-stat-label">Không có IP</span>
+<span class="dns-stat-value error" id="bulkSummaryMissing">-</span>
+</div>
+<div class="dns-stat-row">
+<span class="dns-stat-label">Cập nhật</span>
+<span class="dns-stat-value accent" id="bulkSummaryUpdated">-</span>
+</div>
+</div>
+</div>
+<div class="loading" id="bulkLoading">
+<div class="spinner"></div>
+<p class="dns-loading-note">Đang kiểm tra bulk DNS basic...</p>
+</div>
+<div class="results-container" id="bulkResults">
+<div class="dns-card dns-results-panel">
+<div class="dns-section-head">
+<div class="section-title"><span class="icon" data-lucide="clipboard"></span> Bulk DNS Results</div>
+<div class="dns-section-chip" id="bulkCountChip">0 domains</div>
+</div>
+<div class="bulk-table">
+<div class="bulk-table-head">
+<div>Tên miền</div>
+<div>IP đang trỏ</div>
+<div>MX</div>
+<div>Nameserver</div>
+</div>
+<div id="bulkResultsTable"></div>
+</div>
+</div>
+</div>
+</div>
+</div>

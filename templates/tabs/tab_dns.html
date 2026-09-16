@@ -1,0 +1,71 @@
+<div aria-labelledby="tabbtn-dns" class="tab-content active" id="tab-dns" role="tabpanel">
+<div class="dns-shell">
+<div class="dns-hero">
+<div class="dns-card dns-search-card">
+<div class="dns-panel-header">
+<div>
+<div class="dns-panel-title">DNS Checker</div>
+</div>
+</div>
+<div class="dns-search-row">
+<input class="dns-input" id="domainInput" onkeypress="if(event.key==='Enter')checkDNS()" placeholder="Nhập tên miền (vd: google.com)" type="text"/>
+<div style="display:flex;gap:8px;align-items:center;">
+<div aria-label="DNS mode" class="dns-view-switch" role="group" style="margin-right:6px;">
+<button class="dns-view-btn active" id="dnsModeDetailBtnInline" onclick="setDnsMode('detail')" type="button">Detail</button>
+<button class="dns-view-btn" id="dnsModeBasicBtnInline" onclick="setDnsMode('basic')" type="button">Basic</button>
+</div>
+<div class="dns-actions">
+<button class="btn btn-primary" onclick="checkDNS()"><span class="icon" data-lucide="search"></span></button>
+<button class="btn btn-secondary" onclick="clearCache()"><span class="icon" data-lucide="trash-2"></span></button>
+</div>
+</div>
+</div>
+<div class="record-types" id="recordTypes">
+<label><input checked="" type="checkbox" value="A"/><span>A</span></label>
+<label><input type="checkbox" value="AAAA"/><span>AAAA</span></label>
+<label><input checked="" type="checkbox" value="CNAME"/><span>CNAME</span></label>
+<label><input type="checkbox" value="MX"/><span>MX</span></label>
+<label><input type="checkbox" value="TXT"/><span>TXT</span></label>
+<label><input type="checkbox" value="NS"/><span>NS</span></label>
+<label><input type="checkbox" value="SOA"/><span>SOA</span></label>
+<label><input type="checkbox" value="CAA"/><span>CAA</span></label>
+</div>
+</div>
+<div class="dns-card dns-stats-card">
+<div class="dns-stat-row">
+<span class="dns-stat-label">Domain</span>
+<span class="dns-stat-value accent" id="summaryDomain">-</span>
+</div>
+<div class="dns-stat-row">
+<span class="dns-stat-label">DNSSEC</span>
+<span class="dns-stat-value error" id="summaryDNSSEC">-</span>
+</div>
+<div class="dns-stat-row">
+<span class="dns-stat-label">Resolvers</span>
+<span class="dns-stat-value accent" id="summaryResolvers">-</span>
+</div>
+</div>
+</div>
+<div class="loading" id="loading">
+<div class="spinner"></div>
+<p class="dns-loading-note">Đang kiểm tra DNS trên nhiều public resolver...</p>
+</div>
+<div class="results-container" id="results">
+<div class="dns-card dns-results-panel">
+<div class="dns-section-head">
+<div class="section-title"><span class="icon" data-lucide="clipboard"></span> DNS Records</div>
+<div class="dns-head-actions">
+<div class="dns-section-chip" id="dnsRecordCountChip">0 record types</div>
+<!-- mode toggle moved inline next to input -->
+<div aria-label="DNS view mode" class="dns-view-switch" role="group">
+<button class="dns-view-btn active" id="dnsViewCardBtn" onclick="setDnsView('card')" type="button">Card</button>
+<button class="dns-view-btn" id="dnsViewCompactBtn" onclick="setDnsView('compact')" type="button">Compact</button>
+</div>
+</div>
+</div>
+<div id="whoisPanel" style="margin-bottom:12px;"></div>
+<div class="dns-record-grid" id="dnsRecords"></div>
+</div>
+</div>
+</div>
+</div>
