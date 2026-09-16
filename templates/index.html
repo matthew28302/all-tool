@@ -9,8 +9,7 @@
 <link href="https://fonts.googleapis.com" rel="preconnect"/>
 <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
 <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@500;600;700;800&amp;family=JetBrains+Mono:wght@400;600&amp;display=swap" rel="stylesheet"/>
-<link href="{{ url_for('static', filename='css/style.css') }}?v=1785348009" rel="stylesheet"/>
-<link href="{{ url_for('static', filename='css/theme-premium.css') }}" rel="stylesheet"/>
+<link href="{{ url_for('static', filename='css/style.css') }}?v=1785348010" rel="stylesheet"/>
 </head>
 <body>
 <div class="container">
@@ -28,6 +27,9 @@
             </button>
 <button aria-controls="tab-hostcheck" aria-selected="false" class="tab-btn" data-tab="hostcheck" id="tabbtn-hostcheck" onclick="switchTab('hostcheck')" role="tab" tabindex="-1">
 <span class="icon" data-lucide="computer"></span> Host Check
+            </button>
+<button aria-controls="tab-emailauth" aria-selected="false" class="tab-btn" data-tab="emailauth" id="tabbtn-emailauth" onclick="switchTab('emailauth')" role="tab" tabindex="-1">
+<span class="icon" data-lucide="mail-check"></span> Email Auth
             </button>
 <div class="nav-divider"></div>
 <div class="nav-group-header">Công Cụ SSL</div>
@@ -54,6 +56,7 @@
 {% include 'tabs/tab_sslcheck.html' %}
 <!-- Host Check Tab -->
 {% include 'tabs/tab_hostcheck.html' %}
+{% include 'tabs/tab_emailauth.html' %}
 <!-- SSL Decoder Tab -->
 {% include 'tabs/tab_ssldecoder.html' %}
 <!-- SSL Bundle Tool Tab -->
@@ -62,9 +65,9 @@
 {% include 'tabs/tab_freessl.html' %}
  
 </div>
-<script src="https://cdn.jsdelivr.net/npm/lucide@latest/dist/umd/lucide.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/forge/0.10.0/forge.min.js"></script>
-<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/lucide@latest/dist/umd/lucide.min.js" onload="lucide&&lucide.createIcons&&lucide.createIcons()"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/forge/0.10.0/forge.min.js"></script>
+<script defer src="{{ url_for('static', filename='js/main.js') }}"></script>
 </div></body>
 </html>

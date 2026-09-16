@@ -1,10 +1,42 @@
 # Local SSL issued store (do not commit)
 acme/issued_ssl_store.json
 # Sensitive files / tabs to hide before pushing to GitHub
-# Install SSL UI and related data
+# Install SSL UI and related data (REMOVED - legacy)
 templates/tabs/tab_installssl.html
 acme/
 pass.csv
 # AI chat UI and helper files
 templates/tabs/tab_ai.html
 ai_tab.html
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+env/
+
+# Runtime artifacts
+*.log
+*.db
+*.lock
+*.bak
+*.backup
+*.broken
+*.swp
+
+# Temp / dev junk
+proxy.txt
+test_*.py
+test_*.sh
+test_*.json
+recovered_js.txt
+modify_matches.txt
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+

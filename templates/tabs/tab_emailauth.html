@@ -1,0 +1,23 @@
+<div aria-labelledby="tabbtn-emailauth" class="tab-content" hidden="" id="tab-emailauth" role="tabpanel">
+<div class="email-auth-shell">
+<div class="dns-card dns-search-card">
+<div class="dns-panel-header">
+<div>
+<div class="dns-panel-title">Email Authentication</div>
+<div class="dns-panel-subtitle">Kiểm tra các bản ghi xác thực email của tên miền</div>
+</div>
+</div>
+<div class="dns-search-row email-auth-search-row">
+<input class="dns-input" id="emailAuthDomainInput" onkeypress="if(event.key==='Enter')checkEmailAuth()" placeholder="Nhập tên miền, vd: example.com" type="text"/>
+<div class="dns-actions">
+<button aria-label="Kiểm tra bản ghi email" class="btn btn-primary icon-only-btn" onclick="checkEmailAuth()" title="Kiểm tra bản ghi email"><span class="icon" data-lucide="mail-check"></span></button>
+</div>
+</div>
+</div>
+<div class="loading" id="emailAuthLoading"><div class="spinner"></div><p>Đang truy vấn SPF, DKIM, DMARC...</p></div>
+<div class="message" id="emailAuthMessage"></div>
+<div class="results-container" id="emailAuthResults">
+<div class="email-auth-grid" id="emailAuthChecks"></div>
+</div>
+</div>
+</div>

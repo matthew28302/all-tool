@@ -1,6 +1,6 @@
 
         // ========== Tab Switching ==========
-        const tabIds = ['dns', 'bulkdns', 'dnshistory', 'sslcheck', 'hostcheck', 'ssl', 'installssl', 'ssldecoder', 'freessl', 'ai'];
+        const tabIds = ['dns', 'bulkdns', 'dnshistory', 'sslcheck', 'hostcheck', 'emailauth', 'ssl', 'ssldecoder', 'freessl'];
 
         function switchTab(tab, options = {}) {
             const nextTab = tabIds.includes(tab) ? tab : 'dns';
@@ -68,820 +68,66 @@
             box.textContent = '';
         }
 
-        let aiMode = 'chat';
-        let aiAttachedFiles = [];
-        let aiChats = [];
-        let aiActiveChatId = null;
-        let aiCustomPrompt = '';
-        let aiProvider = localStorage.getItem('ai_provider') || 'nvidia';
-        let aiSelectedModel = localStorage.getItem('ai_selected_model') || 'meta/llama-3.3-70b-instruct';
-        let aiApiKey = localStorage.getItem('ai_api_key') || '';
-        let aiApiBase = localStorage.getItem('ai_api_base') || '';
-        let aiAllModelsList = [];
-        let aiTestedSpeedMap = {};
-        let aiSpeedFilter = 'all';
-        let activeAIAbortController = null;
+        function clearEmailAuth() {
+            const input = document.getElementById('emailAuthDomainInput');
+            const selectors = document.getElementById('emailAuthSelectorsInput');
+            if (input) input.value = '';
+            if (selectors) selectors.value = '';
+            document.getElementById('emailAuthResults')?.classList.remove('show');
+            document.getElementById('emailAuthMessage').textContent = '';
+        }
+
+        function emailAuthStatusBadge(status) {
+            const found = status === 'found';
+            return '<span class="email-auth-status ' + (found ? 'found' : 'missing') + '">' + (found ? 'Found' : 'Not found') + '</span>';
+        }
+
+        function renderEmailAuth(data) {
+            const checks = document.getElementById('emailAuthChecks');
+            const cards = [
+                { key: 'mx', label: 'MX', query: data.domain, records: data.mx || [], status: data.mx?.length ? 'found' : 'not_found' },
+                { key: 'spf', label: 'SPF', query: data.spf?.query, records: data.spf?.records || [], status: data.spf?.status },
+                { key: 'dkim', label: 'DKIM', query: data.dkim?.length ? data.dkim.map(item => item.name).join(' | ') : 'Các selector DKIM phổ biến', records: (data.dkim || []).flatMap(item => item.records || []), status: data.dkim?.length ? 'found' : 'not_found' },
+                { key: 'dmarc', label: 'DMARC', query: data.dmarc?.query, records: data.dmarc?.records || [], status: data.dmarc?.status }
+            ];
+            checks.innerHTML = cards.map(card => '<article class="email-auth-check-card ' + (card.status === 'found' ? 'is-found' : 'is-missing') + '">' +
+                '<div class="email-auth-check-head"><h3>' + card.label + '</h3>' + emailAuthStatusBadge(card.status) + '</div>' +
+                '<div class="email-auth-query">' + escapeHtml(card.query || '-') + '</div>' +
+                '<div class="email-auth-records">' + (card.records.length ? card.records.map(record => '<code>' + escapeHtml(record) + '</code>').join('') : '<span class="email-auth-empty">Không phát hiện bản ghi phù hợp</span>') + '</div>' +
+            '</article>').join('');
+            document.getElementById('emailAuthResults').classList.add('show');
+        }
+
+        async function checkEmailAuth() {
+            const domain = document.getElementById('emailAuthDomainInput').value.trim();
+            if (!domain) { alert('Vui lòng nhập tên miền'); return; }
+            document.getElementById('emailAuthLoading').classList.add('show');
+            document.getElementById('emailAuthResults').classList.remove('show');
+            clearMessage('emailAuthMessage');
+            try {
+                const response = await fetch('/api/check-email-auth', {
+                    method: 'POST', headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ domain })
+                });
+                const data = await response.json();
+                if (!response.ok || data.error) throw new Error(data.error || 'Không thể kiểm tra Email Authentication');
+                renderEmailAuth(data);
+            } catch (error) {
+                setMessage('emailAuthMessage', 'error', 'Lỗi: ' + error.message);
+            } finally {
+                document.getElementById('emailAuthLoading').classList.remove('show');
+            }
+        }
 
         function escapeHtml(text) { var div = document.createElement('div'); div.textContent = text; return div.innerHTML; }
 
-        function getDefaultAIChat() {
-            return {
-                id: 'chat-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8),
-                title: 'Chat mới',
-                createdAt: new Date().toISOString(),
-                messages: []
-            };
-        }
-
-        function saveAIState() {
-            localStorage.setItem('ai_chat_history', JSON.stringify(aiChats));
-            localStorage.setItem('ai_active_chat_id', aiActiveChatId || '');
-            localStorage.setItem('ai_custom_prompt', aiCustomPrompt);
-            localStorage.setItem('ai_provider', aiProvider);
-            localStorage.setItem('ai_selected_model', aiSelectedModel);
-            localStorage.setItem('ai_api_key', aiApiKey);
-            localStorage.setItem('ai_api_base', aiApiBase);
-        }
-
-        function loadAIState() {
-            try {
-                const storedChats = JSON.parse(localStorage.getItem('ai_chat_history') || '[]');
-                aiChats = Array.isArray(storedChats) ? storedChats : [];
-            } catch (err) {
-                aiChats = [];
-            }
-            aiCustomPrompt = localStorage.getItem('ai_custom_prompt') || 'Bạn là trợ lý AI mạnh mẽ, ngắn gọn, rõ ràng và hữu ích bằng tiếng Việt.';
-            aiActiveChatId = localStorage.getItem('ai_active_chat_id') || null;
-            aiProvider = localStorage.getItem('ai_provider') || 'nvidia';
-            aiSelectedModel = localStorage.getItem('ai_selected_model') || 'meta/llama-3.3-70b-instruct';
-            aiApiKey = localStorage.getItem('ai_api_key') || '';
-            aiApiBase = localStorage.getItem('ai_api_base') || '';
-
-            if (!aiChats.length) {
-                createNewAIChat(false);
-            } else if (!aiChats.some(chat => chat.id === aiActiveChatId)) {
-                aiActiveChatId = aiChats[0].id;
-            }
-            saveAIState();
-
-            const providerSelect = document.getElementById('aiProviderSelect');
-            if (providerSelect) providerSelect.value = aiProvider;
-
-            const keyInput = document.getElementById('aiApiKeyInput');
-            if (keyInput) keyInput.value = aiApiKey;
-
-            const baseInput = document.getElementById('aiApiBaseInput');
-            if (baseInput) baseInput.value = aiApiBase;
-
-            updateActiveModelBadge();
-            toggleCustomKeyBlock();
-            loadAIModels();
-        }
-
-        function updateActiveModelBadge() {
-            const badge = document.getElementById('aiActiveModelBadge');
-            if (badge) {
-                const shortName = aiSelectedModel.split('/').pop() || aiSelectedModel;
-                const testInfo = aiTestedSpeedMap[aiSelectedModel];
-                if (testInfo && testInfo.working) {
-                    badge.textContent = `${shortName} (${testInfo.latency_ms}ms)`;
-                } else {
-                    badge.textContent = shortName;
-                }
-            }
-        }
-
-        function toggleCustomKeyBlock() {
-            const block = document.getElementById('aiCustomKeyBlock');
-            if (block) {
-                block.style.display = (aiProvider === 'custom') ? 'block' : 'none';
-            }
-        }
-
-        function toggleAISidebar() {
-            const sidebar = document.getElementById('aiSidebar');
-            if (sidebar) sidebar.classList.toggle('show');
-        }
-
-        function onAIProviderChange() {
-            const providerSelect = document.getElementById('aiProviderSelect');
-            if (providerSelect) aiProvider = providerSelect.value;
-            toggleCustomKeyBlock();
-            saveAIState();
-            loadAIModels(true);
-        }
-
-        function saveAIKeyConfig() {
-            const keyInput = document.getElementById('aiApiKeyInput');
-            if (keyInput) aiApiKey = (keyInput.value || '').trim();
-            const baseInput = document.getElementById('aiApiBaseInput');
-            if (baseInput) aiApiBase = (baseInput.value || '').trim();
-            saveAIState();
-            loadAIModels(true);
-        }
-
-        async function loadAIModels(forceRefresh = false) {
-            const countEl = document.getElementById('aiModelCount');
-            if (countEl) countEl.textContent = 'Đang tải...';
-
-            try {
-                const url = `/api/ai/models?provider=${encodeURIComponent(aiProvider)}&api_key=${encodeURIComponent(aiApiKey)}&api_base=${encodeURIComponent(aiApiBase)}${forceRefresh ? '&refresh=1' : ''}`;
-                const res = await fetch(url);
-                const data = await res.json();
-
-                if (!res.ok || data.error) {
-                    throw new Error(data.error || 'Lỗi tải danh sách models');
-                }
-
-                aiAllModelsList = data.models || [];
-                renderAIModelSelect();
-
-                if (countEl) {
-                    const providerName = aiProvider === 'nvidia' ? 'NVIDIA NIM' : (aiProvider === 'agnes' ? 'Agnes AI' : 'Custom');
-                    countEl.textContent = `${aiAllModelsList.length} models (${providerName})`;
-                }
-            } catch (err) {
-                console.error('Error loading AI models:', err);
-                if (countEl) countEl.textContent = 'Lỗi tải models';
-            }
-        }
-
-        async function testAllModelsSpeed() {
-            const statusBox = document.getElementById('aiTestStatusProgress');
-            const testBtn = document.getElementById('aiTestSpeedBtn');
-            if (statusBox) {
-                statusBox.style.display = 'block';
-                statusBox.style.background = '#e0e7ff';
-                statusBox.style.color = '#3730a3';
-                statusBox.textContent = '⚡ Đang khảo sát kết nối song song tới 100+ models... Vui lòng chờ vài giây!';
-            }
-            if (testBtn) testBtn.disabled = true;
-
-            try {
-                const formData = new FormData();
-                formData.append('provider', aiProvider);
-                formData.append('api_key', aiApiKey);
-                formData.append('api_base', aiApiBase);
-                formData.append('tested_ids', JSON.stringify(Object.keys(aiTestedSpeedMap)));
-
-                const res = await fetch('/api/ai/test-models', { method: 'POST', body: formData });
-                const data = await res.json();
-
-                if (!res.ok || data.error) throw new Error(data.error || 'Lỗi khảo sát tốc độ');
-
-                (data.results || []).forEach(r => {
-                    aiTestedSpeedMap[r.id] = r;
-                });
-                
-                const totalWorking = Object.values(aiTestedSpeedMap).filter(r => r.working).length;
-
-                renderAIModelSelect();
-
-                if (statusBox) {
-                    statusBox.style.background = '#dcfce7';
-                    statusBox.style.color = '#15803d';
-                    const newTested = (data.results || []).length;
-                    const totalCached = Object.keys(aiTestedSpeedMap).length;
-                    statusBox.textContent = `✅ Đã kiểm thử thêm ${newTested} models (Tổng: ${totalCached}). Có ${totalWorking} models hoạt động 200 OK!`;
-                    setTimeout(() => { statusBox.style.display = 'none'; }, 6000);
-                }
-
-            } catch (err) {
-                if (statusBox) {
-                    statusBox.style.background = '#fee2e2';
-                    statusBox.style.color = '#b91c1c';
-                    statusBox.textContent = `❌ Lỗi kiểm thử: ${err.message}`;
-                }
-            } finally {
-                if (testBtn) testBtn.disabled = false;
-            }
-        }
-
-        function setAISpeedFilter(filterType, btnEl) {
-            aiSpeedFilter = filterType;
-            const tabs = document.querySelectorAll('.ai-filter-tab');
-            tabs.forEach(t => t.classList.remove('active'));
-            if (btnEl) btnEl.classList.add('active');
-            renderAIModelSelect();
-        }
-
-        function renderAIModelSelect() {
-            const selectEl = document.getElementById('aiModelSelect');
-            const searchInput = document.getElementById('aiModelSearchInput');
-            if (!selectEl) return;
-
-            const filterText = (searchInput ? searchInput.value : '').toLowerCase().trim();
-
-            let filtered = aiAllModelsList.filter(m => {
-                const matchSearch = !filterText || m.toLowerCase().includes(filterText);
-                if (!matchSearch) return false;
-
-                const testInfo = aiTestedSpeedMap[m];
-                if (aiSpeedFilter === 'fast') return testInfo && testInfo.speed === 'fast';
-                if (aiSpeedFilter === 'medium') return testInfo && testInfo.speed === 'medium';
-                if (aiSpeedFilter === 'slow') return testInfo && testInfo.speed === 'slow';
-                if (aiSpeedFilter === 'working') return testInfo ? testInfo.working : true;
-                return true;
-            });
-
-            selectEl.innerHTML = '';
-            if (filtered.length === 0) {
-                selectEl.innerHTML = '<option value="">Không có model phù hợp</option>';
-                return;
-            }
-
-            // Models known to ALWAYS support tools regardless of size
-            const TOOL_ALWAYS = ['gpt-4', 'gpt-3.5', 'claude', 'gemini', 'command-r'];
-            // Model sizes too small for reliable tool calling
-            const WEAK_SIZE_PATTERNS = /[-._](0\.\d+b|1b|2b|3b|4b|7b|8b|9b|11b|12b|13b|14b)[-._\s]/i;
-            filtered.forEach(m => {
-                const opt = document.createElement('option');
-                opt.value = m;
-                const testInfo = aiTestedSpeedMap[m];
-                const mLower = m.toLowerCase();
-                const isAlwaysSupported = TOOL_ALWAYS.some(t => mLower.includes(t));
-                const isTooSmall = WEAK_SIZE_PATTERNS.test('-' + m + '-');
-                const supportsTool = isAlwaysSupported || (!isTooSmall && (
-                    mLower.includes('mistral') || mLower.includes('llama') ||
-                    mLower.includes('deepseek') || mLower.includes('qwen') ||
-                    mLower.includes('nemotron') || mLower.includes('mixtral') ||
-                    mLower.includes('phi-') || mLower.includes('dbrx')
-                ));
-                let label = m;
-                if (testInfo) {
-                    label += ` (${testInfo.label} • ${testInfo.latency_ms}ms)`;
-                }
-                if (supportsTool) {
-                    label += ' 🔧';
-                }
-                opt.textContent = label;
-                if (m === aiSelectedModel) opt.selected = true;
-                selectEl.appendChild(opt);
-            });
-
-
-            if (!filtered.includes(aiSelectedModel) && filtered.length > 0) {
-                aiSelectedModel = filtered[0];
-                selectEl.value = aiSelectedModel;
-                saveAIState();
-            }
-            updateActiveModelBadge();
-            updateActiveModelChips();
-        }
-
-        function filterAIModels() {
-            renderAIModelSelect();
-        }
-
-        function onAIModelSelectChange() {
-            const selectEl = document.getElementById('aiModelSelect');
-            if (selectEl && selectEl.value) {
-                aiSelectedModel = selectEl.value;
-                saveAIState();
-                updateActiveModelBadge();
-                updateActiveModelChips();
-            }
-        }
-
-        function selectAIModel(modelId) {
-            aiSelectedModel = modelId;
-            saveAIState();
-
-            const selectEl = document.getElementById('aiModelSelect');
-            if (selectEl) {
-                if (!aiAllModelsList.includes(modelId)) {
-                    aiAllModelsList.unshift(modelId);
-                    renderAIModelSelect();
-                }
-                selectEl.value = modelId;
-            }
-            updateActiveModelBadge();
-            updateActiveModelChips();
-        }
-
-        function updateActiveModelChips() {
-            const chips = document.querySelectorAll('.ai-model-chip');
-            chips.forEach(chip => {
-                const onclickStr = chip.getAttribute('onclick') || '';
-                const isActive = onclickStr.includes(`'${aiSelectedModel}'`);
-                chip.classList.toggle('active', isActive);
-            });
-        }
-
-        function stopAIStream() {
-            if (activeAIAbortController) {
-                activeAIAbortController.abort();
-                activeAIAbortController = null;
-            }
-            const stopBtn = document.getElementById('aiStopBtn');
-            const sendBtn = document.getElementById('aiSendBtn');
-            if (stopBtn) stopBtn.style.display = 'none';
-            if (sendBtn) sendBtn.disabled = false;
-            setAIMessage('info', '⏹️ Đã ngắt kết nối theo yêu cầu.');
-        }
-
-        function onAIComposerKeyDown(event) {
-            if (event.key === 'Enter' && !event.shiftKey) {
-                event.preventDefault();
-                sendAIRequest(document.getElementById('aiSendBtn'));
-            }
-        }
-
-        function createNewAIChat(save = true) {
-            const chat = getDefaultAIChat();
-            aiChats.unshift(chat);
-            aiActiveChatId = chat.id;
-            if (save) saveAIState();
-            renderAIChatList();
-            renderAIChatMessages();
-        }
-
-        function deleteActiveAIChat() {
-            if (!aiChats.length) return;
-
-            const currentIndex = aiChats.findIndex(chat => chat.id === aiActiveChatId);
-            const targetIndex = currentIndex >= 0 ? currentIndex : 0;
-            const targetChat = aiChats[targetIndex];
-            if (!targetChat) return;
-
-            const confirmMessage = targetChat.messages && targetChat.messages.length
-                ? 'Bạn có chắc muốn xoá toàn bộ đoạn chat này? Tất cả nội dung trong đoạn chat sẽ bị mất.'
-                : 'Bạn có chắc muốn xoá đoạn chat trống này?';
-            if (!window.confirm(confirmMessage)) return;
-
-            aiChats.splice(targetIndex, 1);
-            if (!aiChats.length) {
-                createNewAIChat(false);
-                return;
-            }
-
-            const nextIndex = Math.min(targetIndex, aiChats.length - 1);
-            aiActiveChatId = aiChats[nextIndex].id;
-            saveAIState();
-            renderAIChatList();
-            renderAIChatMessages();
-            setAIMessage('info', '🗑️ Đã xoá đoạn chat hiện tại.');
-        }
-
-        function clearAllAIChats() {
-            if (!aiChats.length) return;
-            if (!window.confirm('Bạn có chắc muốn xoá tất cả các đoạn chat? Hành động này không thể hoàn tác.')) return;
-            aiChats = [];
-            createNewAIChat(false);
-            saveAIState();
-            renderAIChatList();
-            renderAIChatMessages();
-            setAIMessage('info', '🗑️ Đã xoá tất cả đoạn chat.');
-        }
-
-        function setAIMode(mode) {
-            aiMode = 'chat';
-        }
-
-        function toggleAIPromptPanel(force = null) {
-            const panel = document.getElementById('aiPromptPanel');
-            const backdrop = document.getElementById('aiSettingsBackdrop');
-            const toggle = document.getElementById('aiPromptToggle');
-            const shouldShow = force !== null ? force : !panel.classList.contains('show');
-            if (!panel || !backdrop) return;
-
-            panel.classList.toggle('show', shouldShow);
-            backdrop.classList.toggle('show', shouldShow);
-            panel.setAttribute('aria-hidden', shouldShow ? 'false' : 'true');
-            backdrop.setAttribute('aria-hidden', shouldShow ? 'false' : 'true');
-            document.body.classList.toggle('no-scroll', shouldShow);
-            if (toggle) toggle.classList.toggle('active', shouldShow);
-            if (shouldShow) {
-                const input = document.getElementById('aiCustomPromptInput');
-                if (input) input.value = aiCustomPrompt;
-                setTimeout(() => input?.focus(), 0);
-            }
-        }
-
-        function saveAICustomPrompt() {
-            const input = document.getElementById('aiCustomPromptInput');
-            aiCustomPrompt = (input ? input.value : '').trim() || 'Bạn là trợ lý AI mạnh mẽ, ngắn gọn, rõ ràng và hữu ích bằng tiếng Việt.';
-            saveAIState();
-            setAIMessage('success', '✅ Custom prompt đã được lưu.');
-        }
-
-        function renderAIChatList() {
-            const container = document.getElementById('aiHistoryList');
-            if (!container) return;
-            container.innerHTML = '';
-            if (!aiChats.length) {
-                container.innerHTML = '<div class="ai-empty">Chưa có cuộc trò chuyện nào.</div>';
-                return;
-            }
-            aiChats.forEach(chat => {
-                const item = document.createElement('button');
-                item.type = 'button';
-                item.className = 'ai-history-item' + (chat.id === aiActiveChatId ? ' active' : '');
-                item.innerHTML = `<div class="ai-history-title">${escapeHtml(chat.title || 'Chat mới')}</div><div class="ai-history-meta">${escapeHtml(new Date(chat.createdAt || Date.now()).toLocaleString('vi-VN'))}</div>`;
-                item.addEventListener('click', () => {
-                    aiActiveChatId = chat.id;
-                    saveAIState();
-                    renderAIChatList();
-                    renderAIChatMessages();
-                });
-                container.appendChild(item);
-            });
-        }
-
-        function buildAttachmentMarkup(attachments) {
-            if (!attachments || !attachments.length) return '';
-            const items = attachments.map(att => {
-                if (att.dataUrl && att.type && att.type.startsWith('image/')) {
-                    return `<div class="ai-attachment-item"><img src="${att.dataUrl}" alt="${escapeHtml(att.name || 'image')}"></div>`;
-                }
-                return `<div class="ai-attachment-item">📎 ${escapeHtml(att.name || 'file')}</div>`;
-            }).join('');
-            return `<div class="ai-attachment-preview">${items}</div>`;
-        }
-
-        function renderMarkdown(text) {
-            if (!text) return '';
-            // Escape HTML first
-            let html = escapeHtml(text);
-            
-            // Code blocks: ```lang\ncode\n``` → <pre><code> with copy button
-            html = html.replace(/```(\w*)\n([\s\S]*?)```/g, function(match, lang, code) {
-                const id = 'codeblock-' + Math.random().toString(36).substr(2, 9);
-                const langLabel = lang || 'code';
-                return '<div class="ai-code-block">' +
-                    '<div class="ai-code-header">' +
-                        '<span class="ai-code-lang">' + langLabel + '</span>' +
-                        '<button class="ai-code-copy" onclick="copyCodeBlock(\'' + id + '\')">📋 Copy</button>' +
-                    '</div>' +
-                    '<pre><code id="' + id + '">' + code.trim() + '</code></pre>' +
-                '</div>';
-            });
-            
-            // Inline code: `code` → <code>
-            html = html.replace(/`([^`]+)`/g, '<code class="ai-inline-code">$1</code>');
-            
-            // Bold: **text** → <strong>
-            html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
-            
-            // Italic: *text* → <em> (but not inside ** or code)
-            html = html.replace(/(?<!\*)\*([^*]+)\*(?!\*)/g, '<em>$1</em>');
-            
-            // Bullet lists: lines starting with - or * 
-            html = html.replace(/^[\-\*] (.+)$/gm, '<li>$1</li>');
-            html = html.replace(/(<li>.*<\/li>\n?)+/g, '<ul>$&</ul>');
-            
-            // Numbered lists: lines starting with 1. 2. etc
-            html = html.replace(/^\d+\. (.+)$/gm, '<li>$1</li>');
-            
-            // Headers: ### → h3, ## → h2 (in chat context)
-            html = html.replace(/^### (.+)$/gm, '<strong style="font-size:1.05em">$1</strong>');
-            html = html.replace(/^## (.+)$/gm, '<strong style="font-size:1.1em">$1</strong>');
-            
-            // Line breaks: preserve newlines
-            html = html.replace(/\n/g, '<br>');
-            
-            return html;
-        }
-
-        function copyCodeBlock(id) {
-            const el = document.getElementById(id);
-            if (!el) return;
-            const text = el.textContent;
-            navigator.clipboard.writeText(text).then(() => {
-                const btn = el.closest('.ai-code-block').querySelector('.ai-code-copy');
-                if (btn) {
-                    const orig = btn.textContent;
-                    btn.textContent = '✅ Copied!';
-                    btn.style.color = '#10b981';
-                    setTimeout(() => { btn.textContent = orig; btn.style.color = ''; }, 2000);
-                }
-            });
-        }
-
-        function renderAIChatMessages() {
-            const container = document.getElementById('aiMessagesList');
-            if (!container) return;
-            const chat = aiChats.find(item => item.id === aiActiveChatId) || aiChats[0];
-            if (!chat || !chat.messages.length) {
-                container.innerHTML = '<div class="ai-empty">Hãy bắt đầu một cuộc trò chuyện mới.</div>';
-                return;
-            }
-            const frag = document.createDocumentFragment();
-            const modelShort = escapeHtml(aiSelectedModel.split('/').pop());
-            chat.messages.forEach(message => {
-                const bubble = document.createElement('div');
-                bubble.className = `ai-chat-bubble ${message.role}`;
-                const roleLabel = message.role === 'user' ? 'Bạn' : `AI (${modelShort})`;
-                const timeStr = escapeHtml(new Date(message.timestamp || Date.now()).toLocaleTimeString('vi-VN'));
-                const renderedContent = message.role === 'assistant' ? renderMarkdown(message.content || '') : escapeHtml(message.content || '');
-                bubble.innerHTML = `<div class="meta">${roleLabel} • ${timeStr}</div><div class="ai-msg-content">${renderedContent}</div>`;
-                if (message.attachments && message.attachments.length) {
-                    bubble.innerHTML += buildAttachmentMarkup(message.attachments);
-                }
-                if (message.mode === 'image' && message.resultData) {
-                    const result = message.resultData || {};
-                    const imageUrl = result?.data?.[0]?.b64_json ? `data:image/png;base64,${result.data[0].b64_json}` : (result?.data?.[0]?.url || '');
-                    bubble.innerHTML += imageUrl ? `<img class="ai-render-image" src="${imageUrl}" alt="Generated image">` : '<div>Không có ảnh để hiển thị.</div>';
-                }
-                if (message.mode === 'video' && message.resultData) {
-                    const result = message.resultData || {};
-                    const videoUrl = result?.data?.[0]?.url || '';
-                    bubble.innerHTML += videoUrl ? `<video class="ai-render-image" controls src="${videoUrl}"></video>` : '<div>Không có video để hiển thị.</div>';
-                }
-                frag.appendChild(bubble);
-            });
-            container.innerHTML = '';
-            container.appendChild(frag);
-            requestAnimationFrame(() => { container.scrollTop = container.scrollHeight; });
-        }
-
-        function setAIMessage(type, text) {
-            const box = document.getElementById('aiMessageBox');
-            if (!box) return;
-            box.innerHTML = '';
-            if (!text) return;
-            const row = document.createElement('div');
-            row.className = 'message-' + type;
-            row.textContent = text;
-            box.appendChild(row);
-        }
-
-        function renderAIStreamingPulse(lastBubble) {
-            if (!lastBubble) return;
-            lastBubble.classList.add('streaming');
-        }
-
-        function attachmentToSerializable(file) {
-            return new Promise((resolve) => {
-                const item = {
-                    name: file.name,
-                    type: file.type || 'application/octet-stream',
-                    dataUrl: '',
-                    file: file
-                };
-                if (file.type && file.type.startsWith('image/')) {
-                    const reader = new FileReader();
-                    reader.onload = () => {
-                        item.dataUrl = reader.result;
-                        resolve(item);
-                    };
-                    reader.onerror = () => resolve(item);
-                    reader.readAsDataURL(file);
-                } else {
-                    resolve(item);
-                }
-            });
-        }
-
-        async function addAIAttachments(files) {
-            const items = [];
-            for (const file of files) {
-                if (!file) continue;
-                items.push(await attachmentToSerializable(file));
-            }
-            aiAttachedFiles = [...aiAttachedFiles, ...items];
-            renderAIAttachmentPreview();
-        }
-
-        function renderAIAttachmentPreview() {
-            const container = document.getElementById('aiAttachmentPreview');
-            if (!container) return;
-            if (!aiAttachedFiles.length) {
-                container.innerHTML = '';
-                return;
-            }
-            container.innerHTML = aiAttachedFiles.map(att => {
-                if (att.dataUrl && att.type && att.type.startsWith('image/')) {
-                    return `<div class="ai-attachment-item"><img src="${att.dataUrl}" alt="${escapeHtml(att.name || 'image')}"></div>`;
-                }
-                return `<div class="ai-attachment-item">📎 ${escapeHtml(att.name || 'file')}</div>`;
-            }).join('');
-        }
-
-        function clearAIAttachments() {
-            aiAttachedFiles = [];
-            renderAIAttachmentPreview();
-        }
-
-        async function sendAIRequest(button) {
-            const composer = document.getElementById('aiComposerInput');
-            const prompt = (composer ? composer.value : '').trim();
-            if (!prompt && aiAttachedFiles.length === 0) {
-                setAIMessage('error', 'Vui lòng nhập prompt hoặc đính kèm ít nhất một file.');
-                return;
-            }
-
-            const stopBtn = document.getElementById('aiStopBtn');
-            if (button) button.disabled = true;
-            if (stopBtn) stopBtn.style.display = 'inline-block';
-
-            let activeChat = aiChats.find(item => item.id === aiActiveChatId);
-            if (!activeChat) {
-                createNewAIChat(false);
-                activeChat = aiChats[0];
-            }
-
-            const userMessage = {
-                role: 'user',
-                content: prompt || 'Đính kèm file',
-                attachments: aiAttachedFiles,
-                timestamp: new Date().toISOString(),
-                mode: aiMode
-            };
-            activeChat.messages.push(userMessage);
-            if (activeChat.title === 'Chat mới' && prompt) {
-                activeChat.title = prompt.slice(0, 36) || 'Chat mới';
-            }
-
-            const assistantMessage = {
-                role: 'assistant',
-                content: '',
-                timestamp: new Date().toISOString(),
-                mode: aiMode,
-                resultData: null
-            };
-            activeChat.messages.push(assistantMessage);
-
-            renderAIChatList();
-            renderAIChatMessages();
-
-            if (composer) composer.value = '';
-            const currentAttachments = [...aiAttachedFiles];
-            clearAIAttachments();
-
-            const formData = new FormData();
-            formData.append('mode', aiMode);
-            formData.append('prompt', prompt);
-            formData.append('system_prompt', aiCustomPrompt);
-            formData.append('model', aiSelectedModel || 'meta/llama-3.3-70b-instruct');
-            formData.append('provider', aiProvider);
-            formData.append('api_key', aiApiKey);
-            formData.append('api_base', aiApiBase);
-            formData.append('history', JSON.stringify(activeChat.messages.slice(-8, -1)));
-            currentAttachments.forEach(item => {
-                if (item && item.file) {
-                    formData.append('files', item.file);
-                }
-            });
-
-            activeAIAbortController = new AbortController();
-
-            // Get reference to the last bubble for direct DOM updates (no re-render)
-            const container = document.getElementById('aiMessagesList');
-            const lastBubble = container ? container.lastElementChild : null;
-            renderAIStreamingPulse(lastBubble);
-            const modelShortName = aiSelectedModel.split('/').pop();
-            const metaPrefix = `AI (${escapeHtml(modelShortName)}) • `;
-
-            // Debounced save — only saves once every 2s during streaming
-            let _saveTimer = null;
-            const debouncedSave = () => {
-                if (_saveTimer) return;
-                _saveTimer = setTimeout(() => { saveAIState(); _saveTimer = null; }, 2000);
-            };
-
-            // RAF-batched UI update — avoids multiple reflows per frame
-            let _rafPending = false;
-            let _latestText = '';
-            const scheduleUIUpdate = (text) => {
-                _latestText = text;
-                if (_rafPending) return;
-                _rafPending = true;
-                requestAnimationFrame(() => {
-                    _rafPending = false;
-                    if (lastBubble && lastBubble.classList.contains('assistant')) {
-                        const timeStr = new Date().toLocaleTimeString('vi-VN');
-                        lastBubble.innerHTML = `<div class="meta">${metaPrefix}${escapeHtml(timeStr)}</div><div class="ai-msg-content">${renderMarkdown(_latestText)}</div>`;
-                        if (container) container.scrollTop = container.scrollHeight;
-                    }
-                });
-            };
-
-            try {
-                const response = await fetch('/api/ai/stream', {
-                    method: 'POST',
-                    body: formData,
-                    signal: activeAIAbortController.signal
-                });
-
-                if (!response.ok) {
-                    let errText = '';
-                    try {
-                        const errJson = await response.json();
-                        errText = errJson.error || '';
-                    } catch(e) {
-                        errText = `HTTP Error ${response.status}`;
-                    }
-                    throw new Error(errText || 'Khởi tạo luồng stream thất bại.');
-                }
-
-                const reader = response.body.getReader();
-                const decoder = new TextDecoder('utf-8');
-                let accumulatedText = '';
-                let buffer = '';
-
-                while (true) {
-                    const { done, value } = await reader.read();
-                    if (done) break;
-
-                    buffer += decoder.decode(value, { stream: true });
-                    const lines = buffer.split('\n');
-                    buffer = lines.pop() || '';
-
-                    let chunkUpdated = false;
-                    for (const line of lines) {
-                        const trimmed = line.trim();
-                        if (!trimmed || trimmed.startsWith(':')) continue;
-                        if (trimmed === 'data: [DONE]') break;
-
-                        if (trimmed.startsWith('data: ')) {
-                            try {
-                                const parsed = JSON.parse(trimmed.slice(6));
-                                const choice = parsed.choices?.[0];
-                                if (choice?.delta) {
-                                    // Ignore reasoning_content entirely to keep responses concise
-                                    const chunk = choice.delta.content || '';
-                                    if (chunk) {
-                                        accumulatedText += chunk;
-                                        chunkUpdated = true;
-                                    }
-                                }
-                            } catch (e) {
-                                // Skip non-json lines
-                            }
-                        }
-                    }
-
-                    if (chunkUpdated) {
-                        // Strip closed <think> blocks and any currently open <think> block at the end
-                        let cleanedText = accumulatedText.replace(/<think>[\s\S]*?<\/think>\n*/gi, '').replace(/<think>[\s\S]*$/i, '');
-                        // Trim leading newlines if the thinking block was at the very beginning
-                        cleanedText = cleanedText.replace(/^\s+/, '');
-                        
-                        assistantMessage.content = cleanedText;
-                        scheduleUIUpdate(cleanedText);
-                        debouncedSave();
-                    }
-                }
-
-                if (!accumulatedText) {
-                    assistantMessage.content = 'Đã hoàn thành.';
-                }
-
-                // Final save and render
-                if (_saveTimer) { clearTimeout(_saveTimer); _saveTimer = null; }
-                if (lastBubble) lastBubble.classList.remove('streaming');
-                saveAIState();
-                renderAIChatMessages();
-                setAIMessage('success', '⚡ Phản hồi hoàn tất!');
-
-            } catch (err) {
-                if (err.name === 'AbortError') {
-                    assistantMessage.content += '\n\n[⏹️ Đã ngắt kết nối theo yêu cầu]';
-                    setAIMessage('info', '⏹️ Đã dừng kết nối.');
-                } else {
-                    assistantMessage.content = '❌ ' + err.message;
-                    setAIMessage('error', '❌ ' + err.message);
-                }
-                if (_saveTimer) { clearTimeout(_saveTimer); _saveTimer = null; }
-                if (lastBubble) lastBubble.classList.remove('streaming');
-                saveAIState();
-                renderAIChatMessages();
-            } finally {
-                activeAIAbortController = null;
-                if (button) button.disabled = false;
-                if (stopBtn) stopBtn.style.display = 'none';
-            }
-        }
-
-        document.getElementById('aiFileInput')?.addEventListener('change', async (event) => {
-            const files = Array.from(event.target.files || []);
-            if (files.length) await addAIAttachments(files);
-            event.target.value = '';
-        });
-
-        document.getElementById('aiComposerInput')?.addEventListener('paste', async (event) => {
-            const items = Array.from(event.clipboardData?.items || []);
-            const imageItems = items.filter(item => item.type && item.type.startsWith('image/'));
-            if (imageItems.length) {
-                event.preventDefault();
-                const files = imageItems.map(item => item.getAsFile()).filter(Boolean);
-                if (files.length) await addAIAttachments(files);
-            }
-        });
-
-        document.getElementById('aiComposerInput')?.addEventListener('drop', async (event) => {
-            event.preventDefault();
-            const files = Array.from(event.dataTransfer?.files || []);
-            if (files.length) await addAIAttachments(files);
-        });
-
-        document.getElementById('aiComposerInput')?.addEventListener('dragover', (event) => {
-            event.preventDefault();
-        });
-
         if (window.lucide) {
             window.lucide.createIcons();
+        } else {
+            // lucide.js tải defer — đảm bảo icon vẫn render khi nó load xong sau main.js
+            window.addEventListener('load', () => {
+                if (window.lucide) window.lucide.createIcons();
+            });
         }
 
         function setMessage(elementId, type, text) {
@@ -904,7 +150,7 @@
             const year = dt.getFullYear();
             return `${day}/${month}/${year}`;
         }
-        
+
         // ========== SSL Check ==========
         async function checkSSL() {
             const domain = document.getElementById('sslDomainInput').value.trim();
@@ -998,6 +244,34 @@
                 empty.className = 'text-muted';
                 empty.textContent = 'Không có SAN';
                 sanEl.appendChild(empty);
+            }
+
+            const chainEl = document.getElementById('sslCertificateChain');
+            if (chainEl) {
+                const chain = Array.isArray(data.certificate_chain) ? data.certificate_chain : [];
+                chainEl.innerHTML = chain.length
+                    ? chain.map((cert, index) => {
+                        const sans = Array.isArray(cert.subject_alt_names) && cert.subject_alt_names.length
+                            ? cert.subject_alt_names.join(', ')
+                            : '-';
+                        return '<article class="certificate-chain-item ' + (index === 0 ? 'is-leaf' : '') + '">' +
+                            '<div class="certificate-chain-head">' +
+                                '<strong>' + escapeHtml(cert.label || (index === 0 ? 'Leaf certificate' : 'Chain ' + index)) + '</strong>' +
+                                '<span class="certificate-chain-status ' + (cert.valid ? 'valid' : 'invalid') + '">' + (cert.valid ? 'Valid' : 'Expired / Not valid') + '</span>' +
+                            '</div>' +
+                            '<div class="certificate-chain-grid">' +
+                                '<div><b>Common name</b><span>' + escapeHtml(cert.subject_common_name || '-') + '</span></div>' +
+                                '<div><b>Organization</b><span>' + escapeHtml(cert.subject_org || '-') + '</span></div>' +
+                                '<div><b>Issuer</b><span>' + escapeHtml(cert.issuer_common_name || cert.issuer || '-') + '</span></div>' +
+                                '<div><b>Issuer organization</b><span>' + escapeHtml(cert.issuer_org || '-') + '</span></div>' +
+                                '<div><b>Valid</b><span>' + escapeHtml(formatCertDate(cert.valid_from)) + ' → ' + escapeHtml(formatCertDate(cert.valid_to)) + '</span></div>' +
+                                '<div><b>Serial</b><span class="mono-sm">' + escapeHtml(cert.serial_number || '-') + '</span></div>' +
+                                '<div><b>Signature</b><span>' + escapeHtml(cert.signature_algorithm || '-') + '</span></div>' +
+                                '<div><b>SANs</b><span>' + escapeHtml(sans) + '</span></div>' +
+                            '</div>' +
+                        '</article>';
+                    }).join('')
+                    : '<div class="chain-empty">Server không gửi certificate chain bổ sung.</div>';
             }
             
             // Serial & Version
@@ -1490,44 +764,37 @@
         }
 
         function renderHistoryRecord(record) {
-            const values = [];
-            if (record.flags && record.flags.length > 0) {
-                record.flags.forEach(flag => {
-                    values.push('<span class="history-record-pill">' + escapeHtml(String(flag)) + '</span>');
-                });
-            }
-            if (record.tlp) {
-                values.push('<span class="history-record-pill">TLP: ' + escapeHtml(String(record.tlp)) + '</span>');
-            }
-            if (record.customer) {
-                values.push('<span class="history-record-pill">Customer: ' + escapeHtml(String(record.customer)) + '</span>');
-            }
+            const rrtype = String(record.rrtype || '-').toUpperCase();
+            const typeColor = { A: '#2563eb', AAAA: '#7c3aed', MX: '#d97706', NS: '#059669', TXT: '#db2777', CNAME: '#0891b2', SOA: '#64748b', CAA: '#b45309' }[rrtype] || '#475569';
+            const isLive = record.last_seen_ts && (Date.now() / 1000 - record.last_seen_ts) < 3 * 86400;
 
             const metaParts = [
-                'Class: ' + escapeHtml(String(record.rrclass || '-')),
-                'First: ' + escapeHtml(formatHistoryTimestamp(record.first_seen)),
-                'Last: ' + escapeHtml(formatHistoryTimestamp(record.last_seen)),
+                'First: <b>' + escapeHtml(formatHistoryTimestamp(record.first_seen)) + '</b>',
+                'Last: <b>' + escapeHtml(formatHistoryTimestamp(record.last_seen)) + '</b>',
             ];
             if (record.count !== null && record.count !== undefined) {
-                metaParts.push('Count: ' + escapeHtml(String(record.count)));
+                metaParts.push('Count: <b>' + escapeHtml(String(record.count)) + '</b>');
             }
 
             const noteHtml = record.note
                 ? '<div class="history-record-note">' + escapeHtml(record.note) + '</div>'
                 : '';
 
-            return '<div class="history-record-item">' +
+            return '<div class="history-record-item' + (isLive ? ' is-live' : '') + '">' +
                 '<div class="history-record-top">' +
-                    '<div>' +
-                        '<div class="history-record-title"><span class="history-record-pill" style="margin-right:8px;">' + escapeHtml(String(record.rrtype || '-')) + '</span>' + escapeHtml(String(record.query || '-')) + ' → ' + escapeHtml(String(record.answer || '-')) + '</div>' +
-                        '<div class="history-record-meta">' + metaParts.map(function(part) { return '<span>' + part + '</span>'; }).join('') + '</div>' +
+                    '<div class="history-record-main">' +
+                        '<span class="history-type-badge" style="background:' + typeColor + '18;color:' + typeColor + ';border:1px solid ' + typeColor + '40;">' + escapeHtml(rrtype) + '</span>' +
+                        '<div class="history-record-text">' +
+                            '<div class="history-record-title">' + escapeHtml(String(record.query || '-')) + '</div>' +
+                            '<div class="history-record-answer">' + (rrtype === 'A' || rrtype === 'AAAA' || rrtype === 'CNAME' || rrtype === 'NS' ? '→ ' : '') + escapeHtml(String(record.answer || '-')) + '</div>' +
+                        '</div>' +
+                        (isLive ? '<span class="history-live-dot" title="Vẫn còn hiệu lực gần đây"></span>' : '') +
                     '</div>' +
-                    '<div class="history-record-meta" style="flex-direction:column;align-items:flex-end;gap:4px;">' +
-                        '<span>' + escapeHtml(String(record.source_label || '-')) + '</span>' +
-                        (record.source_id ? '<span>' + escapeHtml(String(record.source_id)) + '</span>' : '') +
+                    '<div class="history-record-meta">' +
+                        '<span>' + metaParts.join('</span><span>') + '</span>' +
+                        '<span class="history-record-src">' + escapeHtml(String(record.source_label || '-')) + '</span>' +
                     '</div>' +
                 '</div>' +
-                (values.length > 0 ? '<div class="history-record-values">' + values.join('') + '</div>' : '') +
                 noteHtml +
             '</div>';
         }
@@ -1536,17 +803,17 @@
             const timeline = Array.isArray(source.timeline) ? source.timeline : [];
             const typeCounts = source.type_counts || {};
             const typeChips = Object.keys(typeCounts).map(function(type) {
-                return '<span class="dns-section-chip">' + escapeHtml(type) + ': ' + escapeHtml(String(typeCounts[type])) + '</span>';
+                return '<button type="button" class="dns-section-chip history-type-filter" data-type="' + escapeHtml(type) + '" onclick="toggleHistoryTypeFilter(\'' + escapeHtml(type) + '\', this)" title="Bấm để lọc theo loại record">' + escapeHtml(type) + ': ' + escapeHtml(String(typeCounts[type])) + '</button>';
             }).join('');
 
+            const statusValue = source.status === 'ok' ? 'ok' : 'lỗi';
             const summaryHtml = '<div class="history-source-summary">' +
                 '<div class="history-summary-card"><div class="history-summary-label">Records</div><div class="history-summary-value">' + escapeHtml(String(source.record_count || 0)) + '</div></div>' +
-                '<div class="history-summary-card"><div class="history-summary-label">Buckets</div><div class="history-summary-value success">' + escapeHtml(String(timeline.length || 0)) + '</div></div>' +
-                '<div class="history-summary-card"><div class="history-summary-label">Endpoint</div><div class="history-summary-value warning" title="' + escapeHtml(String(source.endpoint || '-')) + '">' + escapeHtml(String(source.endpoint || '-')) + '</div></div>' +
-                '<div class="history-summary-card"><div class="history-summary-label">Status</div><div class="history-summary-value ' + (source.status === 'ok' ? 'success' : 'error') + '">' + escapeHtml(String(source.status || 'ok')) + '</div></div>' +
+                '<div class="history-summary-card"><div class="history-summary-label">Mốc thời gian</div><div class="history-summary-value success">' + escapeHtml(String(timeline.length || 0)) + '</div></div>' +
+                '<div class="history-summary-card"><div class="history-summary-label">Trạng thái</div><div class="history-summary-value ' + (source.status === 'ok' ? 'success' : 'error') + '">' + escapeHtml(statusValue) + '</div></div>' +
             '</div>';
 
-            const typeHtml = typeChips ? '<div class="history-record-values" style="margin-bottom:14px;">' + typeChips + '</div>' : '';
+            const typeHtml = typeChips ? '<div class="history-record-values" style="margin-bottom:14px;">' + typeChips + '<span class="dns-section-chip" style="opacity:.6;">Bấm vào loại để lọc</span></div>' : '';
 
             let timelineHtml = '';
             if (source.error) {
@@ -1568,12 +835,21 @@
                     }, {});
                     const typeCards = Object.keys(groupedByType).sort().map(function(type) {
                         const typeRecords = groupedByType[type] || [];
+                        // Giới hạn render 60 record/loại để DOM nhẹ — phần còn lại bấm "xem thêm"
+                        const renderLimit = 60;
+                        const visibleRecords = typeRecords.slice(0, renderLimit);
+                        const hiddenCount = typeRecords.length - visibleRecords.length;
+                        const recordIdBase = 'hist-' + escapeHtml(String(source.id || 'src')) + '-' + escapeHtml(String(bucket.bucket_key || 'bk')) + '-' + escapeHtml(type);
                         return '<div class="history-type-card">' +
                             '<div class="history-type-head">' +
                                 '<div class="history-type-title">' + escapeHtml(type) + '</div>' +
                                 '<div class="history-type-count">' + escapeHtml(String(typeRecords.length)) + ' records</div>' +
                             '</div>' +
-                            '<div class="history-type-body">' + typeRecords.map(renderHistoryRecord).join('') + '</div>' +
+                            '<div class="history-type-body">' + visibleRecords.map(renderHistoryRecord).join('') +
+                                (hiddenCount > 0
+                                    ? '<button type="button" class="btn btn-secondary history-show-more" data-target="' + recordIdBase + '" onclick="showMoreHistoryRecords(this)" data-records=\'' + escapeHtml(JSON.stringify(typeRecords.slice(renderLimit).map(function(r){ return r; }))).replace(/'/g, '&#39;') + '\'>Xem thêm ' + hiddenCount + ' records</button>'
+                                    : '') +
+                            '</div>' +
                         '</div>';
                     }).join('');
 
@@ -1599,10 +875,32 @@
             '</section>';
         }
 
+        let historyActiveTypeFilter = null;
+        function toggleHistoryTypeFilter(type, btnEl) {
+            historyActiveTypeFilter = historyActiveTypeFilter === type ? null : type;
+            document.querySelectorAll('.history-type-filter').forEach(function(chip) {
+                chip.classList.toggle('is-filtering', chip.dataset.type === historyActiveTypeFilter);
+            });
+            document.querySelectorAll('.history-source-pane.active .history-type-card').forEach(function(card) {
+                card.style.display = (!historyActiveTypeFilter || card.querySelector('.history-type-title').textContent === historyActiveTypeFilter) ? '' : 'none';
+            });
+        }
+
+        function showMoreHistoryRecords(btnEl) {
+            let records = [];
+            try { records = JSON.parse(btnEl.dataset.records || '[]'); } catch (e) { records = []; }
+            const container = btnEl.parentElement;
+            btnEl.remove();
+            const frag = document.createDocumentFragment();
+            const tmp = document.createElement('div');
+            records.forEach(function(record) { tmp.innerHTML = renderHistoryRecord(record); frag.appendChild(tmp.firstChild); });
+            container.appendChild(frag);
+        }
+
         function renderDNSHistoryResults(data) {
             document.getElementById('dnsHistoryCountChip').textContent = (data.total_records || 0) + ' records';
             document.getElementById('historySummaryDomain').textContent = data.domain || '-';
-            document.getElementById('historySummarySources').textContent = (data.provider_count || (data.sources ? data.sources.length : 0)) || 0 + ' sources';
+            document.getElementById('historySummarySources').textContent = String(data.provider_count || (data.sources ? data.sources.length : 0) || 0) + ' sources';
             document.getElementById('historySummaryRecords').textContent = data.total_records || 0;
             document.getElementById('historySummaryUpdated').textContent = data.timestamp ? new Date(data.timestamp).toLocaleString('vi-VN') : '-';
             
@@ -1694,7 +992,9 @@
             if (!panel) return;
             var html = '<div class="dns-record-card">';
             html += '<div class="dns-record-header">';
-            html += '<div><div class="dns-record-title">WHOIS</div><div class="dns-record-subtitle">Kết quả từ whois.pavietnam.net</div></div>';
+            const sourceUrl = String(data.source_url || '');
+            const whoisSource = sourceUrl.includes('whois.net.vn') ? 'WHOIS API whois.net.vn' : (sourceUrl.startsWith('https://rdap') ? 'RDAP chuẩn' : (sourceUrl.startsWith('whois://') ? 'WHOIS registry' : 'Nguồn WHOIS dự phòng'));
+            html += '<div><div class="dns-record-title">WHOIS</div><div class="dns-record-subtitle">' + whoisSource + '</div></div>';
             html += '<span class="dns-rate full">' + escapeHtml(data.domain || '-') + '</span>';
             html += '</div>';
             html += '<div class="dns-record-body">';
@@ -1712,7 +1012,10 @@
                 html += '<div style="margin-top:14px;"><div class="dns-record-subtitle" style="margin-bottom:8px;">Name Servers</div><div class="dns-resolver-values">' + data.name_servers.map(function(ns) { return '<span class="dns-record-value">' + escapeHtml(ns) + '</span>'; }).join('') + '</div></div>';
             }
             if (data.errors && data.errors.length > 0) {
-                html += '<div style="margin-top:14px; padding:12px 14px; border-radius:12px; background:#fef2f2; color:#b91c1c; border:1px solid #fee2e2;"><strong>Errors:</strong> ' + escapeHtml(data.errors.join('; ')) + '</div>';
+                const whoisNotice = data.errors.some(error => String(error).includes('anti-bot'))
+                    ? 'Nguồn WHOIS yêu cầu xác minh trình duyệt nên backend không thể lấy dữ liệu tự động.'
+                    : 'Không lấy được dữ liệu đăng ký từ nguồn hiện tại.';
+                html += '<div style="margin-top:14px; padding:12px 14px; border-radius:12px; background:#fffbeb; color:#92400e; border:1px solid #fde68a;"><strong>WHOIS:</strong> ' + whoisNotice + ' Kết quả DNS phía trên vẫn hợp lệ.</div>';
             }
             html += '</div></div>';
             panel.innerHTML = html;
@@ -3755,198 +3058,6 @@
                 freeSslShowMessage('Không thể tạo PEM/PFX: ' + (err.message || err), 'error');
             }
         }
-
-        function installSslSetMessage(message, type = 'info') {
-            const el = document.getElementById('installSslMessage');
-            if (!el) return;
-            el.innerHTML = `<div class="message-${type}">${message}</div>`;
-        }
-
-        function installSslUseCatalog(item) {
-            document.getElementById('installSslDomain').value = item.domain || item.name || '';
-            document.getElementById('installSslServer').value = item.server || '';
-            document.getElementById('installSslKey').value = item.key || '';
-            document.getElementById('installSslCert').value = item.cert || '';
-            document.getElementById('installSslBundle').value = item.bundle || '';
-            installSslSetMessage(`Đã nạp dữ liệu từ <strong>${(item.name || '').replace(/</g, '&lt;')}</strong>.`, 'success');
-        }
-
-        async function installSslLoadCatalog(pathOverride = null) {
-            const listEl = document.getElementById('installSslCatalogList');
-            const infoEl = document.getElementById('installSslCatalogInfo');
-            const pathInputEl = document.getElementById('installSslCatalogPath');
-            const pathInput = pathOverride !== null ? pathOverride : pathInputEl.value.trim();
-            listEl.innerHTML = '<div class="installssl-empty">Đang quét thư mục SSL...</div>';
-            const url = '/api/ssl-catalog' + (pathInput ? '?path=' + encodeURIComponent(pathInput) : '');
-            const { ok, data, errorText } = await freeSslFetch(url, null, 'GET');
-            if (!ok) {
-                listEl.innerHTML = `<div class="installssl-empty">❌ ${errorText}</div>`;
-                infoEl.textContent = 'Không thể tải danh sách SSL.';
-                return;
-            }
-            const items = Array.isArray(data.items) ? data.items : [];
-            const actualPath = data.base_dir || (pathInput || '/home/nvpa/Desktop/ssl');
-            infoEl.textContent = `Đang dùng thư mục: ${actualPath}`;
-            if (!items.length) {
-                listEl.innerHTML = `<div class="installssl-empty">Không tìm thấy thư mục cert nào trong ${actualPath}.</div>`;
-                return;
-            }
-            listEl.innerHTML = '';
-            const fragment = document.createDocumentFragment();
-            items.forEach((item, idx) => {
-                const row = document.createElement('div');
-                row.className = 'installssl-item';
-                row.innerHTML = `
-                    <div>
-                        <div class="installssl-item-title">${(item.name || '').replace(/</g, '&lt;')}</div>
-                        <div class="installssl-item-meta">Server: ${(item.server || '-').replace(/</g, '&lt;')}</div>
-                    </div>
-                    <button class="btn btn-secondary btn-compact" type="button" data-item-index="${idx}">Chọn</button>
-                `;
-                row.querySelector('button').addEventListener('click', () => installSslUseCatalog(item));
-                fragment.appendChild(row);
-            });
-            listEl.appendChild(fragment);
-        }
-
-        function installSslChooseFolder() {
-            document.getElementById('installSslUploadFolder').click();
-        }
-
-        async function installSslUploadFolderChanged(event) {
-            const files = Array.from(event.target.files || []);
-            if (!files.length) {
-                return;
-            }
-            const outputEl = document.getElementById('installSslOutput');
-            const infoEl = document.getElementById('installSslCatalogInfo');
-            outputEl.style.display = 'block';
-            outputEl.textContent = 'Đang upload thư mục SSL...\n';
-            installSslSetMessage('Đang upload và scan thư mục...', 'info');
-
-            const formData = new FormData();
-            files.forEach(file => {
-                formData.append('files', file, file.webkitRelativePath || file.name);
-            });
-
-            try {
-                const resp = await fetch('/api/ssl-upload', {
-                    method: 'POST',
-                    body: formData
-                });
-                const data = await resp.json();
-                if (!resp.ok) {
-                    outputEl.textContent += `Upload thất bại: ${data.error || resp.statusText}\n`;
-                    installSslSetMessage('Upload thư mục thất bại.', 'error');
-                    return;
-                }
-                outputEl.textContent += 'Upload thành công. Đang load danh sách...\n';
-                document.getElementById('installSslCatalogPath').value = data.base_dir || '';
-                installSslLoadCatalog(data.base_dir);
-                installSslSetMessage('Upload thư mục thành công.', 'success');
-            } catch (err) {
-                outputEl.textContent += `Lỗi upload: ${err.message || err}\n`;
-                installSslSetMessage('Upload thư mục thất bại.', 'error');
-            }
-        }
-
-        function installSslResetCatalog() {
-            const pathInputEl = document.getElementById('installSslCatalogPath');
-            pathInputEl.value = '';
-            installSslLoadCatalog('');
-            installSslSetMessage('Đã reset về thư mục SSL mặc định.', 'success');
-        }
-
-        async function installSslSubmit() {
-            const domain = document.getElementById('installSslDomain').value.trim();
-            const serverInput = document.getElementById('installSslServer').value.trim();
-            const password = document.getElementById('installSslPassword').value.trim();
-            const key = document.getElementById('installSslKey').value.trim();
-            const cert = document.getElementById('installSslCert').value.trim();
-            const bundle = document.getElementById('installSslBundle').value.trim();
-
-            if (!domain || !key || !cert || !bundle) {
-                installSslSetMessage('Vui lòng nhập domain và 3 file SSL.', 'error');
-                return;
-            }
-
-            const outputEl = document.getElementById('installSslOutput');
-            outputEl.style.display = 'block';
-            outputEl.textContent = 'Đang bắt đầu cài SSL...\n';
-            installSslSetMessage('Đang cài SSL, vui lòng chờ...', 'info');
-
-            const controller = new AbortController();
-            const signal = controller.signal;
-
-            try {
-                const response = await fetch('/api/install-ssl', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        domain,
-                        server_input: serverInput,
-                        password,
-                        key,
-                        cert,
-                        bundle
-                    }),
-                    signal
-                });
-
-                if (!response.ok && !response.body) {
-                    const text = await response.text();
-                    outputEl.textContent += 'Lỗi phản hồi server: ' + response.status + '\n' + text;
-                    installSslSetMessage('Cài SSL thất bại.', 'error');
-                    return;
-                }
-
-                const reader = response.body.getReader();
-                const decoder = new TextDecoder('utf-8');
-                let finished = false;
-                let success = false;
-
-                while (!finished) {
-                    const { value, done } = await reader.read();
-                    if (done) {
-                        finished = true;
-                        break;
-                    }
-                    const chunk = decoder.decode(value, { stream: true });
-                    if (chunk) {
-                        outputEl.textContent += chunk;
-                        outputEl.scrollTop = outputEl.scrollHeight;
-                    }
-                }
-
-                const finalText = outputEl.textContent || '';
-                if (/successfully|SUCCESS|Install SSL completed/i.test(finalText)) {
-                    installSslSetMessage('Cài SSL hoàn tất.', 'success');
-                    success = true;
-                } else if (/failed|ERROR|error/i.test(finalText)) {
-                    installSslSetMessage('Cài SSL thất bại. Xem log bên dưới.', 'error');
-                } else {
-                    installSslSetMessage('Hoàn thành, kiểm tra log để biết chi tiết.', 'info');
-                }
-
-                return success;
-            } catch (err) {
-                outputEl.textContent += '\nLỗi tải log realtime: ' + (err.message || err);
-                installSslSetMessage('Cài SSL thất bại.', 'error');
-            }
-        }
-
-        function installSslReset() {
-            document.getElementById('installSslDomain').value = '';
-            document.getElementById('installSslServer').value = '';
-            document.getElementById('installSslPassword').value = '';
-            document.getElementById('installSslKey').value = '';
-            document.getElementById('installSslCert').value = '';
-            document.getElementById('installSslBundle').value = '';
-            installSslSetMessage('', 'info');
-            document.getElementById('installSslOutput').style.display = 'none';
-            document.getElementById('installSslOutput').textContent = '';
-        }
-
         function freeSslReset() {
             freeSslSessionId = null;
             freeSslStopStatusMonitor();
@@ -3987,17 +3098,11 @@
         switchTab(document.querySelector('.tab-btn.active')?.dataset.tab || 'dns');
         initTabNavigationA11y();
         setDnsView(dnsViewMode);
-        setAIMode('chat');
-        loadAIState();
-        renderAIChatList();
-        renderAIChatMessages();
-        toggleAIPromptPanel(false);
         freeSslPositionStorageModal();
         window.addEventListener('resize', freeSslPositionStorageModal);
 
         freeSslLoadStoredList();
         freeSslRestoreActiveFromStorage();
-        installSslLoadCatalog();
         freeSslSetActionState('pending');
         freeSslUpdateProviderNote();
         setSSLDecoderMode('match');

@@ -12,6 +12,7 @@ import html
 import json
 import os
 import re
+import socket
 import sys
 import threading
 import time
@@ -23,11 +24,49 @@ from urllib import request as urlrequest
 
 DEFAULT_TIMEOUT = 12
 WHOIS_CACHE_TTL_SECONDS = int(os.environ.get('WHOIS_CACHE_TTL_SECONDS', '15'))
+WHOIS_NET_VN_URL = "https://www.whois.net.vn/whois.php?domain={domain}&act=getwhois"
 WHOIS_CHECK_URL = "https://whois.pavietnam.net/check/{domain}/"
 WHOIS_API_URL = "https://whois.pavietnam.net/whois.php"
+VNNIC_WHOIS_URL = "https://whois.nic.vn/whois?domain={domain}"
+RDAP_BOOTSTRAP_URL = "https://data.iana.org/rdap/dns.json"
+RDAP_TIMEOUT = 8
+WHOIS_SOCKET_TIMEOUT = 8
 
 _CACHE_LOCK = threading.Lock()
 _WHOIS_CACHE: dict[str, tuple[float, WhoisResult]] = {}
+_RDAP_SERVICES: Optional[dict[str, list[str]]] = None
+_RDAP_LOCK = threading.Lock()
+
+
+def _rdap_services() -> dict[str, list[str]]:
+    global _RDAP_SERVICES
+    with _RDAP_LOCK:
+        if _RDAP_SERVICES is not None:
+            return _RDAP_SERVICES
+        try:
+            payload, err = fetch_json_url(RDAP_BOOTSTRAP_URL, RDAP_TIMEOUT)
+            services: dict[str, list[str]] = {}
+            if not err and isinstance(payload, dict):
+                for service in payload.get('services', []):
+                    if len(service) != 2:
+                        continue
+                    tlds, urls = service
+                    for tld in tlds:
+                        services[str(tld).lower().lstrip('.')] = [str(url).rstrip('/') for url in urls]
+            _RDAP_SERVICES = services
+        except Exception:
+            _RDAP_SERVICES = {}
+        return _RDAP_SERVICES
+
+
+def fetch_json_url(url: str, timeout: int = DEFAULT_TIMEOUT) -> tuple[Optional[dict[str, Any]], Optional[str]]:
+    req = urlrequest.Request(url, headers={'User-Agent': 'all-tool/3.0', 'Accept': 'application/rdap+json, application/json'})
+    try:
+        with urlrequest.urlopen(req, timeout=timeout) as resp:
+            payload = json.loads(resp.read().decode('utf-8', errors='replace'))
+        return payload if isinstance(payload, dict) else None, None
+    except Exception as exc:
+        return None, str(exc)
 
 
 @dataclass
@@ -92,9 +131,29 @@ def fetch_html(url: str, timeout: int = DEFAULT_TIMEOUT) -> tuple[Optional[str],
         with urlrequest.urlopen(req, timeout=timeout) as resp:
             return resp.read().decode("utf-8", errors="replace"), None
     except urlerror.HTTPError as exc:
+        body = exc.read().decode('utf-8', errors='replace')
+        if exc.code == 468 or 'slg-text' in body or 'product_data' in body:
+            return None, 'PA WHOIS yêu cầu xác minh trình duyệt (anti-bot challenge)'
         return None, f"HTTP error: {exc.code}"
     except urlerror.URLError as exc:
         return None, f"Network error: {exc}"
+
+
+def fetch_vnnic(domain: str, timeout: int = DEFAULT_TIMEOUT) -> tuple[Optional[str], Optional[str]]:
+    url = VNNIC_WHOIS_URL.format(domain=urlparse.quote(domain))
+    req = urlrequest.Request(
+        url,
+        headers={
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/131 Safari/537.36',
+            'Accept': 'text/plain,text/html,application/json;q=0.9,*/*;q=0.8',
+            'Referer': 'https://whois.nic.vn/',
+        },
+    )
+    try:
+        with urlrequest.urlopen(req, timeout=timeout) as resp:
+            return resp.read().decode('utf-8', errors='replace'), None
+    except Exception as exc:
+        return None, str(exc)
 
 
 def fetch_json(
@@ -306,6 +365,160 @@ def parse_pavietnam_html(domain: str, source_url: str, page_html: str) -> WhoisR
     )
 
 
+def _rdap_event(payload: dict[str, Any], action: str) -> Optional[str]:
+    for event in payload.get('events', []) or []:
+        if isinstance(event, dict) and event.get('eventAction') == action:
+            return event.get('eventDate')
+    return None
+
+
+def _rdap_entity(payload: dict[str, Any], roles: set[str]) -> Optional[dict[str, Any]]:
+    for entity in payload.get('entities', []) or []:
+        if not isinstance(entity, dict) or not roles.intersection(set(entity.get('roles', []) or [])):
+            continue
+        vcard = entity.get('vcardArray')
+        props = vcard[1] if isinstance(vcard, list) and len(vcard) > 1 else []
+        values = {}
+        for prop in props:
+            if isinstance(prop, list) and len(prop) > 3:
+                values[prop[0]] = prop[3]
+        return {'name': values.get('fn') or values.get('org'), 'email': values.get('email')}
+    return None
+
+
+def parse_rdap(domain: str, source_url: str, payload: dict[str, Any]) -> WhoisResult:
+    registrant = _rdap_entity(payload, {'registrant'}) or {}
+    registrar = _rdap_entity(payload, {'registrar'}) or {}
+    nameservers = []
+    for nameserver in payload.get('nameservers', []) or []:
+        if isinstance(nameserver, dict) and nameserver.get('ldhName'):
+            nameservers.append(str(nameserver['ldhName']).rstrip('.'))
+    statuses = payload.get('status') or []
+    return WhoisResult(
+        domain=domain,
+        source_url=source_url,
+        status_line=', '.join(str(item) for item in statuses) if statuses else None,
+        creation_date=_rdap_event(payload, 'registration'),
+        expiry_date=_rdap_event(payload, 'expiration'),
+        delete_state_date=_rdap_event(payload, 'deletion'),
+        free_date=None,
+        registrant_name=registrant.get('name'),
+        registrar_name=registrar.get('name'),
+        registrar_iana_id=payload.get('registrarIanaId'),
+        registrar_abuse_contact_email=registrar.get('email'),
+        registrar_abuse_contact_phone=None,
+        domain_status=', '.join(str(item) for item in statuses) if statuses else None,
+        registry_lock=None,
+        name_servers=nameservers,
+        raw_html=None,
+        errors=[],
+    )
+
+
+def _whois_server_for_domain(ascii_domain: str) -> Optional[str]:
+    tld = ascii_domain.rsplit('.', 1)[-1].lower()
+    known = {
+        'com': 'whois.verisign-grs.com', 'net': 'whois.verisign-grs.com',
+        'org': 'whois.pir.org', 'info': 'whois.afilias.net', 'biz': 'whois.biz',
+        'vn': 'whois.vnnic.vn',
+    }
+    return known.get(tld)
+
+
+def lookup_whois_socket(domain: str, server: str) -> tuple[Optional[WhoisResult], Optional[str]]:
+    try:
+        with socket.create_connection((server, 43), timeout=WHOIS_SOCKET_TIMEOUT) as conn:
+            conn.sendall((domain + '\r\n').encode('ascii'))
+            chunks = []
+            while True:
+                chunk = conn.recv(4096)
+                if not chunk:
+                    break
+                chunks.append(chunk)
+                if sum(len(item) for item in chunks) > 512 * 1024:
+                    break
+        text = b''.join(chunks).decode('utf-8', errors='replace')
+        if not text.strip():
+            return None, 'Empty WHOIS response'
+        return parse_whois_text(domain, f'whois://{server}/{domain}', text), None
+    except Exception as exc:
+        return None, str(exc)
+
+
+def parse_whois_text(domain: str, source_url: str, text: str) -> WhoisResult:
+    def field(*labels: str) -> Optional[str]:
+        for line in text.splitlines():
+            for label in labels:
+                if line.lower().startswith(label.lower() + ':'):
+                    value = line.split(':', 1)[1].strip()
+                    if value and not value.lower().startswith('%'):
+                        return value
+        return None
+    statuses = [line.split(':', 1)[1].strip() for line in text.splitlines() if line.lower().startswith('domain status:')]
+    nameservers = []
+    for line in text.splitlines():
+        if line.lower().startswith(('name server:', 'nameserver:')):
+            nameservers.append(line.split(':', 1)[1].strip().rstrip('.'))
+    return WhoisResult(
+        domain=domain, source_url=source_url,
+        status_line=', '.join(statuses) or field('status'),
+        creation_date=field('creation date', 'created'),
+        expiry_date=field('registry expiry date', 'expiration date', 'expiry date'),
+        delete_state_date=None, free_date=None,
+        registrant_name=field('registrant name', 'registrant organization', 'owner name'),
+        registrar_name=field('registrar'), registrar_iana_id=field('registrar iana id'),
+        registrar_abuse_contact_email=field('registrar abuse contact email'),
+        registrar_abuse_contact_phone=field('registrar abuse contact phone'),
+        domain_status=', '.join(statuses) or None, registry_lock=None,
+        name_servers=list(dict.fromkeys(nameservers)), raw_html=None, errors=[])
+
+
+def fetch_whois_net_vn(domain: str, timeout: int = DEFAULT_TIMEOUT) -> tuple[Optional[WhoisResult], Optional[str]]:
+    source_url = WHOIS_NET_VN_URL.format(domain=urlparse.quote(domain))
+    req = urlrequest.Request(source_url, headers={
+        'User-Agent': 'all-tool/3.0',
+        'Accept': 'text/html,text/plain,application/xhtml+xml,*/*;q=0.8',
+    })
+    try:
+        with urlrequest.urlopen(req, timeout=timeout) as resp:
+            body = resp.read().decode('utf-8', errors='replace')
+    except Exception as exc:
+        return None, str(exc)
+
+    text = re.sub(r'<br\s*/?>', '\n', body, flags=re.IGNORECASE)
+    text = re.sub(r'<[^>]+>', '', text)
+    text = html.unescape(text)
+    text = re.sub(r'\r\n?', '\n', text)
+    text = '\n'.join(line.strip() for line in text.split('\n') if line.strip())
+    if not text or 'record found' not in text.lower():
+        return None, 'Domain record not found'
+
+    def value(label: str) -> Optional[str]:
+        match = re.search(rf'{re.escape(label)}\s*:\s*(.+)', text, flags=re.IGNORECASE)
+        return match.group(1).strip() if match else None
+
+    dns_value = value('DNS') or ''
+    return WhoisResult(
+        domain=domain,
+        source_url=source_url,
+        status_line=value('Status'),
+        creation_date=value('Issue Date'),
+        expiry_date=value('Expired Date'),
+        delete_state_date=None,
+        free_date=None,
+        registrant_name=value('Owner Name'),
+        registrar_name=value('Registrar Name'),
+        registrar_iana_id=None,
+        registrar_abuse_contact_email=None,
+        registrar_abuse_contact_phone=None,
+        domain_status=value('Status'),
+        registry_lock=None,
+        name_servers=[item.strip() for item in dns_value.split(',') if item.strip()],
+        raw_html=body,
+        errors=[],
+    ), None
+
+
 def lookup_domain(domain: str, include_html: bool) -> WhoisResult:
     ascii_domain = to_ascii_domain(domain)
     source_url = WHOIS_CHECK_URL.format(domain=urlparse.quote(ascii_domain))
@@ -316,6 +529,38 @@ def lookup_domain(domain: str, include_html: bool) -> WhoisResult:
         if include_html:
             return cached
         return replace(cached, raw_html=None)
+
+    net_vn_result, net_vn_error = fetch_whois_net_vn(ascii_domain, DEFAULT_TIMEOUT)
+    if net_vn_result:
+        if not include_html:
+            net_vn_result.raw_html = None
+        _cache_set(cache_key, net_vn_result)
+        return net_vn_result
+
+    tld = ascii_domain.rsplit('.', 1)[-1].lower()
+    rdap_urls = _rdap_services().get(tld, [])
+    for base_url in rdap_urls:
+        rdap_url = f'{base_url.rstrip("/")}/domain/{urlparse.quote(ascii_domain)}'
+        payload, rdap_err = fetch_json_url(rdap_url, RDAP_TIMEOUT)
+        if payload:
+            result = parse_rdap(ascii_domain, rdap_url, payload)
+            _cache_set(cache_key, result)
+            return result
+
+    whois_server = _whois_server_for_domain(ascii_domain)
+    if whois_server:
+        socket_result, socket_err = lookup_whois_socket(ascii_domain, whois_server)
+        if socket_result:
+            _cache_set(cache_key, socket_result)
+            return socket_result
+
+    if tld == 'vn':
+        vnnic_url = VNNIC_WHOIS_URL.format(domain=urlparse.quote(ascii_domain))
+        vnnic_text, vnnic_err = fetch_vnnic(ascii_domain, WHOIS_SOCKET_TIMEOUT)
+        if vnnic_text and len(vnnic_text.strip()) > 20:
+            result = parse_whois_text(ascii_domain, vnnic_url, vnnic_text)
+            _cache_set(cache_key, result)
+            return result
 
     page_html, err = fetch_html(source_url)
 
@@ -330,9 +575,14 @@ def lookup_domain(domain: str, include_html: bool) -> WhoisResult:
             free_date=None,
             registrant_name=None,
             registrar_name=None,
+            registrar_iana_id=None,
+            registrar_abuse_contact_email=None,
+            registrar_abuse_contact_phone=None,
+            domain_status=None,
+            registry_lock=None,
             name_servers=[],
             raw_html=None,
-            errors=[err],
+            errors=[err if 'anti-bot' in err else 'WHOIS source temporarily unavailable'],
         )
 
     result = parse_pavietnam_html(ascii_domain, source_url, page_html)

@@ -1,194 +1,175 @@
-# DNS Checker Tool
+# All-Tool — Network Tools Web App
 
-A Python command-line tool for checking DNS propagation across multiple DNS servers worldwide, similar to dnschecker.org.
+> Bộ công cụ Web cho quản trị viên hệ thống / webmaster: kiểm tra DNS, SSL, Host, tra cứu lịch sử DNS và cấp chứng chỉ SSL miễn phí (ACME).
+> Backend: **Python Flask** · Frontend: **HTML + Vanilla JS (main.js)** · Ngôn ngữ UI: **Tiếng Việt**
 
-## Features
+---
 
-✅ **No DNS Caching** - Always performs fresh queries without any caching
-✅ **Multiple DNS Servers** - Query from 10 different public DNS servers globally
-✅ **Multiple Record Types** - Support for A, AAAA, MX, NS, TXT, CNAME, SOA records
-✅ **Propagation Detection** - Automatically detects if DNS is fully propagated
-✅ **JSON Export** - Export results to JSON format for further analysis
-✅ **Color-coded Output** - Easy-to-read colored terminal output
-✅ **Fast & Efficient** - Parallel queries from multiple DNS servers
+## 📖 Tài liệu cho AI / Developer mới (đọc trước)
 
-## Installation
+Ứng dụng này là **một trang web duy nhất** (`/`) với **hệ thống tab** (sidebar bên trái). Toàn bộ logic nằm ở:
 
-### Requirements
-- Python 3.7+
-- pip (Python package manager)
+| File | Vai trò |
+|---|---|
+| `app.py` (~4200 dòng) | Toàn bộ backend Flask — 30 REST endpoints |
+| `static/js/main.js` (~4000 dòng) | Toàn bộ frontend logic, gọi API bằng `fetch` |
+| `static/css/style.css` (~3800 dòng) | Toàn bộ style (glassmorphism theme) |
+| `templates/index.html` | Khung trang + include các tab từ `templates/tabs/*.html` |
+| `whois_lookup.py` | Module WHOIS (dùng endpoint `whois.pavietnam.net`) |
+| `python_detector.py` | Detect Python interpreter trên máy chủ |
+| `acme/` | Lưu trữ order/key/session ACME (SSL miễn phí) |
 
-### Setup
+> ⚠️ **Đã xoá (2026-09-16):** `import-ssl.sh`, endpoint `/api/install-ssl`, toàn bộ JS `installSsl*` — tính năng "Install SSL" cũ không còn trong codebase.
 
-```bash
-# Install required packages
-pip install dnspython colorama
-
-# Or use the pre-configured environment
-cd /path/to/test-tool
-python dns_checker.py <domain>
-```
-
-## Usage
-
-### Basic Usage
+### Cách chạy
 
 ```bash
-# Check all record types for a domain
-python dns_checker.py example.com
+# 1. Tạo venv & cài dependencies
+python -m venv .venv
+.venv/Scripts/python -m pip install -r requirements.txt   # Windows (Git Bash)
+# .venv/bin/python -m pip install -r requirements.txt     # Linux/macOS
 
-# Check specific record types
-python dns_checker.py example.com A MX NS
+# 2. Chạy server (port mặc định 5000, đổi bằng env PORT)
+./run_server.sh          # script tự detect python
+# hoặc:
+.venv/Scripts/python.exe app.py
 
-# Check only A records
-python dns_checker.py example.com A
-
-# Check IPv6 records
-python dns_checker.py example.com AAAA
+# 3. Mở http://localhost:5000
 ```
 
-### Examples
+Dependencies: `Flask`, `Flask-Cors`, `dnspython`, `cryptography`, `requests`, `acme`, `josepy`.
 
-#### Check A and AAAA records for google.com
-```bash
-python dns_checker.py google.com A AAAA
+Deploy Render: xem `render.yaml` (runtime python, start `bash run_server.sh`).
+
+---
+
+## 🗺️ Sơ đồ kiến trúc & luồng hoạt động
+
+```mermaid
+flowchart LR
+    subgraph Browser["Trình duyệt"]
+        UI["index.html + main.js<br/>(hệ thống tab, defer scripts)"]
+    end
+    subgraph Flask["Flask Backend (app.py)"]
+        DNS["/api/check-dns*<br/>dnspython"]
+        SSLCHK["/api/check-ssl<br/>ssl module"]
+        HOST["/api/check-host<br/>ip-api.com"]
+        HIST["/api/check-dns-history<br/>8 nguồn DNS song song"]
+        ACME["/api/ssl-free/*<br/>acme client"]
+        STATIC["/static/*<br/>gzip + cache 1 ngày"]
+    end
+    UI -->|fetch JSON| Flask
+    STATIC -->|js/css gzipped| UI
+    DNS --> RESOLVERS["25 public DNS resolvers<br/>(Google, Cloudflare, Quad9...)"]
+    SSLCHK --> TARGET["Target :443"]
+    HOST --> IPAPI["ip-api.com"]
+    HIST --> PDNS["Mnemonic / Robtex / OTX / urlscan<br/>HackerTarget / RapidDNS / Subdomain Center"]
+    ACME --> CA["Let's Encrypt / ZeroSSL / SSL.com"]
 ```
 
-#### Check MX records for mail.example.com
-```bash
-python dns_checker.py example.com MX
-```
+### Mô tả từng tab (flow người dùng)
 
-#### Check NS and SOA records
-```bash
-python dns_checker.py example.com NS SOA
-```
+| Tab | Flow | API chính | Trạng thái khi test |
+|---|---|---|---|
+| **DNS** | Nhập domain → chọn record types (A/AAAA/CNAME/MX/TXT/NS/SOA/CAA) → query **song song 25 resolver** → hiển thị so sánh kết quả + trạng thái propagate | `POST /api/check-dns` (detail), `/api/check-dns-basic` | ✅ Hoạt động tốt (google.com: 23/25 resolver thành công) |
+| **Bulk DNS** | Dán danh sách domain → resolve hàng loạt → bảng IP/MX/NS | `POST /api/check-dns-bulk` | ✅ OK (test 2 domain) |
+| **DNS History** | Nhập domain → tổng hợp DNS/passive DNS từ **8 nguồn miễn phí không cần API key** → dedupe, gom theo từng mốc thời gian và từng record type (A/AAAA/MX/NS/TXT/CNAME/SUBDOMAIN), mở rộng first/last seen giữa các nguồn | `POST /api/check-dns-history` | ✅ OK |
+| **Host Check** | Nhập IP/domain → IP, ASN, ISP, reverse DNS, geolocation (ip-api.com) | `POST /api/check-host` | ✅ OK |
+| **WHOIS** | Ưu tiên API `whois.net.vn` cho quốc tế và `.vn`, sau đó RDAP chuẩn, WHOIS port 43 và fallback PA Việt Nam | `POST /api/whois` | ✅ OK |
+| **Email Auth** | Quét SPF, DKIM, DMARC, MX; tự động thử selector DKIM theo catalogue của Google Workspace, Microsoft 365, cPanel, iRedMail, MDaemon, Mailcow, Kerio, DirectAdmin và hiển thị Found/Not found từng record | `POST /api/check-email-auth` | ✅ OK |
+| **SSL Check** | Nhập domain → lấy cert từ :443 → status, hạn còn lại, issuer, SAN, redirect và toàn bộ chain (Leaf, Chain 1, Chain 2...) | `POST /api/check-ssl` | ✅ OK |
+| **SSL Bundle** | Upload ZIP / scan folder / paste PEM → tách & gộp cert+CA bundle, kiểm tra match key | `POST /api/ssl-upload`, `GET /api/ssl-catalog`, `POST /api/check-cert-file` | ✅ Đã fix đường dẫn (env `SSL_CATALOG_DIR`) |
+| **SSL Decoder** | 3 mode: Match Checker (cert↔key), Certificate Decoder, CSR Decoder | client-side (forge.js) + `POST /api/check-cert-file` | ✅ UI render OK |
+| **SSL Miễn Phí** | Wizard 5 bước: nhập domain/SANs → chọn CA (LE/ZeroSSL/SSL.com) → chọn DNS-01/HTTP-01 → server tạo CSR+order ACME → user thêm TXT record → verify → nhận cert 90 ngày | `POST /api/ssl-free/start` → `/check-challenge` → `/finalize` → `GET /list` | ✅ Đã fix lỗi JS load (bỏ gọi installSsl) |
 
-## Available DNS Servers
+Tab `Install SSL` và tab `AI Chat` đã bị **xoá hoàn toàn** khỏi codebase (2026-09-16): endpoint `/api/install-ssl`, `/api/ai/*`, toàn bộ JS/CSS liên quan đều đã dọn sạch.
 
-The tool queries from the following DNS servers:
-
-| Server Name | IP Address |
-|------------|-----------|
-| Google Primary | 8.8.8.8 |
-| Google Secondary | 8.8.4.4 |
-| Cloudflare Primary | 1.1.1.1 |
-| Cloudflare Secondary | 1.0.0.1 |
-| Quad9 | 9.9.9.9 |
-| OpenDNS Primary | 208.67.222.222 |
-| OpenDNS Secondary | 208.67.220.220 |
-| Verisign | 64.6.64.6 |
-| Level3 | 209.244.0.3 |
-| Yandex | 77.88.8.8 |
-
-## Supported Record Types
-
-- **A** - IPv4 address
-- **AAAA** - IPv6 address
-- **MX** - Mail exchange records
-- **NS** - Nameserver records
-- **TXT** - Text records
-- **CNAME** - Canonical name records
-- **SOA** - Start of authority records
-
-## Output Format
-
-The tool provides:
-
-1. **Terminal Output** - Colored, human-readable format showing results from each DNS server
-2. **Summary** - Overall propagation status (fully propagated or partially propagated)
-3. **Detailed JSON** - Complete results printed to console
-4. **JSON Export** - Automatic export to `{domain}_dns_check.json`
-
-### Example Output
+### Danh sách API endpoints
 
 ```
-Starting DNS check for example.com...
-
-Checking A records for example.com...
-  ✓ Google Primary (8.8.8.8): 104.18.26.120, 104.18.27.120
-  ✓ Cloudflare Primary (1.1.1.1): 104.18.26.120, 104.18.27.120
-  ✓ OpenDNS Primary (208.67.222.222): 104.18.26.120, 104.18.27.120
-  ...
-
-======================================================================
-DNS Propagation Summary for example.com
-Checked at: 2026-01-18T17:42:01.646363
-======================================================================
-
-✓ DNS is FULLY PROPAGATED across all checked servers
+GET  /                          Trang chính
+GET  /ping                      Health check
+GET  /api/python-info           Thông tin Python trên server
+GET  /api/system-info           Thông tin hệ thống
+POST /api/check-dns             DNS checker chi tiết (25 resolvers)
+POST /api/check-dns-basic       DNS checker rút gọn
+POST /api/check-dns-bulk        DNS hàng loạt
+POST /api/check-dns-history     DNS/passive DNS history (8 nguồn miễn phí)
+POST /api/whois                 WHOIS (qua whois.pavietnam.net)
+GET  /api/record-types          Danh sách record types
+GET  /api/dns-servers           Danh sách DNS servers
+POST /api/clear-cache           Xoá cache DNS
+POST /api/check-ssl             Kiểm tra chứng chỉ SSL domain
+POST /api/check-host            IP/ASN/geolocation của host
+POST /api/check-email-auth     SPF/DKIM/DMARC/MX và mail platform fingerprints
+POST /api/ssl-catalog           Quét thư mục cert trên server
+POST /api/ssl-upload            Upload ZIP/folder cert
+POST /api/check-cert-file       Parse file cert
+POST /api/ssl-free/start        Bắt đầu order ACME (tạo CSR, gửi order)
+POST /api/ssl-free/check-challenge   Verify DNS-01/HTTP-01
+POST /api/ssl-free/finalize     Hoàn tất, tải cert
+POST /api/ssl-free/clear-dns-cache  Xoá cache DNS interno
+GET  /api/ssl-free/list         Danh sách order đã lưu
+GET/DELETE /api/ssl-free/item/<id>   Chi tiết / xoá order
+GET  /api/ssl-free/session/<id>/status  Trạng thái session
 ```
 
-## Python API
+### Biến môi trường
 
-You can also use the DNS Checker as a Python library:
+| Biến | Mặc định | Ý nghĩa |
+|---|---|---|
+| `PORT` | `5000` | Port server |
+| `SSL_CATALOG_DIR` | `~/Desktop/ssl` | Thư mục mặc định cho SSL Bundle scan folder |
+| `WHOIS_CACHE_TTL_SECONDS` | `15` | TTL cache WHOIS |
 
-```python
-from dns_checker import DNSChecker
+---
 
-# Create a checker instance
-checker = DNSChecker(disable_cache=True)
+## 🔍 Kết quả kiểm tra flow (2026-09-16, Windows + Git Bash — sau đợt fix)
 
-# Check specific record types
-results = checker.check_domain('example.com', ['A', 'MX', 'NS'])
+| Kiểm thử | Kết quả |
+|---|---|
+| Load trang: lỗi console/JS | ✅ **0 lỗi** (trước: 2 lỗi) |
+| `POST /api/check-dns` cloudflare.com A | ✅ 24/25 resolvers |
+| UI tab SSL Check: cloudflare.com | ✅ Hiển thị leaf + full certificate chain |
+| UI tab Host Check: 1.1.1.1 | ✅ IP/ASN/ISP/reverse DNS |
+| UI tab DNS History: github.io | ✅ **sẽ thay đổi theo nguồn khả dụng**, không còn trộn dữ liệu CT Logs thành TXT |
+| Gzip static files | ✅ main.js 194KB → **37.5KB** (giảm 81%) |
+| DCL / Load time | ✅ ~700ms (trước: chặn 8.5s do fetch AI models) |
+| Transfer size trang | ✅ ~63KB lần đầu (trước: ~320KB) |
+| Tab AI Chat đã xoá hoàn toàn | ✅ `/api/ai/*` trả về 404, 0 hàm AI trong JS, 0 console error |
 
-# Check propagation status
-is_propagated = checker.check_propagation('example.com')
-print(f"Fully propagated: {is_propagated}")
+---
 
-# Print summary
-checker.print_summary()
+## ⚠️ Các vấn đề đã biết (phân tích)
 
-# Export to JSON
-checker.export_json('results.json')
+### Đã sửa ✅ (2026-09-16)
+1. ✅ **Lỗi JS `installSslLoadCatalog`** — xoá toàn bộ code install-ssl khỏi `main.js` (192 dòng) + backend route `/api/install-ssl` + `import-ssl.sh`.
+2. ✅ **404 `theme-premium.css`** — bỏ `<link>` khỏi `index.html`.
+3. ✅ **Hardcode `/home/nvpa/Desktop/ssl`** — chuyển sang env `SSL_CATALOG_DIR` (mặc định `~/Desktop/ssl`).
+4. ✅ **`mkdtemp(dir='/tmp')`** — dùng tempfile mặc định (không lỗi Windows).
+5. ✅ **Chặn 8.5s lúc load** — xoá hoàn toàn tab AI Chat (frontend + backend `/api/ai/*` + CSS), không còn fetch model lúc startup.
+6. ✅ **DNS History ít dữ liệu / sai loại** — dùng 8 nguồn DNS/passive DNS miễn phí, bỏ crt.sh vì đây là Certificate Transparency chứ không phải DNS; bổ sung HackerTarget DNS, RapidDNS và Subdomain Center; merge cross-source + dedupe thông minh.
+7. ✅ **DNS History khó đọc** — thiết kế lại record item: badge màu theo record type, IP đậm màu xanh, live-dot xanh nhấp nháy cho record còn hiệu lực, filter theo type, limit render 60 records + nút "Xem thêm".
+8. ✅ **SSL thiếu certificate chain** — TLS handshake lấy toàn bộ chain server trình bày, parse từng certificate và hiển thị Leaf/Chain 1/Chain 2 với CN, issuer, organization, hạn, serial, signature và SAN.
+8. ✅ **Vệ sinh repo** — xoá `__pycache__`, `server.log`, `ssl_history.db`, `proxy.txt`, ~40 script rác (`fix*.py`, `inject_tools*.py`...), backup files; `.gitignore` đầy đủ.
+9. ✅ **Hiệu năng** — gzip static (route tùy chỉnh + chống path traversal), `Cache-Control: max-age=86400`, `defer` cho CDN scripts, guard lucide icons.
+10. ✅ **Xoá toàn bộ AI Chat** — bỏ ~800 dòng JS (`aiChats`, `loadAIModels`, `sendAIRequest`...), ~900 dòng Python (routes `/api/ai/*`, `AI_TOOLS`, `execute_ai_tool`, `fetch_nvidia_models`...), ~550 dòng CSS (`.ai-*`), imports thừa (`HTTPAdapter`, `Retry`, `stream_with_context`), file `tab_ai.html.bak`.
 
-# Access raw results
-print(checker.results)
-```
+### Còn tồn tại 🟠
+1. **Bug layout mobile (<980px):** `.tab-nav` sticky `height:100vh` đè kín content — chưa sửa do cần thiết kế mobile riêng. Fix nhanh: trong media query mobile đặt `.tab-nav { position: relative; height: auto; max-height: none; }`.
+2. **CORS `*` toàn bộ** — cân nhắc khi deploy công khai.
+3. **CDN dependencies** (lucide/jszip/forge/fonts) — offline mất icon & một số tính năng.
+4. **Flask dev server** — production nên dùng waitress/gunicorn.
 
-## Important Notes
+---
 
-### No Caching
-The tool explicitly disables DNS caching at both the resolver level and query level. This ensures:
-- Always fresh DNS lookups
-- Accurate propagation detection
-- No stale cached data from previous queries
+## 🧭 Gợi ý thứ tự sửa (nếu tiếp tục phát triển)
 
-### Propagation Detection
-The tool considers DNS fully propagated when **all** DNS servers return the same set of records for a query. Since different DNS servers may return records in different orders, the tool normalizes and compares them intelligently.
-
-### Performance
-- Timeout: 5 seconds per query
-- Typical check time: 1-3 seconds for all record types
-- Can handle domains that don't resolve on all servers
-
-## Troubleshooting
-
-### "Command not found: python"
-Make sure Python 3 is installed and available in your PATH.
-
-### "ModuleNotFoundError: No module named 'dns'"
-Install dnspython: `pip install dnspython`
-
-### "DNS query timeout"
-Some DNS servers may be slow or unreachable. The tool waits 5 seconds per query before timing out.
-
-### "No records found"
-If a record type doesn't exist for a domain (e.g., MX for example.com), this is expected behavior.
-
-## Files Generated
-
-- `{domain}_dns_check.json` - JSON export of all results
+1. Fix media query mobile `<980px` (bug tương tác nghiêm trọng nhất còn lại).
+2. Refactor: tách `app.py` thành blueprint theo nhóm chức năng (dns/ssl/acme), tách `main.js` thành module.
+3. Production: waitress/gunicorn + reverse proxy nginx (gzip + cache tại đó).
 
 ## License
 
 MIT License - Feel free to use and modify
 
-## Contributing
-
-Feel free to submit improvements and bug reports!
-
----
-
-**For more information about DNS:** https://en.wikipedia.org/wiki/Domain_Name_System
-# all-tool

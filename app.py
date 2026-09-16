@@ -7,7 +7,7 @@ DNS Checker Tool - Ultra Fast Version
 Parallel queries, no WHOIS, minimal timeouts
 """
 
-from flask import Flask, render_template, request, jsonify, Response, stream_with_context
+from flask import Flask, render_template, request, jsonify, Response
 import os
 from cryptography import x509
 from cryptography.hazmat.backends import default_backend
@@ -26,8 +26,6 @@ import ssl
 import tempfile
 import socket
 import requests
-from requests.adapters import HTTPAdapter
-from urllib3.util.retry import Retry
 import re
 import json
 import time
@@ -48,94 +46,37 @@ import acme.challenges
 import acme.messages
 from acme import client as acme_client, challenges as acme_challenges, messages as acme_messages
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder=None)
 CORS(app)
 
-NVIDIA_NIM_API_BASE = os.getenv('NVIDIA_NIM_API_BASE', 'https://integrate.api.nvidia.com/v1')
-NVIDIA_NIM_API_KEY = os.getenv('NVIDIA_NIM_API_KEY', '')
+# ==== Static files: cache 1 ngày + gzip (hiệu năng) ====
+@app.route('/static/<path:filename>', endpoint='static')
+def custom_static(filename):
+    import gzip as _gzip
+    static_root = os.path.abspath(os.path.join(app.root_path, 'static'))
+    full_path = os.path.abspath(os.path.join(static_root, filename))
+    # Chống path traversal
+    if not full_path.startswith(static_root + os.sep) or not os.path.isfile(full_path):
+        from flask import abort
+        abort(404)
 
-AI_API_BASE = os.getenv('AI_API_BASE', 'https://apihub.agnes-ai.com/v1')
-AI_API_KEY = os.getenv('AI_API_KEY', '')
-AI_MODELS = [
-    'agnes-2.0-flash',
-    'agnes-2.5-flash',
-    'agnes-image-2.1-flash',
-    'agnes-image-2.0-flash',
-    'agnes-video-v2.0',
-]
-DEFAULT_AI_SYSTEM_PROMPT = (
-    'Bạn là trợ lý AI thông minh, ngắn gọn, rõ ràng và hữu ích. '
-    'Hãy trả lời bằng tiếng Việt khi người dùng dùng tiếng Việt.'
-)
+    with open(full_path, 'rb') as handle:
+        data = handle.read()
 
-_nvidia_models_cache = {"timestamp": 0, "models": []}
-_nvidia_cache_lock = threading.Lock()
+    import mimetypes
+    mimetype = mimetypes.guess_type(full_path)[0] or 'application/octet-stream'
+    response = Response(data, mimetype=mimetype)
+    response.headers['Cache-Control'] = 'public, max-age=86400'
 
-# Persistent HTTP session with connection pooling for speed
-_ai_session = requests.Session()
-_ai_adapter = HTTPAdapter(
-    pool_connections=10,
-    pool_maxsize=20,
-    max_retries=Retry(total=1, backoff_factor=0.1, status_forcelist=[502, 503]),
-)
-_ai_session.mount('https://', _ai_adapter)
-_ai_session.mount('http://', _ai_adapter)
+    if full_path.endswith(('.js', '.css', '.svg', '.json')) and len(data) > 1024:
+        if 'gzip' in request.headers.get('Accept-Encoding', ''):
+            compressed = _gzip.compress(data, 6)
+            if len(compressed) < len(data):
+                response.set_data(compressed)
+                response.headers['Content-Encoding'] = 'gzip'
+                response.headers['Vary'] = 'Accept-Encoding'
+    return response
 
-EXCLUDE_MODEL_KEYWORDS = ['bge-', 'embed', 'rerank', 'fuyu', 'diffusion', 'sdxl', 'clip', 'nv-embed', 'ranking', 'guard']
-
-def fetch_nvidia_models(api_key: str, api_base: str = NVIDIA_NIM_API_BASE, force_refresh: bool = False) -> List[dict]:
-    global _nvidia_models_cache
-    now = time.time()
-    if not force_refresh:
-        with _nvidia_cache_lock:
-            if _nvidia_models_cache["models"] and (now - _nvidia_models_cache["timestamp"] < 300):
-                return _nvidia_models_cache["models"]
-
-    try:
-        url = f"{api_base.rstrip('/')}/models"
-        headers = {"Authorization": f"Bearer {api_key}"}
-        resp = _ai_session.get(url, headers=headers, timeout=8)
-        if resp.status_code == 200:
-            data = resp.json()
-            models_data = data.get("data", [])
-            parsed_models = []
-            for item in models_data:
-                model_id = item.get("id")
-                if model_id:
-                    mid_lower = model_id.lower()
-                    if not any(kw in mid_lower for kw in EXCLUDE_MODEL_KEYWORDS):
-                        parsed_models.append({
-                            "id": model_id,
-                            "name": model_id,
-                            "owner": item.get("owned_by") or item.get("owner") or "nvidia",
-                        })
-
-            def sort_key(m):
-                mid = m["id"].lower()
-                if "deepseek-r1" in mid or "deepseek-v3" in mid: return (0, mid)
-                if "llama-3.3-70b" in mid: return (1, mid)
-                if "nemotron" in mid: return (2, mid)
-                if "deepseek" in mid: return (3, mid)
-                if "llama" in mid: return (4, mid)
-                if "mistral" in mid: return (5, mid)
-                return (6, mid)
-
-            parsed_models.sort(key=sort_key)
-            if parsed_models:
-                with _nvidia_cache_lock:
-                    _nvidia_models_cache = {"timestamp": now, "models": parsed_models}
-                return parsed_models
-    except Exception as e:
-        logger.error(f"Error fetching NVIDIA models: {e}")
-
-    return [
-        {"id": "meta/llama-3.3-70b-instruct", "name": "meta/llama-3.3-70b-instruct", "owner": "meta"},
-        {"id": "deepseek-ai/deepseek-r1", "name": "deepseek-ai/deepseek-r1", "owner": "deepseek-ai"},
-        {"id": "nvidia/llama-3.1-nemotron-70b-instruct", "name": "nvidia/llama-3.1-nemotron-70b-instruct", "owner": "nvidia"},
-        {"id": "mistralai/mistral-large-2-instruct", "name": "mistralai/mistral-large-2-instruct", "owner": "mistralai"},
-        {"id": "qwen/qwen2.5-72b-instruct", "name": "qwen/qwen2.5-72b-instruct", "owner": "qwen"},
-        {"id": "google/gemma-2-27b-it", "name": "google/gemma-2-27b-it", "owner": "google"},
-    ]
 
 
 # Simple in-memory TTL cache to speed up repeated checks (no external deps)
@@ -186,147 +127,6 @@ def dns_history_cache_set(key: str, value):
     with _dns_history_cache_lock:
         _dns_history_cache[key] = (time.time(), value)
 
-def _read_uploaded_ai_file(file_storage) -> Optional[dict]:
-    if file_storage is None:
-        return None
-
-    filename = (file_storage.filename or '').strip()
-    mime_type = file_storage.mimetype or 'application/octet-stream'
-    raw_bytes = file_storage.read()
-    if not raw_bytes:
-        return None
-
-    if mime_type.startswith('image/'):
-        return {
-            'kind': 'image',
-            'filename': filename or 'image-upload',
-            'mime_type': mime_type,
-            'data': base64.b64encode(raw_bytes).decode('utf-8'),
-        }
-
-    try:
-        text = raw_bytes.decode('utf-8')
-    except UnicodeDecodeError:
-        try:
-            text = raw_bytes.decode('latin-1')
-        except Exception:
-            text = ''
-
-    if text and text.strip():
-        return {
-            'kind': 'text',
-            'filename': filename or 'text-upload',
-            'mime_type': mime_type,
-            'text': text[:20000],
-        }
-
-    return {
-        'kind': 'binary',
-        'filename': filename or 'file-upload',
-        'mime_type': mime_type,
-        'data': base64.b64encode(raw_bytes).decode('utf-8'),
-    }
-
-
-def _build_ai_messages(prompt: str, system_prompt: str, uploaded_files: List[dict], history: List[dict]) -> List[dict]:
-    system_text = (system_prompt or DEFAULT_AI_SYSTEM_PROMPT).strip() or DEFAULT_AI_SYSTEM_PROMPT
-    messages = [{"role": "system", "content": system_text}]
-
-    if history:
-        for entry in history[-6:]:
-            role = entry.get('role')
-            content = entry.get('content')
-            if role in ('user', 'assistant') and content and isinstance(content, str):
-                c_clean = content.strip()
-                if c_clean and not c_clean.startswith('❌') and not c_clean.startswith('⏳'):
-                    messages.append({'role': role, 'content': c_clean})
-
-    has_images = any(item.get('kind') == 'image' for item in (uploaded_files or []))
-
-    if has_images:
-        content_items: List[dict] = []
-        for item in uploaded_files:
-            if item.get('kind') == 'image':
-                content_items.append({
-                    'type': 'image_url',
-                    'image_url': {
-                        'url': f"data:{item['mime_type']};base64,{item['data']}"
-                    }
-                })
-            elif item.get('kind') == 'text':
-                content_items.append({
-                    'type': 'text',
-                    'text': f"Tệp văn bản đính kèm ({item['filename']}):\n\n{item['text']}"
-                })
-        if prompt:
-            content_items.append({'type': 'text', 'text': prompt})
-        messages.append({'role': 'user', 'content': content_items})
-    else:
-        text_parts = []
-        if uploaded_files:
-            for item in uploaded_files:
-                if item.get('kind') == 'text':
-                    text_parts.append(f"Tệp văn bản đính kèm ({item['filename']}):\n{item['text']}")
-                else:
-                    text_parts.append(f"Tệp đính kèm ({item['filename']})")
-        if prompt:
-            text_parts.append(prompt)
-
-        plain_text = "\n\n".join(text_parts).strip() or "Xin chào"
-        messages.append({'role': 'user', 'content': plain_text})
-
-    return messages
-
-
-def _post_ai_json(endpoint: str, payload: dict, api_key: str = None, timeout: int = 600) -> dict:
-    key_to_use = api_key or AI_API_KEY
-    response = requests.post(
-        endpoint,
-        headers={
-            'Authorization': f'Bearer {key_to_use}',
-            'Content-Type': 'application/json',
-        },
-        json=payload,
-        timeout=timeout,
-    )
-    try:
-        data = response.json()
-    except ValueError:
-        data = {'raw_response': response.text}
-
-    if response.status_code >= 400:
-        error_message = None
-        if isinstance(data, dict):
-            error_message = data.get('error', {}).get('message') or data.get('message') or data.get('error')
-        if not error_message:
-            error_message = response.text or f'HTTP {response.status_code}'
-        raise RuntimeError(error_message)
-
-    return data
-
-
-def _extract_chat_text(data: dict) -> str:
-    if isinstance(data, dict):
-        if 'choices' in data and data.get('choices'):
-            choice = data['choices'][0]
-            message = choice.get('message') or {}
-            content = message.get('content') or ''
-            if isinstance(content, list):
-                parts = []
-                for item in content:
-                    if isinstance(item, dict):
-                        if item.get('type') == 'text':
-                            parts.append(str(item.get('text', '')))
-                        elif item.get('type') == 'output_text':
-                            parts.append(str(item.get('text', '')))
-                return ''.join(parts).strip()
-            return str(content).strip()
-        if 'text' in data:
-            return str(data['text']).strip()
-        if 'output' in data:
-            return str(data['output']).strip()
-    return ''
-
 
 @app.route('/ping')
 def ping():
@@ -340,877 +140,22 @@ def api_system_info():
     return jsonify(python_detector.get_system_python_info()), 200
 
 
-@app.route('/api/ai/models', methods=['GET', 'POST'])
-def api_ai_models():
-    try:
-        provider = (request.args.get('provider') or request.form.get('provider') or 'nvidia').strip().lower()
-        api_key = (request.args.get('api_key') or request.form.get('api_key') or '').strip()
-        api_base = (request.args.get('api_base') or request.form.get('api_base') or '').strip()
-        refresh = (request.args.get('refresh') or request.form.get('refresh') or '').lower() in ['1', 'true', 'yes']
 
-        if provider == 'nvidia':
-            key_to_use = api_key or NVIDIA_NIM_API_KEY
-            base_to_use = api_base or NVIDIA_NIM_API_BASE
-            models = fetch_nvidia_models(key_to_use, base_to_use, force_refresh=refresh)
-            default_model = models[0]['id'] if models else 'meta/llama-3.3-70b-instruct'
-            return jsonify({
-                'provider': 'nvidia',
-                'models': [m['id'] for m in models],
-                'model_details': models,
-                'default_model': default_model,
-                'api_base': base_to_use,
-            }), 200
 
-        elif provider == 'custom':
-            key_to_use = api_key
-            base_to_use = api_base or 'https://api.openai.com/v1'
-            if key_to_use:
-                models = fetch_nvidia_models(key_to_use, base_to_use, force_refresh=refresh)
-                return jsonify({
-                    'provider': 'custom',
-                    'models': [m['id'] for m in models],
-                    'model_details': models,
-                    'default_model': models[0]['id'] if models else 'gpt-3.5-turbo',
-                    'api_base': base_to_use,
-                }), 200
 
-        return jsonify({
-            'provider': 'agnes',
-            'models': AI_MODELS,
-            'model_details': [{'id': m, 'name': m, 'owner': 'agnes'} for m in AI_MODELS],
-            'default_model': AI_MODELS[0],
-            'api_base': AI_API_BASE,
-        }), 200
 
-    except Exception as exc:
-        logger.error('Error in /api/ai/models: %s', exc, exc_info=True)
-        return jsonify({'error': str(exc)}), 500
 
 
-def _test_single_model(model_id: str, target_key: str, target_base: str) -> dict:
-    url = f"{target_base.rstrip('/')}/chat/completions"
-    headers = {
-        'Authorization': f'Bearer {target_key}',
-        'Content-Type': 'application/json',
-    }
-    payload = {
-        'model': model_id,
-        'messages': [{'role': 'user', 'content': 'hi'}],
-        'max_tokens': 2,
-    }
-    start_t = time.time()
-    try:
-        resp = _ai_session.post(url, headers=headers, json=payload, timeout=3.5)
-        elapsed_ms = int((time.time() - start_t) * 1000)
-        if resp.status_code == 200:
-            if elapsed_ms < 1500:
-                speed_type = 'fast'
-                speed_label = '🚀 Nhanh'
-            elif elapsed_ms < 3200:
-                speed_type = 'medium'
-                speed_label = '⚡ Trung bình'
-            else:
-                speed_type = 'slow'
-                speed_label = '🐢 Chậm'
 
-            return {
-                'id': model_id,
-                'status': 200,
-                'latency_ms': elapsed_ms,
-                'speed': speed_type,
-                'label': speed_label,
-                'working': True
-            }
-        else:
-            return {
-                'id': model_id,
-                'status': resp.status_code,
-                'latency_ms': elapsed_ms,
-                'speed': 'error',
-                'label': f'❌ Lỗi {resp.status_code}',
-                'working': False
-            }
-    except requests.exceptions.Timeout:
-        return {
-            'id': model_id,
-            'status': 408,
-            'latency_ms': 3500,
-            'speed': 'timeout',
-            'label': '❌ Timeout (>3.5s)',
-            'working': False
-        }
-    except Exception as e:
-        return {
-            'id': model_id,
-            'status': 500,
-            'latency_ms': 0,
-            'speed': 'error',
-            'label': f'❌ Lỗi kết nối',
-            'working': False
-        }
 
 
-@app.route('/api/ai/test-models', methods=['POST'])
-def api_ai_test_models():
-    try:
-        provider = (request.form.get('provider') or 'nvidia').strip().lower()
-        api_key = (request.form.get('api_key') or '').strip()
-        api_base = (request.form.get('api_base') or '').strip()
 
-        if provider == 'nvidia':
-            target_key = api_key or NVIDIA_NIM_API_KEY
-            target_base = api_base or NVIDIA_NIM_API_BASE
-        elif provider == 'custom':
-            target_key = api_key
-            target_base = api_base or 'https://api.openai.com/v1'
-        else:
-            target_key = AI_API_KEY
-            target_base = AI_API_BASE
 
-        raw_models = fetch_nvidia_models(target_key, target_base) if provider != 'agnes' else [{'id': m} for m in AI_MODELS]
-        
-        tested_ids_raw = request.form.get('tested_ids') or '[]'
-        try:
-            import json
-            tested_ids = set(json.loads(tested_ids_raw))
-        except:
-            tested_ids = set()
-            
-        model_ids = [m['id'] for m in raw_models if m['id'] not in tested_ids]
 
-        results = []
-        with ThreadPoolExecutor(max_workers=25) as executor:
-            future_to_model = {
-                executor.submit(_test_single_model, mid, target_key, target_base): mid
-                for mid in model_ids
-            }
-            for future in as_completed(future_to_model):
-                try:
-                    res = future.result()
-                    results.append(res)
-                except Exception as exc:
-                    mid = future_to_model[future]
-                    results.append({
-                        'id': mid,
-                        'status': 500,
-                        'latency_ms': 0,
-                        'speed': 'error',
-                        'label': str(exc),
-                        'working': False
-                    })
 
-        def sort_test_res(item):
-            if not item.get('working'):
-                return (9, 99999)
-            speed_order = {'fast': 1, 'medium': 2, 'slow': 3}
-            return (speed_order.get(item.get('speed'), 4), item.get('latency_ms', 9999))
 
-        results.sort(key=sort_test_res)
 
-        return jsonify({
-            'provider': provider,
-            'total_tested': len(results),
-            'working_count': sum(1 for r in results if r['working']),
-            'results': results,
-        }), 200
 
-    except Exception as exc:
-        logger.error('Error in /api/ai/test-models: %s', exc, exc_info=True)
-        return jsonify({'error': str(exc)}), 500
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# --- AI TOOL CALLING DEFINITIONS ---
-AI_TOOLS = [
-    {
-        "type": "function",
-        "function": {
-            "name": "tool_lookup_dns",
-            "description": "Lookup DNS records for a domain (A, MX, CNAME, TXT, NS, etc.)",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "domain": {"type": "string", "description": "The domain name to lookup"},
-                    "record_types": {
-                        "type": "array",
-                        "items": {"type": "string"},
-                        "description": "List of record types to query (e.g., ['A', 'MX', 'TXT'])"
-                    }
-                },
-                "required": ["domain"]
-            }
-        }
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "tool_check_ssl",
-            "description": "Check SSL/TLS certificate status for a domain.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "domain": {"type": "string"}
-                },
-                "required": ["domain"]
-            }
-        }
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "tool_check_host",
-            "description": "Lookup hosting provider and IP information for a domain.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "domain": {"type": "string"}
-                },
-                "required": ["domain"]
-            }
-        }
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "tool_request_free_ssl",
-            "description": "BƯỚC 1: Đăng ký SSL miễn phí. Nếu wildcard=true, tự động tạo 2 SAN: domain + *.domain. Trả về mã TXT để xác thực DNS. Chỉ Let's Encrypt hỗ trợ wildcard. ZeroSSL yêu cầu có email.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "domain": {"type": "string", "description": "Tên miền gốc (VD: example.com)"},
-                    "wildcard": {"type": "boolean", "description": "Nếu true, tạo SSL wildcard (*.domain + domain)"},
-                    "sans": {
-                        "type": "array",
-                        "items": {"type": "string"}
-                    },
-                    "provider": {"type": "string", "enum": ["letsencrypt", "zerossl", "sslcom"], "description": "Nhà cung cấp SSL (mặc định letsencrypt)"},
-                    "email": {"type": "string", "description": "Email đăng ký (bắt buộc với zerossl)"}
-                },
-                "required": ["domain"]
-            }
-        }
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "tool_verify_free_ssl",
-            "description": "BƯỚC 2: Kiểm tra bản ghi DNS TXT của phiên SSL. Gọi hàm này khi user báo đã thêm TXT.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "session_id": {"type": "string"}
-                },
-                "required": ["session_id"]
-            }
-        }
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "tool_finalize_free_ssl",
-            "description": "BƯỚC 3: Hoàn tất cấp phát SSL và LẤY CERTIFICATE. Gọi hàm này sau khi Bước 2 thành công.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "session_id": {"type": "string"}
-                },
-                "required": ["session_id"]
-            }
-        }
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "tool_get_ssl_certificate",
-            "description": "Lấy chứng chỉ SSL ĐÃ CẤP PHÁT từ kho lưu trữ. Dùng khi user yêu cầu xem/lấy cert đã có. Trả về certificate, private_key, ca_bundle.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "domain": {"type": "string", "description": "Tên miền cần tìm chứng chỉ"}
-                },
-                "required": ["domain"]
-            }
-        }
-    }
-]
-
-def execute_ai_tool(name: str, arguments: dict) -> str:
-    try:
-        if name == 'tool_lookup_dns':
-            domain = arguments.get('domain')
-            record_types = arguments.get('record_types') or ['A', 'MX', 'CNAME', 'TXT', 'NS']
-            res = check_dns_fast(domain, record_types)
-            return json.dumps(res, ensure_ascii=False)
-        
-        elif name == 'tool_check_ssl':
-            domain = arguments.get('domain')
-            import socket, ssl, OpenSSL
-            domain = _normalize_domain_input(domain)
-            ctx = ssl.create_default_context()
-            ctx.check_hostname = False
-            ctx.verify_mode = ssl.CERT_NONE
-            try:
-                with socket.create_connection((domain, 443), timeout=5) as sock:
-                    with ctx.wrap_socket(sock, server_hostname=domain) as ssock:
-                        cert_der = ssock.getpeercert(binary_form=True)
-                        x509 = OpenSSL.crypto.load_certificate(OpenSSL.crypto.FILETYPE_ASN1, cert_der)
-                        issuer = dict(x509.get_issuer().get_components()).get(b'O', b'').decode('utf-8')
-                        not_after = x509.get_notAfter().decode('ascii')
-                        return json.dumps({'issuer': issuer, 'not_after': not_after, 'status': 'success'})
-            except Exception as e:
-                return json.dumps({'error': str(e)})
-
-        elif name == 'tool_check_host':
-            domain = arguments.get('domain')
-            domain = _normalize_domain_input(domain)
-            try:
-                import socket
-                ip = socket.gethostbyname(domain)
-                import requests
-                r = requests.get(f'http://ip-api.com/json/{ip}', timeout=5)
-                if r.status_code == 200:
-                    return r.text
-                return json.dumps({'ip': ip})
-            except Exception as e:
-                return json.dumps({'error': str(e)})
-            
-        elif name == 'tool_request_free_ssl':
-            domain = arguments.get('domain')
-            is_wildcard = arguments.get('wildcard', False)
-            provider = arguments.get('provider', 'letsencrypt')
-            if provider == 'ssl.com':
-                provider = 'sslcom'
-            email = arguments.get('email', '')
-            sans = arguments.get('sans')
-            if not isinstance(sans, list):
-                sans = [sans] if isinstance(sans, str) and sans else []
-            
-            # Auto-generate SANs for wildcard
-            if is_wildcard:
-                wildcard_domain = '*.' + domain
-                if domain not in sans:
-                    sans.insert(0, domain)
-                if wildcard_domain not in sans:
-                    sans.append(wildcard_domain)
-            else:
-                if domain not in sans:
-                    sans.insert(0, domain)
-            
-            import requests as req_lib
-            try:
-                payload = {'domain': domain, 'sans': sans, 'challenge_type': 'dns-01', 'provider': provider}
-                if email:
-                    payload['email'] = email
-                resp = req_lib.post(request.url_root.rstrip('/') + '/api/ssl-free/start',
-                    json=payload, timeout=30)
-                if resp.status_code == 200:
-                    data = resp.json()
-                    return json.dumps({
-                        'message': 'Free SSL session started.' + (' (Wildcard: ' + ', '.join(sans) + ')' if is_wildcard else ''),
-                        'session_id': data.get('session_id'),
-                        'challenges': data.get('challenges')
-                    }, ensure_ascii=False)
-                else:
-                    return json.dumps({'error': resp.text})
-            except Exception as e:
-                return json.dumps({'error': f'SSL start failed: {str(e)}'})
-                
-        elif name == 'tool_verify_free_ssl':
-            session_id = arguments.get('session_id')
-            import requests as req_lib
-            try:
-                resp = req_lib.post(request.url_root.rstrip('/') + '/api/ssl-free/check-challenge',
-                    json={'session_id': session_id}, timeout=30)
-                if resp.status_code == 200:
-                    data = resp.json()
-                    if not data.get('all_ok'):
-                        return json.dumps({'error': 'Xác thực DNS thất bại (chưa thấy bản ghi hoặc chưa khớp). Yêu cầu người dùng chờ thêm vài phút và thử lại.'}, ensure_ascii=False)
-                    return json.dumps(data, ensure_ascii=False)
-                else:
-                    return json.dumps({'error': resp.text})
-            except Exception as e:
-                return json.dumps({'error': f'SSL verify failed: {str(e)}'})
-                
-        elif name == 'tool_finalize_free_ssl':
-            session_id = arguments.get('session_id')
-            import requests as req_lib
-            try:
-                resp = req_lib.post(request.url_root.rstrip('/') + '/api/ssl-free/finalize',
-                    json={'session_id': session_id}, timeout=60)
-                if resp.status_code == 200:
-                    data = resp.json()
-                    return json.dumps({
-                        'message': 'SSL Certificate Issued Successfully!',
-                        'session_id': session_id,
-                        'certificate': data.get('certificate'),
-                        'private_key': data.get('private_key'),
-                        'ca_bundle': data.get('ca_bundle'),
-                        'full_chain': data.get('full_chain')
-                    }, ensure_ascii=False)
-                else:
-                    return json.dumps({'error': resp.text})
-            except Exception as e:
-                return json.dumps({'error': f'SSL finalize failed: {str(e)}'})
-                
-        elif name == 'tool_get_ssl_certificate':
-            domain = arguments.get('domain', '').strip().lower()
-            with _issued_ssl_store_lock:
-                items = _load_issued_ssl_store()
-            found = None
-            for item in items:
-                item_domain = (item.get('domain') or '').lower()
-                item_sans = [s.lower() for s in item.get('sans', [])]
-                if domain == item_domain or domain in item_sans or ('*.' + domain) in item_sans:
-                    found = item
-                    break
-            if found:
-                return json.dumps({
-                    'domain': found.get('domain'),
-                    'sans': found.get('sans', []),
-                    'issued_at': found.get('issued_at'),
-                    'valid_to': found.get('valid_to'),
-                    'issuer': found.get('issuer'),
-                    'certificate': found.get('certificate'),
-                    'private_key': found.get('private_key'),
-                    'ca_bundle': found.get('ca_bundle'),
-                    'full_chain': found.get('full_chain'),
-                }, ensure_ascii=False)
-            else:
-                return json.dumps({'error': f'Không tìm thấy chứng chỉ SSL đã cấp cho {domain}. Hãy kiểm tra lại tab SSL Miễn Phí.'})
-
-        else:
-            return json.dumps({'error': f'Unknown tool {name}'})
-            
-    except Exception as e:
-        logger.error(f'Tool execution error {name}: {e}')
-        return json.dumps({'error': str(e)})
-
-# --- END AI TOOL CALLING DEFINITIONS ---
-
-
-
-
-def _format_tool_bypass_msg(result_data):
-    if not isinstance(result_data, dict):
-        return None
-        
-    msg = ""
-    # 1. Output challenges if available
-    challenges = result_data.get('challenges')
-    if isinstance(challenges, list) and len(challenges) > 0:
-        msg += "\\n\\n**Vui lòng cấu hình các bản ghi DNS TXT sau:**\\n\\n"
-        for c in challenges:
-            if c.get('type') == 'dns-01' and c.get('dns_name'):
-                msg += f"> **Host:** `{c.get('dns_name')}`\\n> **Value:** `{c.get('dns_value')}`\\n\\n"
-                
-    # 2. Output certs if available
-    cert_content = result_data.get('certificate') or result_data.get('full_chain')
-    pkey_content = result_data.get('private_key')
-    ca_bundle = result_data.get('ca_bundle')
-    
-    if cert_content or pkey_content:
-        msg += "\\n\\n**🎉 Chứng chỉ SSL đã được cấp phát thành công!**\\n\\n"
-        if pkey_content:
-            safe_key = pkey_content.replace('"', '\\"').replace('\n', '\\n')
-            msg += f"**Private Key:**\\n```plaintext\\n{safe_key}\\n```\\n\\n"
-        if cert_content:
-            safe_cert = cert_content.replace('"', '\\"').replace('\n', '\\n')
-            msg += f"**Certificate:**\\n```plaintext\\n{safe_cert}\\n```\\n\\n"
-        if ca_bundle:
-            safe_ca = ca_bundle.replace('"', '\\"').replace('\n', '\\n')
-            msg += f"**CA Bundle:**\\n```plaintext\\n{safe_ca}\\n```\\n\\n"
-            
-    return msg if msg else None
-
-@app.route('/api/ai/stream', methods=['POST'])
-def api_ai_stream():
-    try:
-        provider = (request.form.get('provider') or 'nvidia').strip().lower()
-        api_key = (request.form.get('api_key') or '').strip()
-        api_base = (request.form.get('api_base') or '').strip()
-
-        if provider == 'nvidia':
-            target_key = api_key or NVIDIA_NIM_API_KEY
-            target_base = api_base or NVIDIA_NIM_API_BASE
-            default_model = 'meta/llama-3.3-70b-instruct'
-        elif provider == 'custom':
-            target_key = api_key
-            target_base = api_base or 'https://api.openai.com/v1'
-            default_model = 'gpt-3.5-turbo'
-        else:
-            target_key = AI_API_KEY
-            target_base = AI_API_BASE
-            default_model = AI_MODELS[0]
-
-        prompt = (request.form.get('prompt') or '').strip()
-        system_prompt = (request.form.get('system_prompt') or '').strip()
-        model = (request.form.get('model') or default_model).strip()
-        history_raw = (request.form.get('history') or '').strip()
-
-        history = []
-        if history_raw:
-            try:
-                history = json.loads(history_raw) or []
-            except Exception:
-                history = []
-
-        uploaded_files = []
-        for upload in request.files.getlist('files'):
-            item = _read_uploaded_ai_file(upload)
-            if item:
-                uploaded_files.append(item)
-
-        if not prompt and not uploaded_files:
-            return jsonify({'error': 'Vui lòng nhập prompt hoặc đính kèm tệp.'}), 400
-
-        if not system_prompt:
-            system_prompt = DEFAULT_AI_SYSTEM_PROMPT
-            
-        system_prompt += "\n\n[CHÚ Ý QUAN TRỌNG: Bạn là trợ lý AI có khả năng sử dụng CÔNG CỤ (TOOLS). Khi cần gọi tool, BẠN CHỈ ĐƯỢC PHÉP TRẢ VỀ ĐÚNG MỘT KHỐI JSON DUY NHẤT, KHÔNG giải thích. QUY TRÌNH CẤP SSL: BẠN CHỈ ĐƯỢC GỌI TỪNG TOOL MỘT. 1) Gọi tool_request_free_ssl và DỪNG LẠI, yêu cầu user cấu hình DNS. 2) CHỈ KHI USER BÁO ĐÃ XONG, mới gọi tool_verify_free_ssl. 3) CHỈ KHI VERIFY THÀNH CÔNG, mới gọi tool_finalize_free_ssl. TUYỆT ĐỐI KHÔNG GỌI NHIỀU TOOL CÙNG LÚC vì bạn cần session_id từ tool trước.]"
-
-        messages = _build_ai_messages(prompt, system_prompt, uploaded_files, history)
-        
-        MAX_TOOL_TURNS = 5
-        
-        def generate_sse():
-            nonlocal messages
-            turn_count = 0
-            use_tools = True  # Disable after fallback to avoid infinite loop
-            
-            while turn_count <= MAX_TOOL_TURNS:
-                turn_count += 1
-                
-                payload = {
-                    'model': model,
-                    'messages': messages,
-                    'temperature': 0.7,
-                    'max_tokens': 4096,
-                    'stream': True,
-                }
-                if use_tools:
-                    payload['tools'] = AI_TOOLS
-                    payload['tool_choice'] = 'auto'
-
-                headers = {
-                    'Authorization': f'Bearer {target_key}',
-                    'Content-Type': 'application/json',
-                }
-                endpoint = f"{target_base.rstrip('/')}/chat/completions"
-                
-                try:
-                    try:
-                        req = _ai_session.post(endpoint, headers=headers, json=payload, stream=True, timeout=(5, 120))
-                    except (requests.exceptions.ConnectionError, requests.exceptions.ChunkedEncodingError, ConnectionError):
-                        # Retry once if the connection pool had a stale connection that was dropped
-                        req = _ai_session.post(endpoint, headers=headers, json=payload, stream=True, timeout=(5, 120))
-                except Exception as req_err:
-                    yield f'data: {{"choices": [{{"delta": {{"content": "\\n\\n[Loi ket noi: {req_err}]"}}}}]}}\n\n'.encode('utf-8')
-                    return
-                
-                if req.status_code >= 400:
-                    err_text = req.text
-                    yield f'data: {{"choices": [{{"delta": {{"content": "\\n\\n[API Error {req.status_code}: {err_text}]"}}}}]}}\n\n'.encode('utf-8')
-                    return
-                
-                native_tool_calls = {}
-                full_text = ''
-                raw_lines = []  # Buffer SSE lines
-                
-                try:
-                    for line in req.iter_lines():
-                        if line:
-                            line_str = line.decode('utf-8').strip()
-                            if line_str.startswith('data: '):
-                                data_str = line_str[6:]
-                                if data_str == '[DONE]':
-                                    continue
-                                try:
-                                    chunk = json.loads(data_str)
-                                    choices = chunk.get('choices', [])
-                                    if not choices:
-                                        continue
-                                    delta = choices[0].get('delta', {})
-                                    
-                                    if 'content' in delta and delta['content']:
-                                        full_text += delta['content']
-                                        raw_lines.append(line)
-                                        
-                                    if 'tool_calls' in delta:
-                                        for tc in delta['tool_calls']:
-                                            idx = tc['index']
-                                            if idx not in native_tool_calls:
-                                                native_tool_calls[idx] = {'id': tc.get('id', ''), 'name': '', 'arguments': ''}
-                                            if 'id' in tc and tc['id']:
-                                                native_tool_calls[idx]['id'] = tc['id']
-                                            if 'function' in tc:
-                                                if 'name' in tc['function'] and tc['function']['name']:
-                                                    native_tool_calls[idx]['name'] += tc['function']['name']
-                                                if 'arguments' in tc['function'] and tc['function']['arguments']:
-                                                    native_tool_calls[idx]['arguments'] += tc['function']['arguments']
-                                                    
-                                except json.JSONDecodeError:
-                                    pass
-                except Exception as stream_err:
-                    yield f'data: {{"choices": [{{"delta": {{"content": "\\n\\n[Loi stream: {stream_err}]"}}}}]}}\n\n'.encode('utf-8')
-                    return
-                
-                # === CASE 1: Native tool calls (model properly supports function calling) ===
-                if native_tool_calls:
-                    # Deduplicate tool calls (Llama often repeats the same tool call)
-                    seen_calls = set()
-                    unique_tool_calls = {}
-                    for idx, tc in native_tool_calls.items():
-                        # Parse args to stringify in a normalized way
-                        try:
-                            normalized_args = json.dumps(json.loads(tc['arguments']), sort_keys=True)
-                        except:
-                            normalized_args = tc['arguments']
-                        call_sig = (tc['name'], normalized_args)
-                        if call_sig not in seen_calls:
-                            seen_calls.add(call_sig)
-                            unique_tool_calls[idx] = tc
-                    native_tool_calls = unique_tool_calls
-                    
-                    assistant_msg = {"role": "assistant", "content": full_text if full_text else None, "tool_calls": []}
-                    for idx, tc in native_tool_calls.items():
-                        assistant_msg["tool_calls"].append({
-                            "id": tc['id'], "type": "function",
-                            "function": {"name": tc['name'], "arguments": tc['arguments']}
-                        })
-                    messages.append(assistant_msg)
-                    
-                    for idx, tc in native_tool_calls.items():
-                        try:
-                            args_dict = json.loads(tc['arguments'])
-                        except:
-                            args_dict = {}
-                        
-                        # Yield immediate status so UI doesn't hang
-                        yield f'data: {{"choices": [{{"delta": {{"content": "\\n\\n*Dang goi: `{tc["name"]}`...*\\n"}}}}]}}\n\n'.encode('utf-8')
-                        
-                        result_str = execute_ai_tool(tc['name'], args_dict)
-                        messages.append({"role": "tool", "tool_call_id": tc['id'], "name": tc['name'], "content": result_str})
-                        
-                        try:
-                            result_data = json.loads(result_str)
-                        except:
-                            result_data = {}
-                            
-                        if result_data.get('session_id'):
-                            status_msg = f"*(Session ID: {result_data['session_id']})*\\n\\n"
-                            yield f'data: {{"choices": [{{"delta": {{"content": "{status_msg}"}}}}]}}\n\n'.encode('utf-8')
-                        else:
-                            yield f'data: {{"choices": [{{"delta": {{"content": "\\n"}}}}]}}\n\n'.encode('utf-8')
-                            
-                        # Bypass AI and print critical information directly
-                        bypass_msg = _format_tool_bypass_msg(result_data)
-                        if bypass_msg:
-                            yield f'data: {{"choices": [{{"delta": {{"content": "{bypass_msg}"}}}}]}}\n\n'.encode('utf-8')
-                            if "🎉" in bypass_msg:
-                                # If it's a final cert, break to avoid AI summary
-                                break
-                                
-                        if 'error' in result_data:
-                            messages.append({
-                                "role": "system",
-                                "content": "Lệnh vừa gọi bị lỗi. TUYỆT ĐỐI KHÔNG gọi lại lệnh này nữa. Hãy ngừng gọi tool và giải thích lỗi cho người dùng bằng tiếng Việt."
-                            })
-                    continue
-                
-                # === CASE 2: No native tool calls - check fallback JSON in text ===
-                if use_tools and full_text:
-                    fb_match = re.search(r'```(?:json)?\s*(\{.*?\})\s*```', full_text, re.DOTALL)
-                    if not fb_match:
-                        fb_match = re.search(r'(\{\s*"tool"\s*:.*?\})', full_text, re.DOTALL)
-                    if fb_match:
-                        try:
-                            parsed_json = json.loads(fb_match.group(1))
-                            tool_name = parsed_json.get('tool') or parsed_json.get('name')
-                            if tool_name and tool_name.startswith('tool_'):
-                                clean_args = {k: v for k, v in parsed_json.items() if k not in ('tool', 'name')}
-                                
-                                # Yield immediate status before execution
-                                yield f'data: {{"choices": [{{"delta": {{"content": "\\n\\n*Dang goi: `{tool_name}`...*\\n"}}}}]}}\n\n'.encode('utf-8')
-                                
-                                result_str = execute_ai_tool(tool_name, clean_args)
-                                
-                                # Check if result contains certificate - display DIRECTLY, skip AI
-                                try:
-                                    result_data = json.loads(result_str)
-                                except:
-                                    result_data = {}
-                                
-                                if result_data.get('session_id'):
-                                    status_msg = f"*(Session ID: {result_data['session_id']})*\\n\\n"
-                                    yield f'data: {{"choices": [{{"delta": {{"content": "{status_msg}"}}}}]}}\n\n'.encode('utf-8')
-                                else:
-                                    yield f'data: {{"choices": [{{"delta": {{"content": "\\n"}}}}]}}\n\n'.encode('utf-8')
-                                
-                                # Bypass AI and print critical information directly
-                                bypass_msg = _format_tool_bypass_msg(result_data)
-                                if bypass_msg:
-                                    yield f'data: {{"choices": [{{"delta": {{"content": "{bypass_msg}"}}}}]}}\n\n'.encode('utf-8')
-                                    if "🎉" in bypass_msg:
-                                        break
-                                
-                                # For non-cert results, send to AI for formatting
-                                messages.append({"role": "assistant", "content": full_text})
-                                if 'error' in result_data:
-                                    messages.append({
-                                        "role": "system",
-                                        "content": "Lệnh vừa gọi bị lỗi. TUYỆT ĐỐI KHÔNG gọi lại lệnh này nữa. Hãy ngừng gọi tool và giải thích lỗi cho người dùng."
-                                    })
-                                messages.append({
-                                    "role": "user",
-                                    "content": f"[KET QUA TU CONG CU {tool_name}]:\n{result_str}\n\nHay phan tich ket qua tren va tra loi nguoi dung bang tieng Viet."
-                                })
-                                
-                                use_tools = False  # Prevent infinite loop
-                                continue
-                        except Exception as fb_err:
-                            logger.warning(f'Fallback tool parse error: {fb_err}')
-                
-                # === CASE 3: Normal text response - yield buffered content ===
-                for raw_line in raw_lines:
-                    yield raw_line + b'\n\n'
-                break
-                
-            if turn_count > MAX_TOOL_TURNS:
-                yield f'data: {{"choices": [{{"delta": {{"content": "\\n\\n*Vuot qua so lan goi cong cu.*\\n\\n"}}}}]}}\n\n'.encode('utf-8')
-
-
-        return Response(
-            stream_with_context(generate_sse()),
-            mimetype='text/event-stream',
-            headers={
-                'Cache-Control': 'no-cache',
-                'X-Accel-Buffering': 'no',
-                'Connection': 'keep-alive',
-            }
-        )
-
-    except Exception as exc:
-        logger.error('Error in /api/ai/stream: %s', exc, exc_info=True)
-        return jsonify({'error': str(exc)}), 500
-
-@app.route('/api/ai/invoke', methods=['POST'])
-def api_ai_invoke():
-    try:
-        provider = (request.form.get('provider') or 'nvidia').strip().lower()
-        api_key = (request.form.get('api_key') or '').strip()
-        api_base = (request.form.get('api_base') or '').strip()
-
-        if provider == 'nvidia':
-            target_key = api_key or NVIDIA_NIM_API_KEY
-            target_base = api_base or NVIDIA_NIM_API_BASE
-            default_model = 'meta/llama-3.3-70b-instruct'
-        elif provider == 'custom':
-            target_key = api_key
-            target_base = api_base or 'https://api.openai.com/v1'
-            default_model = 'gpt-3.5-turbo'
-        else:
-            target_key = AI_API_KEY
-            target_base = AI_API_BASE
-            default_model = AI_MODELS[0]
-
-        mode = (request.form.get('mode') or 'chat').strip().lower()
-        prompt = (request.form.get('prompt') or '').strip()
-        system_prompt = (request.form.get('system_prompt') or '').strip()
-        model = (request.form.get('model') or default_model).strip()
-        history_raw = (request.form.get('history') or '').strip()
-
-        history = []
-        if history_raw:
-            try:
-                history = json.loads(history_raw) or []
-            except Exception:
-                history = []
-
-        uploaded_files = []
-        for upload in request.files.getlist('files'):
-            item = _read_uploaded_ai_file(upload)
-            if item:
-                uploaded_files.append(item)
-
-        if mode == 'image':
-            if not prompt:
-                return jsonify({'error': 'Vui lòng nhập prompt cho ảnh.'}), 400
-            payload = {
-                'model': model,
-                'prompt': prompt,
-                'n': 1,
-                'size': '1024x1024',
-                'response_format': 'b64_json',
-            }
-            data = _post_ai_json(f'{target_base.rstrip("/")}/images/generations', payload, api_key=target_key)
-            return jsonify({
-                'mode': 'image',
-                'model': model,
-                'prompt': prompt,
-                'result': data,
-            }), 200
-
-        if mode == 'video':
-            if not prompt:
-                return jsonify({'error': 'Vui lòng nhập prompt cho video.'}), 400
-            payload = {
-                'model': model,
-                'prompt': prompt,
-                'n': 1,
-                'size': '1280x720',
-            }
-            data = _post_ai_json(f'{target_base.rstrip("/")}/videos/generations', payload, api_key=target_key)
-            return jsonify({
-                'mode': 'video',
-                'model': model,
-                'prompt': prompt,
-                'result': data,
-            }), 200
-
-        if not prompt and not uploaded_files:
-            return jsonify({'error': 'Vui lòng nhập prompt hoặc đính kèm tệp.'}), 400
-
-        messages = _build_ai_messages(prompt, system_prompt, uploaded_files, history)
-        payload = {
-            'model': model,
-            'messages': messages,
-            'temperature': 0.7,
-            'max_tokens': 1600,
-        }
-        data = _post_ai_json(f'{target_base.rstrip("/")}/chat/completions', payload, api_key=target_key)
-        reply_text = _extract_chat_text(data)
-        if not reply_text:
-            reply_text = json.dumps(data, ensure_ascii=False)
-
-        return jsonify({
-            'mode': 'chat',
-            'model': model,
-            'prompt': prompt,
-            'reply': reply_text,
-            'raw': data,
-        }), 200
-    except Exception as exc:
-        logger.error('Error in /api/ai/invoke: %s', exc, exc_info=True)
-        return jsonify({'error': str(exc)}), 500
-
-
-# --- API: Check certificate files on server ---
 def _pick_ssl_file(files: List[str], candidates: List[str], *, allow_generic: bool = True) -> Optional[str]:
     lowered = {name.lower(): name for name in files}
     for candidate in candidates:
@@ -1293,13 +238,15 @@ def _scan_ssl_catalog(base_dir: str) -> List[dict]:
     return results
 
 
+SSL_CATALOG_DEFAULT_DIR = os.getenv('SSL_CATALOG_DIR', os.path.join(os.path.expanduser('~'), 'Desktop', 'ssl'))
+
 @app.route('/api/ssl-catalog', methods=['GET'])
 def api_ssl_catalog():
     requested_dir = request.args.get('path', '').strip()
     if requested_dir:
         base_dir = os.path.abspath(os.path.expanduser(requested_dir))
     else:
-        base_dir = '/home/nvpa/Desktop/ssl'
+        base_dir = SSL_CATALOG_DEFAULT_DIR
 
     if not os.path.isdir(base_dir):
         return jsonify({"items": [], "error": f"Thư mục không tồn tại: {base_dir}"}), 200
@@ -1328,7 +275,7 @@ def api_ssl_upload():
         if not files:
             return jsonify({"error": "No files uploaded"}), 400
 
-        target_dir = tempfile.mkdtemp(prefix='alltool-ssl-upload-', dir='/tmp')
+        target_dir = tempfile.mkdtemp(prefix='alltool-ssl-upload-')
         saved_count = 0
         for uploaded in files:
             rel_path = uploaded.filename or ''
@@ -1353,87 +300,6 @@ def api_ssl_upload():
         logger.exception('Error in /api/ssl-upload')
         return jsonify({"error": str(exc)}), 500
 
-
-@app.route('/api/install-ssl', methods=['POST'])
-def api_install_ssl():
-    try:
-        data = request.get_json(silent=True) or {}
-        domain = (data.get('domain') or '').strip()
-        server_input = (data.get('server_input') or '').strip()
-        password = (data.get('password') or '').strip()
-        key_text = (data.get('key') or '').strip()
-        cert_text = (data.get('cert') or '').strip()
-        bundle_text = (data.get('bundle') or '').strip()
-
-        if not domain:
-            return jsonify({"error": "Domain is required"}), 400
-        if not key_text or not cert_text or not bundle_text:
-            return jsonify({"error": "Key, cert and bundle are required"}), 400
-
-        temp_dir = tempfile.mkdtemp(prefix="alltool-ssl-", dir="/tmp")
-        key_path = os.path.join(temp_dir, "key.txt")
-        cert_path = os.path.join(temp_dir, "cert.txt")
-        bundle_path = os.path.join(temp_dir, "bundle.txt")
-
-        with open(key_path, "w", encoding="utf-8") as f:
-            f.write(key_text)
-        with open(cert_path, "w", encoding="utf-8") as f:
-            f.write(cert_text)
-        with open(bundle_path, "w", encoding="utf-8") as f:
-            f.write(bundle_text)
-
-        script_path = os.path.join(app.root_path, "import-ssl.sh")
-        cmd = [
-            "bash", script_path,
-            "--no-gui",
-            "--domain", domain,
-            "--server", server_input or domain,
-            "--password", password,
-            "--key-file", key_path,
-            "--cert-file", cert_path,
-            "--bundle-file", bundle_path,
-        ]
-
-        def generate():
-            yield 'START_LOG\n'
-            proc = subprocess.Popen(
-                cmd,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
-                text=True,
-                bufsize=1,
-                universal_newlines=True,
-            )
-            if proc.stdout is None:
-                yield 'ERROR: Không thể mở luồng log.\n'
-                return
-            try:
-                while True:
-                    line = proc.stdout.readline()
-                    if line == '':
-                        break
-                    yield line
-                    if not line.endswith('\n'):
-                        yield '\n'
-                proc.wait()
-                if proc.returncode == 0:
-                    yield '\nSUCCESS: Install SSL completed.\n'
-                else:
-                    yield f'ERROR: Install SSL failed with exit code {proc.returncode}.\n'
-            except Exception as exc:
-                yield f'ERROR: {exc}\n'
-            finally:
-                try:
-                    proc.stdout.close()
-                except Exception:
-                    pass
-
-        return Response(stream_with_context(generate()), mimetype='text/plain')
-    except subprocess.TimeoutExpired as exc:
-        return jsonify({"error": "SSL install timed out", "output": str(exc)}), 500
-    except Exception as e:
-        logger.error(f"Exception in /api/install-ssl: {e}", exc_info=True)
-        return jsonify({"error": str(e)}), 500
 
 
 @app.route('/api/check-cert-file', methods=['POST'])
@@ -1835,13 +701,219 @@ def build_dns_basic_result(domain: str, record_types: List[str], include_dnssec:
     return result
 
 
-DNS_HISTORY_RECORD_TYPES = ['A', 'AAAA', 'MX', 'NS', 'TXT', 'CNAME', 'SOA', 'CAA']
+DNS_HISTORY_RECORD_TYPES = ['A', 'AAAA', 'MX', 'NS', 'TXT', 'CNAME', 'SOA', 'CAA', 'SUBDOMAIN']
+
+_DNS_HISTORY_HTTP = requests.Session()
+_DNS_HISTORY_HTTP.headers.update({'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) all-tool/1.0'})
+
+
+def _fetch_otx_history(domain: str) -> dict:
+    """AlienVault OTX passive DNS — free, no API key required."""
+    endpoint = f'https://otx.alienvault.com/api/v1/indicators/domain/{quote(domain)}/passive_dns'
+    try:
+        resp = _DNS_HISTORY_HTTP.get(endpoint, timeout=12)
+        payload = resp.json() if resp.content else {}
+        if resp.status_code != 200 or not isinstance(payload, dict):
+            return _build_history_source('otx', 'AlienVault OTX', [], error=f'HTTP {resp.status_code}', endpoint=endpoint)
+
+        records = []
+        for item in payload.get('passive_dns', []) or []:
+            rrtype = (item.get('record_type') or '').upper()
+            if rrtype and rrtype not in DNS_HISTORY_RECORD_TYPES:
+                continue
+            records.append(_normalize_history_record(
+                source_id='otx',
+                source_label='AlienVault OTX',
+                rrclass='IN',
+                rrtype=rrtype,
+                query=item.get('hostname', domain),
+                answer=item.get('address') or item.get('raw_hash') or '',
+                first_seen=item.get('first'),
+                last_seen=item.get('last'),
+                count=item.get('count'),
+            ))
+        return _build_history_source('otx', 'AlienVault OTX', records, endpoint=endpoint)
+    except Exception as exc:
+        return _build_history_source('otx', 'AlienVault OTX', [], error=str(exc), endpoint=endpoint)
+
+
+def _fetch_urlscan_history(domain: str) -> dict:
+    """urlscan.io searchable domain API — free, no API key required.
+
+    Derived records are approximate: page/domain -> IP mappings observed in scans.
+    """
+    endpoint = 'https://urlscan.io/api/v1/search/'
+    try:
+        resp = _DNS_HISTORY_HTTP.get(
+            endpoint,
+            params={'q': f'domain:{domain}', 'size': 100},
+            timeout=12,
+        )
+        payload = resp.json() if resp.content else {}
+        if resp.status_code != 200 or not isinstance(payload, dict):
+            message = payload.get('message') if isinstance(payload, dict) else None
+            return _build_history_source('urlscan', 'urlscan.io', [], error=message or f'HTTP {resp.status_code}', endpoint=endpoint)
+
+        records = []
+        for item in payload.get('results', []) or []:
+            page = (item.get('page') or {})
+            hostname = (page.get('domain') or '').strip().rstrip('.').lower()
+            ip_addr = (item.get('page', {}).get('ip') or item.get('ip') or '').strip()
+            scan_time = item.get('task', {}).get('time')
+            if not hostname or not _is_history_domain_related(hostname, domain):
+                hostname = domain
+            if not ip_addr:
+                continue
+            rrtype = 'AAAA' if ':' in ip_addr else 'A'
+            records.append(_normalize_history_record(
+                source_id='urlscan',
+                source_label='urlscan.io',
+                rrclass='IN',
+                rrtype=rrtype,
+                query=hostname,
+                answer=ip_addr,
+                first_seen=scan_time,
+                last_seen=scan_time,
+                note='observed in scan',
+            ))
+        return _build_history_source('urlscan', 'urlscan.io', records, endpoint=endpoint)
+    except Exception as exc:
+        return _build_history_source('urlscan', 'urlscan.io', [], error=str(exc), endpoint=endpoint)
+
+
+def _history_subdomain_records(source_id: str, source_label: str, domain: str, names: List[str], endpoint: str, note: str) -> dict:
+    records = []
+    seen = set()
+    for name in names:
+        hostname = (name or '').strip().lower().rstrip('.')
+        if not _is_history_domain_related(hostname, domain) or hostname in seen:
+            continue
+        seen.add(hostname)
+        records.append(_normalize_history_record(
+            source_id=source_id,
+            source_label=source_label,
+            rrclass='IN',
+            rrtype='SUBDOMAIN',
+            query=hostname,
+            answer='observed subdomain',
+            first_seen=None,
+            last_seen=None,
+            note=note,
+        ))
+    return _build_history_source(source_id, source_label, records, endpoint=endpoint)
+
+
+def _fetch_hackertarget_history(domain: str) -> dict:
+    """HackerTarget hostsearch: free DNS A/subdomain observations."""
+    endpoint = f'https://api.hackertarget.com/hostsearch/?q={quote(domain)}'
+    try:
+        resp = _DNS_HISTORY_HTTP.get(endpoint, timeout=12)
+        if resp.status_code != 200:
+            return _build_history_source('hackertarget', 'HackerTarget', [], error=f'HTTP {resp.status_code}', endpoint=endpoint)
+        names = [line.split(',', 1)[0].strip() for line in resp.text.splitlines() if line.strip()]
+        return _history_subdomain_records('hackertarget', 'HackerTarget', domain, names, endpoint, 'DNS hostsearch')
+    except Exception as exc:
+        return _build_history_source('hackertarget', 'HackerTarget', [], error=str(exc), endpoint=endpoint)
+
+
+def _fetch_bufferover_history(domain: str) -> dict:
+    """BufferOver DNS dataset: free forward DNS observations."""
+    endpoint = f'https://dns.bufferover.run/dns?q=.{quote(domain)}'
+    try:
+        resp = _DNS_HISTORY_HTTP.get(endpoint, timeout=12)
+        payload = resp.json() if resp.content else {}
+        if resp.status_code != 200 or not isinstance(payload, dict):
+            return _build_history_source('bufferover', 'BufferOver', [], error=f'HTTP {resp.status_code}', endpoint=endpoint)
+        names = []
+        for item in (payload.get('FDNS_A') or []) + (payload.get('FDNS_CNAME') or []):
+            parts = str(item).split(',', 1)
+            if len(parts) == 2:
+                names.append(parts[1])
+        return _history_subdomain_records('bufferover', 'BufferOver', domain, names, endpoint, 'forward DNS dataset')
+    except Exception as exc:
+        return _build_history_source('bufferover', 'BufferOver', [], error=str(exc), endpoint=endpoint)
+
+
+def _fetch_anubis_history(domain: str) -> dict:
+    """Anubis subdomain dataset: free passive DNS/subdomain observations."""
+    endpoint = f'https://jldc.me/anubis/subdomains/{quote(domain)}'
+    try:
+        resp = _DNS_HISTORY_HTTP.get(endpoint, timeout=15)
+        payload = resp.json() if resp.content else []
+        if resp.status_code != 200 or not isinstance(payload, list):
+            return _build_history_source('anubis', 'Anubis', [], error=f'HTTP {resp.status_code}', endpoint=endpoint)
+        return _history_subdomain_records('anubis', 'Anubis', domain, payload, endpoint, 'subdomain dataset')
+    except Exception as exc:
+        return _build_history_source('anubis', 'Anubis', [], error=str(exc), endpoint=endpoint)
+
+
+def _fetch_rapiddns_history(domain: str) -> dict:
+    """RapidDNS public subdomain page: free DNS observations."""
+    endpoint = f'https://rapiddns.io/subdomain/{quote(domain)}?full=1'
+    try:
+        resp = _DNS_HISTORY_HTTP.get(endpoint, timeout=15)
+        if resp.status_code != 200:
+            return _build_history_source('rapiddns', 'RapidDNS', [], error=f'HTTP {resp.status_code}', endpoint=endpoint)
+        pattern = r'(?<![A-Za-z0-9_-])(?:[A-Za-z0-9_-]+\.)+' + re.escape(domain) + r'\b'
+        names = re.findall(pattern, resp.text, flags=re.IGNORECASE)
+        return _history_subdomain_records('rapiddns', 'RapidDNS', domain, names, endpoint, 'public DNS subdomain list')
+    except Exception as exc:
+        return _build_history_source('rapiddns', 'RapidDNS', [], error=str(exc), endpoint=endpoint)
+
+
+def _fetch_subdomain_center_history(domain: str) -> dict:
+    """Subdomain Center public dataset: free discovered DNS hosts."""
+    endpoint = f'https://api.subdomain.center/?domain={quote(domain)}'
+    try:
+        resp = _DNS_HISTORY_HTTP.get(endpoint, timeout=15)
+        payload = resp.json() if resp.content else []
+        if resp.status_code != 200 or not isinstance(payload, list):
+            return _build_history_source('subdomain_center', 'Subdomain Center', [], error=f'HTTP {resp.status_code}', endpoint=endpoint)
+        return _history_subdomain_records('subdomain_center', 'Subdomain Center', domain, payload, endpoint, 'public subdomain dataset')
+    except Exception as exc:
+        return _build_history_source('subdomain_center', 'Subdomain Center', [], error=str(exc), endpoint=endpoint)
+
+
+def _fetch_hackertarget_dns_history(domain: str) -> dict:
+    """HackerTarget DNS lookup: free current A/AAAA/MX/NS/TXT observations."""
+    endpoint = f'https://api.hackertarget.com/dnslookup/?q={quote(domain)}'
+    try:
+        resp = _DNS_HISTORY_HTTP.get(endpoint, timeout=12)
+        if resp.status_code != 200:
+            return _build_history_source('hackertarget_dns', 'HackerTarget DNS', [], error=f'HTTP {resp.status_code}', endpoint=endpoint)
+        records = []
+        for line in resp.text.splitlines():
+            parts = [part.strip() for part in line.split(':', 1)]
+            if len(parts) != 2:
+                continue
+            rrtype, answer = parts
+            rrtype = rrtype.upper()
+            if rrtype not in DNS_HISTORY_RECORD_TYPES or not answer:
+                continue
+            records.append(_normalize_history_record(
+                source_id='hackertarget_dns',
+                source_label='HackerTarget DNS',
+                rrclass='IN',
+                rrtype=rrtype,
+                query=domain,
+                answer=answer,
+                first_seen=None,
+                last_seen=None,
+                note='current DNS lookup',
+            ))
+        return _build_history_source('hackertarget_dns', 'HackerTarget DNS', records, endpoint=endpoint)
+    except Exception as exc:
+        return _build_history_source('hackertarget_dns', 'HackerTarget DNS', [], error=str(exc), endpoint=endpoint)
 
 
 def _parse_history_timestamp(value) -> Optional[datetime]:
     try:
         if value in (None, '', 0):
             return None
+        if isinstance(value, str) and not value.strip().replace('.', '', 1).isdigit():
+            normalized = value.strip().replace('Z', '+00:00')
+            parsed = datetime.fromisoformat(normalized)
+            return parsed.replace(tzinfo=timezone.utc) if parsed.tzinfo is None else parsed.astimezone(timezone.utc)
         ts = float(value)
         if ts > 10**12:
             ts /= 1000.0
@@ -2077,24 +1149,51 @@ def _fetch_robtex_history(domain: str) -> dict:
 
 def _merge_history_sources(domain: str, sources: List[dict]) -> dict:
     combined_records = []
-    seen = set()
+    seen = {}
+    source_labels_by_key = {}
 
     for source in sources:
         for record in source.get('records', []):
+            # Dedupe theo (rrtype, query, answer) — mở rộng first/last seen khi trùng
             signature = (
-                record.get('source_id'),
                 record.get('rrtype'),
-                record.get('query'),
-                record.get('answer'),
-                record.get('first_seen_ts'),
-                record.get('last_seen_ts'),
+                (record.get('query') or '').strip().rstrip('.').lower(),
+                (record.get('answer') or '').strip(),
             )
-            if signature in seen:
+            existing = seen.get(signature)
+            if existing is not None:
+                prev = combined_records[existing]
+                prev_first = prev.get('first_seen_ts') or 0
+                prev_last = prev.get('last_seen_ts') or 0
+                cur_first = record.get('first_seen_ts') or 0
+                cur_last = record.get('last_seen_ts') or 0
+                if cur_first and (not prev_first or cur_first < prev_first):
+                    prev['first_seen'] = record.get('first_seen')
+                    prev['first_seen_ts'] = record.get('first_seen_ts')
+                if cur_last and (not prev_last or cur_last > prev_last):
+                    prev['last_seen'] = record.get('last_seen')
+                    prev['last_seen_ts'] = record.get('last_seen_ts')
+                labels = source_labels_by_key.setdefault(signature, set())
+                labels.add(record.get('source_label') or record.get('source_id') or '')
+                prev_count = prev.get('count') or 0
+                cur_count = record.get('count') or 0
+                prev['count'] = max(prev_count, cur_count) if (prev_count or cur_count) else None
                 continue
-            seen.add(signature)
-            combined_records.append(record)
+            seen[signature] = len(combined_records)
+            source_labels_by_key.setdefault(signature, set()).add(record.get('source_label') or record.get('source_id') or '')
+            combined_records.append(dict(record))
 
-    return _build_history_source('combined', 'Tổng hợp', combined_records, endpoint='mnemonic + robtex')
+    # Ghi nhãn nguồn tổng hợp sau khi dedupe
+    for idx, record in enumerate(combined_records):
+        labels = source_labels_by_key.get((
+            record.get('rrtype'),
+            (record.get('query') or '').strip().rstrip('.').lower(),
+            (record.get('answer') or '').strip(),
+        ))
+        if labels:
+            record['source_label'] = ' + '.join(sorted(filter(None, labels)))
+
+    return _build_history_source('combined', 'Tổng hợp', combined_records, endpoint='mnemonic + robtex + otx + urlscan + hackertarget + hackertarget_dns + subdomain_center + rapiddns')
 
 
 def _augment_history_sources(domain: str, sources: List[dict]) -> List[dict]:
@@ -2218,13 +1317,24 @@ def api_check_dns_history():
             cached_copy['timestamp'] = datetime.now(timezone.utc).isoformat()
             return jsonify(cached_copy), 200
 
-        with ThreadPoolExecutor(max_workers=2) as pool:
-            mnemonic_future = pool.submit(_fetch_mnemonic_history, domain)
-            robtex_future = pool.submit(_fetch_robtex_history, domain)
-            mnemonic_source = mnemonic_future.result()
-            robtex_source = robtex_future.result()
+        # Query free DNS/passive-DNS sources in parallel (no API keys required).
+        source_fetchers = {
+            'mnemonic': _fetch_mnemonic_history,
+            'robtex': _fetch_robtex_history,
+            'otx': _fetch_otx_history,
+            'urlscan': _fetch_urlscan_history,
+            'hackertarget': _fetch_hackertarget_history,
+            'hackertarget_dns': _fetch_hackertarget_dns_history,
+            'subdomain_center': _fetch_subdomain_center_history,
+            'rapiddns': _fetch_rapiddns_history,
+        }
+        with ThreadPoolExecutor(max_workers=len(source_fetchers)) as pool:
+            futures = {
+                source_id: pool.submit(fetcher, domain)
+                for source_id, fetcher in source_fetchers.items()
+            }
+            sources = [futures[name].result() for name in source_fetchers]
 
-        sources = [mnemonic_source, robtex_source]
         sources = _augment_history_sources(domain, sources)
         combined_source = _merge_history_sources(domain, sources)
 
@@ -2233,8 +1343,8 @@ def api_check_dns_history():
             'timestamp': datetime.now(timezone.utc).isoformat(),
             'cached': False,
             'sources': [combined_source] + sources,
-            'total_records': sum(source.get('record_count', 0) for source in sources),
-            'provider_count': len(sources),
+            'total_records': combined_source.get('record_count', 0),
+                'provider_count': len(source_fetchers),
         }
 
         dns_history_cache_set(cache_key, payload)
@@ -2408,6 +1518,116 @@ def api_clear_cache():
     }), 200
 
 
+EMAIL_AUTH_DEFAULT_SELECTORS = [
+    'default', 'selector1', 'selector2', 'google', 'dkim', 'mail', 's1', 's2', 'x', 'k1',
+    'mandrill', 'sendgrid', 'zoho', 'protonmail', '20230601', '20221201', '20240101', '20240201'
+]
+
+EMAIL_AUTH_SYSTEM_CATALOG = {
+    'IredMail': ['dkim'],
+    'cPanel / WHM': ['default'],
+    'MDaemon': ['default', 'mail'],
+    'Google Workspace': ['google'],
+    'Microsoft 365': ['selector1', 'selector2'],
+    'Mailcow': ['dkim'],
+    'Kerio Connect': ['default'],
+    'DirectAdmin': ['x', 'default'],
+}
+
+
+def _resolve_email_auth_record(name: str, record_type: str) -> dict:
+    resolver = dns.resolver.Resolver()
+    resolver.timeout = 4
+    resolver.lifetime = 6
+    try:
+        answers = resolver.resolve(name, record_type)
+        values = []
+        for answer in answers:
+            if record_type == 'TXT':
+                chunks = getattr(answer, 'strings', None)
+                value = ''.join(chunk.decode('utf-8', errors='replace') if isinstance(chunk, bytes) else str(chunk) for chunk in chunks) if chunks else str(answer)
+            elif record_type == 'MX':
+                value = f'{answer.preference} {answer.exchange}'.rstrip('.')
+            else:
+                value = str(answer).rstrip('.')
+            if value not in values:
+                values.append(value)
+        return {'name': name, 'type': record_type, 'status': 'found', 'records': values}
+    except (dns.resolver.NoAnswer, dns.resolver.NXDOMAIN):
+        return {'name': name, 'type': record_type, 'status': 'not_found', 'records': []}
+    except Exception as exc:
+        return {'name': name, 'type': record_type, 'status': 'error', 'records': [], 'error': str(exc)}
+
+
+@app.route('/api/check-email-auth', methods=['POST'])
+def api_check_email_auth():
+    """Check SPF, DKIM, DMARC and common mail-platform DNS fingerprints."""
+    try:
+        data = request.get_json(silent=True) or {}
+        domain = _normalize_domain_input(data.get('domain', ''))
+        if not domain:
+            return jsonify({'error': 'Domain is required'}), 400
+        raw_selectors = data.get('selectors') or []
+        if isinstance(raw_selectors, str):
+            raw_selectors = re.split(r'[\s,]+', raw_selectors)
+        selectors = []
+        for selector in list(raw_selectors) + EMAIL_AUTH_DEFAULT_SELECTORS:
+            cleaned = re.sub(r'[^a-zA-Z0-9_.-]', '', str(selector or '').strip()).lower()
+            if cleaned and cleaned not in selectors:
+                selectors.append(cleaned)
+        selectors = selectors[:30]
+        queries = [('spf', domain, 'TXT'), ('dmarc', f'_dmarc.{domain}', 'TXT'), ('mx', domain, 'MX')]
+        for selector in selectors:
+            queries.extend([(f'dkim:{selector}', f'{selector}._domainkey.{domain}', 'TXT'), (f'dkim-cname:{selector}', f'{selector}._domainkey.{domain}', 'CNAME')])
+        resolved = {}
+        with ThreadPoolExecutor(max_workers=12) as pool:
+            future_map = {pool.submit(_resolve_email_auth_record, name, record_type): key for key, name, record_type in queries}
+            for future in as_completed(future_map):
+                resolved[future_map[future]] = future.result()
+        spf = resolved.get('spf', {'records': []})
+        dmarc = resolved.get('dmarc', {'records': []})
+        mx = resolved.get('mx', {'records': []})
+        dkim = []
+        for selector in selectors:
+            txt_result = resolved.get(f'dkim:{selector}', {'name': f'{selector}._domainkey.{domain}', 'type': 'TXT', 'status': 'not_found', 'records': []})
+            cname_result = resolved.get(f'dkim-cname:{selector}', {'name': f'{selector}._domainkey.{domain}', 'type': 'CNAME', 'status': 'not_found', 'records': []})
+            records = txt_result.get('records', []) + cname_result.get('records', [])
+            if records:
+                dkim.append({'selector': selector, 'name': txt_result['name'], 'status': 'found', 'records': list(dict.fromkeys(records)), 'txt': txt_result, 'cname': cname_result})
+        spf_records = [record for record in spf.get('records', []) if record.lower().startswith('v=spf1')]
+        dmarc_records = [record for record in dmarc.get('records', []) if record.lower().startswith('v=dmarc1')]
+        fingerprints = (' '.join(mx.get('records', [])) + ' ' + ' '.join(spf_records) + ' ' + ' '.join(record for item in dkim for record in item.get('records', []))).lower()
+        systems = []
+        for system_name, system_selectors in EMAIL_AUTH_SYSTEM_CATALOG.items():
+            expected = []
+            for selector in system_selectors:
+                expected.append({
+                    'type': 'DKIM',
+                    'name': f'{selector}._domainkey.{domain}',
+                    'selector': selector,
+                    'status': 'found' if any(item.get('selector') == selector for item in dkim) else 'not_found',
+                    'records': next((item.get('records', []) for item in dkim if item.get('selector') == selector), []),
+                })
+            expected.extend([
+                {'type': 'SPF', 'name': domain, 'status': 'found' if spf_records else 'not_found', 'records': spf_records},
+                {'type': 'DMARC', 'name': f'_dmarc.{domain}', 'status': 'found' if dmarc_records else 'not_found', 'records': dmarc_records},
+            ])
+            found_count = sum(item['status'] == 'found' for item in expected)
+            systems.append({
+                'name': system_name,
+                'expected_records': expected,
+                'found_count': found_count,
+                'total_count': len(expected),
+                'complete': found_count == len(expected),
+            })
+        raw_records = [spf, dmarc, mx] + [item['txt'] for item in dkim] + [item['cname'] for item in dkim]
+        auth_count = int(bool(spf_records)) + int(bool(dmarc_records)) + int(bool(dkim))
+        return jsonify({'domain': domain, 'email_likely': bool(mx.get('records') or auth_count), 'auth_coverage': {'found': auth_count, 'total': 3, 'complete': auth_count == 3}, 'spf': {'status': 'found' if spf_records else 'not_found', 'records': spf_records, 'query': domain}, 'dmarc': {'status': 'found' if dmarc_records else 'not_found', 'records': dmarc_records, 'query': f'_dmarc.{domain}'}, 'dkim': dkim, 'mx': mx.get('records', []), 'systems': systems, 'raw_records': raw_records, 'selectors_checked': selectors, 'timestamp': datetime.now(timezone.utc).isoformat()}), 200
+    except Exception as exc:
+        logger.error('Exception in /api/check-email-auth: %s', exc, exc_info=True)
+        return jsonify({'error': str(exc)}), 500
+
+
 @app.route('/api/check-ssl', methods=['POST'])
 def api_check_ssl():
     """Check SSL certificate for a domain"""
@@ -2518,6 +1738,7 @@ def api_check_ssl():
                 return contexts
 
             cert_der = None
+            chain_der = []
             last_handshake_error = None
             tls_profile = None
 
@@ -2526,6 +1747,13 @@ def api_check_ssl():
                     with socket.create_connection((domain, 443), timeout=7) as sock:
                         with context.wrap_socket(sock, server_hostname=domain) as ssock:
                             cert_der = ssock.getpeercert(binary_form=True)
+                            if hasattr(ssock, 'get_unverified_chain'):
+                                try:
+                                    chain_der = list(ssock.get_unverified_chain() or [])
+                                except Exception:
+                                    chain_der = []
+                            if not chain_der and cert_der:
+                                chain_der = [cert_der]
                             tls_profile = profile
                             break
                 except ssl.SSLError as handshake_err:
@@ -2548,10 +1776,55 @@ def api_check_ssl():
                 return h == p
             
             cert_obj = x509.load_der_x509_certificate(cert_der, default_backend())
+            now_utc = datetime.now(timezone.utc)
+
+            def _certificate_summary(certificate: x509.Certificate, index: int) -> dict:
+                cert_valid_from = getattr(certificate, 'not_valid_before_utc', certificate.not_valid_before.replace(tzinfo=timezone.utc))
+                cert_valid_to = getattr(certificate, 'not_valid_after_utc', certificate.not_valid_after.replace(tzinfo=timezone.utc))
+                cert_subject_cn = certificate.subject.get_attributes_for_oid(NameOID.COMMON_NAME)
+                cert_subject_org = certificate.subject.get_attributes_for_oid(NameOID.ORGANIZATION_NAME)
+                cert_issuer_cn = certificate.issuer.get_attributes_for_oid(NameOID.COMMON_NAME)
+                cert_issuer_org = certificate.issuer.get_attributes_for_oid(NameOID.ORGANIZATION_NAME)
+                cert_sans = []
+                try:
+                    san_ext = certificate.extensions.get_extension_for_class(x509.SubjectAlternativeName)
+                    cert_sans = list(san_ext.value.get_values_for_type(x509.DNSName))
+                except x509.ExtensionNotFound:
+                    pass
+                return {
+                    'index': index,
+                    'label': 'Leaf certificate' if index == 0 else f'Chain {index}',
+                    'subject': certificate.subject.rfc4514_string(),
+                    'subject_common_name': cert_subject_cn[0].value if cert_subject_cn else '',
+                    'subject_org': cert_subject_org[0].value if cert_subject_org else '',
+                    'issuer': certificate.issuer.rfc4514_string(),
+                    'issuer_common_name': cert_issuer_cn[0].value if cert_issuer_cn else '',
+                    'issuer_org': cert_issuer_org[0].value if cert_issuer_org else '',
+                    'subject_alt_names': cert_sans[:50],
+                    'valid_from': cert_valid_from.isoformat(),
+                    'valid_to': cert_valid_to.isoformat(),
+                    'serial_number': format(certificate.serial_number, 'X'),
+                    'signature_algorithm': certificate.signature_hash_algorithm.name if certificate.signature_hash_algorithm else None,
+                    'version': certificate.version.value + 1,
+                    'valid': cert_valid_from <= now_utc <= cert_valid_to,
+                }
+
+            parsed_chain = []
+            seen_chain_serials = set()
+            for chain_index, chain_item in enumerate(chain_der):
+                try:
+                    chain_certificate = x509.load_der_x509_certificate(chain_item, default_backend())
+                    if chain_certificate.serial_number in seen_chain_serials:
+                        continue
+                    seen_chain_serials.add(chain_certificate.serial_number)
+                    parsed_chain.append(_certificate_summary(chain_certificate, len(parsed_chain)))
+                except Exception:
+                    continue
+            if not parsed_chain:
+                parsed_chain = [_certificate_summary(cert_obj, 0)]
 
             valid_from = getattr(cert_obj, 'not_valid_before_utc', cert_obj.not_valid_before.replace(tzinfo=timezone.utc))
             valid_to = getattr(cert_obj, 'not_valid_after_utc', cert_obj.not_valid_after.replace(tzinfo=timezone.utc))
-            now_utc = datetime.now(timezone.utc)
 
             issuer_cn = cert_obj.issuer.get_attributes_for_oid(NameOID.COMMON_NAME)
             issuer_org = cert_obj.issuer.get_attributes_for_oid(NameOID.ORGANIZATION_NAME)
@@ -2592,6 +1865,7 @@ def api_check_ssl():
             result["serial_number"] = format(cert_obj.serial_number, 'X')
             result["signature_algorithm"] = cert_obj.signature_hash_algorithm.name if cert_obj.signature_hash_algorithm else None
             result["version"] = cert_obj.version.value + 1
+            result["certificate_chain"] = parsed_chain
 
             time_ok = valid_from <= now_utc <= valid_to
             result["valid"] = bool(time_ok and hostname_ok)
