@@ -1,0 +1,67 @@
+<div aria-labelledby="tabbtn-bulkssl" class="tab-content" hidden="" id="tab-bulkssl" role="tabpanel">
+<div class="dns-shell">
+<div class="dns-hero">
+<div class="dns-card dns-search-card">
+<div class="dns-panel-header">
+<div>
+<div class="dns-panel-title">Bulk SSL</div>
+</div>
+</div>
+<div class="bulk-input-wrap">
+<textarea class="bulk-input" id="bulkSslDomainsInput" placeholder="example.com, example.vn
+google.com
+openai.com"></textarea>
+</div>
+<div class="dns-search-row">
+<div class="dns-actions">
+<button class="btn btn-primary" onclick="checkBulkSSL()"><span class="icon" data-lucide="search"></span></button>
+<button class="btn btn-secondary" onclick="clearBulkSSL()"><span class="icon" data-lucide="trash-2"></span></button>
+</div>
+</div>
+</div>
+<div class="dns-card dns-stats-card">
+<div class="dns-stat-row">
+<span class="dns-stat-label">Domains</span>
+<span class="dns-stat-value accent" id="bulkSslSummaryTotal">-</span>
+</div>
+<div class="dns-stat-row">
+<span class="dns-stat-label">Hợp lệ</span>
+<span class="dns-stat-value success" id="bulkSslSummaryValid">-</span>
+</div>
+<div class="dns-stat-row">
+<span class="dns-stat-label">Sắp hết hạn (&lt;30d)</span>
+<span class="dns-stat-value warning" id="bulkSslSummaryExpiring">-</span>
+</div>
+<div class="dns-stat-row">
+<span class="dns-stat-label">Lỗi/Hết hạn</span>
+<span class="dns-stat-value error" id="bulkSslSummaryError">-</span>
+</div>
+<div class="dns-stat-row">
+<span class="dns-stat-label">Cập nhật</span>
+<span class="dns-stat-value accent" id="bulkSslSummaryUpdated">-</span>
+</div>
+</div>
+</div>
+<div class="loading" id="bulkSslLoading">
+<div class="spinner"></div>
+<p class="dns-loading-note">Đang kiểm tra bulk SSL...</p>
+</div>
+<div class="results-container" id="bulkSslResults">
+<div class="dns-card dns-results-panel">
+<div class="dns-section-head">
+<div class="section-title"><span class="icon" data-lucide="clipboard"></span> Bulk SSL Results</div>
+<div class="dns-section-chip" id="bulkSslCountChip">0 domains</div>
+</div>
+<div class="bulk-table">
+<div class="bulk-table-head">
+<div>Tên miền</div>
+<div>Nhà cung cấp (Issuer)</div>
+<div>Hết hạn</div>
+<div>Trạng thái</div>
+</div>
+<div id="bulkSslResultsTable"></div>
+</div>
+</div>
+</div>
+</div>
+</div>

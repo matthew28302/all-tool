@@ -1,6 +1,7 @@
 import logging
-logging.basicConfig(level=logging.DEBUG, format='[%(asctime)s] %(levelname)s in %(module)s: %(message)s')
+logging.basicConfig(level=logging.INFO, format='[%(asctime)s] %(levelname)s in %(module)s: %(message)s')
 logger = logging.getLogger(__name__)
+logging.getLogger('urllib3').setLevel(logging.WARNING)
 #!/usr/bin/env python3
 """
 DNS Checker Tool - Ultra Fast Version
@@ -50,6 +51,9 @@ app = Flask(__name__, static_folder=None)
 CORS(app)
 
 # ==== Static files: cache 1 ngày + gzip (hiệu năng) ====
+_static_cache: dict = {}
+_static_cache_lock = threading.Lock()
+
 @app.route('/static/<path:filename>', endpoint='static')
 def custom_static(filename):
     import gzip as _gzip
@@ -60,28 +64,59 @@ def custom_static(filename):
         from flask import abort
         abort(404)
 
+    try:
+        mtime = os.path.getmtime(full_path)
+    except OSError:
+        from flask import abort
+        abort(404)
+
+    # Trả về cache nếu file không đổi (tránh đọc + gzip lại mỗi request)
+    with _static_cache_lock:
+        cached = _static_cache.get(full_path)
+        if cached and cached['mtime'] == mtime:
+            data, mimetype = cached['data'], cached['mimetype']
+            compressed = cached.get('gz')
+            gzip_ok = (
+                cached.get('compressible')
+                and compressed is not None
+                and 'gzip' in request.headers.get('Accept-Encoding', '')
+            )
+            response = Response(compressed if gzip_ok else data, mimetype=mimetype)
+            response.headers['Cache-Control'] = 'public, max-age=86400'
+            if gzip_ok:
+                response.headers['Content-Encoding'] = 'gzip'
+                response.headers['Vary'] = 'Accept-Encoding'
+            return response
+
     with open(full_path, 'rb') as handle:
         data = handle.read()
 
     import mimetypes
     mimetype = mimetypes.guess_type(full_path)[0] or 'application/octet-stream'
+    compressible = full_path.endswith(('.js', '.css', '.svg', '.json')) and len(data) > 1024
+    compressed = _gzip.compress(data, 6) if compressible else None
+
+    with _static_cache_lock:
+        _static_cache[full_path] = {
+            'mtime': mtime, 'data': data, 'mimetype': mimetype,
+            'compressible': compressible, 'gz': compressed,
+        }
+
     response = Response(data, mimetype=mimetype)
     response.headers['Cache-Control'] = 'public, max-age=86400'
 
-    if full_path.endswith(('.js', '.css', '.svg', '.json')) and len(data) > 1024:
+    if compressible and compressed is not None and len(compressed) < len(data):
         if 'gzip' in request.headers.get('Accept-Encoding', ''):
-            compressed = _gzip.compress(data, 6)
-            if len(compressed) < len(data):
-                response.set_data(compressed)
-                response.headers['Content-Encoding'] = 'gzip'
-                response.headers['Vary'] = 'Accept-Encoding'
+            response.set_data(compressed)
+            response.headers['Content-Encoding'] = 'gzip'
+            response.headers['Vary'] = 'Accept-Encoding'
     return response
 
 
 
 # Simple in-memory TTL cache to speed up repeated checks (no external deps)
 # Set to 0 to disable caching (always fresh queries)
-CACHE_TTL = int(os.environ.get('CACHE_TTL_SECONDS', '0'))  # seconds
+CACHE_TTL = int(os.environ.get('CACHE_TTL_SECONDS', '300'))  # seconds
 _cache_lock = threading.Lock()
 _cache: dict = {}
 
@@ -365,9 +400,14 @@ def api_check_cert_file():
         logger.error(f"Exception in /api/check-cert-file: {e}")
         return jsonify({"error": str(e)}), 500
 
-# Disable caching for all responses
+# Disable caching for API responses (static files keep long-lived cache headers)
 @app.after_request
 def add_header(response):
+    try:
+        if request.path.startswith('/static/'):
+            return response
+    except Exception:
+        pass
     response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
     response.headers['Pragma'] = 'no-cache'
     response.headers['Expires'] = '0'
@@ -405,7 +445,7 @@ DNS_SERVERS = {
 RECORD_TYPES = ["A", "AAAA", "MX", "NS", "TXT", "CNAME", "SOA", "CAA"]
 
 # Thread pool for parallel queries
-executor = ThreadPoolExecutor(max_workers=64)
+executor = ThreadPoolExecutor(max_workers=128)
 
 
 def query_dns_record(domain: str, record_type: str, dns_server: str, server_name: str) -> Dict:
@@ -604,9 +644,30 @@ def build_dns_basic_result(domain: str, record_types: List[str], include_dnssec:
     records_out = {}
     url = 'https://dns.google/resolve'
 
+    def _udp_query(record_type: str):
+        try:
+            resolver = dns.resolver.Resolver(configure=False)
+            resolver.nameservers = [resolver_ip, '1.1.1.1']
+            resolver.timeout = 2
+            resolver.lifetime = 2
+            answers = resolver.resolve(domain, record_type)
+            results = []
+            for rdata in answers:
+                if record_type == 'MX':
+                    results.append(f"{rdata.preference} {rdata.exchange}".strip())
+                else:
+                    results.append(str(rdata))
+            return results or None
+        except Exception:
+            return None
+
     def doh_query(record_type: str) -> tuple:
         try:
-            resp = requests.get(url, params={'name': domain, 'type': record_type}, timeout=3)
+            udp_answers = _udp_query(record_type)
+            if udp_answers:
+                return record_type, {"status": "success", "records": udp_answers}
+
+            resp = _DOH_HTTP.get(url, params={'name': domain, 'type': record_type}, timeout=3)
             if resp.status_code != 200:
                 return record_type, {"status": "no_record", "records": []}
             j = resp.json()
@@ -703,38 +764,14 @@ def build_dns_basic_result(domain: str, record_types: List[str], include_dnssec:
 
 DNS_HISTORY_RECORD_TYPES = ['A', 'AAAA', 'MX', 'NS', 'TXT', 'CNAME', 'SOA', 'CAA', 'SUBDOMAIN']
 
+_DOH_HTTP = requests.Session()
+_DOH_HTTP.headers.update({'accept': 'application/dns-json', 'User-Agent': 'all-tool/1.0'})
+
 _DNS_HISTORY_HTTP = requests.Session()
 _DNS_HISTORY_HTTP.headers.update({'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) all-tool/1.0'})
 
-
-def _fetch_otx_history(domain: str) -> dict:
-    """AlienVault OTX passive DNS — free, no API key required."""
-    endpoint = f'https://otx.alienvault.com/api/v1/indicators/domain/{quote(domain)}/passive_dns'
-    try:
-        resp = _DNS_HISTORY_HTTP.get(endpoint, timeout=12)
-        payload = resp.json() if resp.content else {}
-        if resp.status_code != 200 or not isinstance(payload, dict):
-            return _build_history_source('otx', 'AlienVault OTX', [], error=f'HTTP {resp.status_code}', endpoint=endpoint)
-
-        records = []
-        for item in payload.get('passive_dns', []) or []:
-            rrtype = (item.get('record_type') or '').upper()
-            if rrtype and rrtype not in DNS_HISTORY_RECORD_TYPES:
-                continue
-            records.append(_normalize_history_record(
-                source_id='otx',
-                source_label='AlienVault OTX',
-                rrclass='IN',
-                rrtype=rrtype,
-                query=item.get('hostname', domain),
-                answer=item.get('address') or item.get('raw_hash') or '',
-                first_seen=item.get('first'),
-                last_seen=item.get('last'),
-                count=item.get('count'),
-            ))
-        return _build_history_source('otx', 'AlienVault OTX', records, endpoint=endpoint)
-    except Exception as exc:
-        return _build_history_source('otx', 'AlienVault OTX', [], error=str(exc), endpoint=endpoint)
+CIRCL_PDNS_USER = os.environ.get('CIRCL_PDNS_USER', 'admin@imfishball.id.vn')
+CIRCL_PDNS_PASS = os.environ.get('CIRCL_PDNS_PASS', 'JHk2ihEy0Q3ZSDQEOyQh+6m7N0Nr7cellIvA/httB5k=')
 
 
 def _fetch_urlscan_history(domain: str) -> dict:
@@ -1069,10 +1106,58 @@ def _build_history_source(source_id: str, source_label: str, records: List[dict]
     }
 
 
+def _fetch_circl_history(domain: str) -> dict:
+    """CIRCL Passive DNS — JSONL rows via basic auth."""
+    endpoint = f'https://www.circl.lu/pdns/query/{quote(domain)}'
+    try:
+        resp = _DNS_HISTORY_HTTP.get(
+            endpoint,
+            auth=(CIRCL_PDNS_USER, CIRCL_PDNS_PASS),
+            timeout=15,
+        )
+        if resp.status_code != 200:
+            return _build_history_source('circl', 'CIRCL PDNS', [], error=f'HTTP {resp.status_code}', endpoint=endpoint)
+
+        records = []
+        for line in (resp.text or '').splitlines():
+            line = line.strip()
+            if not line or not line.startswith('{'):
+                continue
+            try:
+                item = json.loads(line)
+            except Exception:
+                continue
+            rrtype = (item.get('rrtype') or '').upper()
+            if rrtype and rrtype not in DNS_HISTORY_RECORD_TYPES:
+                continue
+            rrname = (item.get('rrname') or '').strip().rstrip('.')
+            rdata = (item.get('rdata') or '').strip().rstrip('.')
+            # CIRCL matches query on both rrname and rdata; anchor to the queried name.
+            if rdata.lower() == domain.lower() or rdata.lower().endswith('.' + domain.lower()):
+                query, answer = rdata, rrname
+            else:
+                query, answer = rrname, rdata
+            records.append(_normalize_history_record(
+                source_id='circl',
+                source_label='CIRCL PDNS',
+                rrclass='IN',
+                rrtype=rrtype,
+                query=query or domain,
+                answer=answer,
+                first_seen=item.get('time_first'),
+                last_seen=item.get('time_last'),
+                count=item.get('count'),
+            ))
+
+        return _build_history_source('circl', 'CIRCL PDNS', records, endpoint=endpoint)
+    except Exception as exc:
+        return _build_history_source('circl', 'CIRCL PDNS', [], error=str(exc), endpoint=endpoint)
+
+
 def _fetch_mnemonic_history(domain: str, limit: int = 1000) -> dict:
     endpoint = f'https://api.mnemonic.no/pdns/v3/{quote(domain)}'
     try:
-        resp = requests.get(endpoint, params={'limit': min(max(limit, 1), 1000)}, timeout=12)
+        resp = _DNS_HISTORY_HTTP.get(endpoint, params={'limit': min(max(limit, 1), 1000)}, timeout=12)
         payload = resp.json() if resp.content else {}
         if resp.status_code != 200:
             message = None
@@ -1117,7 +1202,7 @@ def _fetch_mnemonic_history(domain: str, limit: int = 1000) -> dict:
 def _fetch_robtex_history(domain: str) -> dict:
     endpoint = f'https://freeapi.robtex.com/pdns/forward/{quote(domain)}'
     try:
-        resp = requests.get(endpoint, params={'format': 'json'}, timeout=12)
+        resp = _DNS_HISTORY_HTTP.get(endpoint, params={'format': 'json'}, timeout=12)
         payload = resp.json() if resp.content else {}
         if resp.status_code != 200 or (isinstance(payload, dict) and payload.get('status') not in (None, 'ok')):
             message = None
@@ -1193,7 +1278,7 @@ def _merge_history_sources(domain: str, sources: List[dict]) -> dict:
         if labels:
             record['source_label'] = ' + '.join(sorted(filter(None, labels)))
 
-    return _build_history_source('combined', 'Tổng hợp', combined_records, endpoint='mnemonic + robtex + otx + urlscan + hackertarget + hackertarget_dns + subdomain_center + rapiddns')
+    return _build_history_source('combined', 'Tổng hợp', combined_records, endpoint='mnemonic + robtex + urlscan + hackertarget + hackertarget_dns + subdomain_center + rapiddns + circl')
 
 
 def _augment_history_sources(domain: str, sources: List[dict]) -> List[dict]:
@@ -1321,12 +1406,12 @@ def api_check_dns_history():
         source_fetchers = {
             'mnemonic': _fetch_mnemonic_history,
             'robtex': _fetch_robtex_history,
-            'otx': _fetch_otx_history,
             'urlscan': _fetch_urlscan_history,
             'hackertarget': _fetch_hackertarget_history,
             'hackertarget_dns': _fetch_hackertarget_dns_history,
             'subdomain_center': _fetch_subdomain_center_history,
             'rapiddns': _fetch_rapiddns_history,
+            'circl': _fetch_circl_history,
         }
         with ThreadPoolExecutor(max_workers=len(source_fetchers)) as pool:
             futures = {
@@ -1426,7 +1511,7 @@ def api_check_dns_bulk():
 
         # Bulk uses the fast record set only: A, MX, NS.
         record_types = ['A', 'MX', 'NS']
-        max_workers = min(30, len(domains))
+        max_workers = min(40, len(domains))
 
         ordered_results = []
         with ThreadPoolExecutor(max_workers=max_workers) as pool:
@@ -1470,6 +1555,96 @@ def api_check_dns_bulk():
             "results": ordered_results,
             "record_types": record_types,
             "timestamp": datetime.now(timezone.utc).isoformat()
+        }), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/check-ssl-bulk', methods=['POST'])
+def api_check_ssl_bulk():
+    """Bulk SSL expiry/issuer checks for a list of domains."""
+    try:
+        data = request.get_json(silent=True) or {}
+        domains_input = data.get('domains', [])
+
+        if isinstance(domains_input, str):
+            domains_input = re.split(r'[\s,]+', domains_input.strip())
+
+        domains: list[str] = []
+        seen = set()
+        for item in domains_input:
+            cleaned = _normalize_domain_input(item)
+            if cleaned and cleaned not in seen:
+                seen.add(cleaned)
+                domains.append(cleaned)
+
+        if not domains:
+            return jsonify({"error": "Domain list is required"}), 400
+
+        def _check_one(domain: str) -> dict:
+            cache_key = f"sslbasic:{domain}"
+            cached = cache_get(cache_key)
+            if cached is not None:
+                return dict(cached)
+
+            result = {
+                "domain": domain,
+                "issuer": None,
+                "issuer_org": None,
+                "valid_to": None,
+                "days_remaining": None,
+                "error": None,
+            }
+            try:
+                ctx = ssl.create_default_context()
+                ctx.check_hostname = False
+                ctx.verify_mode = ssl.CERT_NONE
+                with socket.create_connection((domain, 443), timeout=3) as sock:
+                    with ctx.wrap_socket(sock, server_hostname=domain) as ssock:
+                        cert_der = ssock.getpeercert(binary_form=True)
+
+                result = dict(result)
+                if not cert_der:
+                    result["error"] = "No certificate presented"
+                    cache_set(cache_key, result)
+                    return result
+
+                cert_obj = x509.load_der_x509_certificate(cert_der, default_backend())
+
+                issuer_cn = cert_obj.issuer.get_attributes_for_oid(NameOID.COMMON_NAME)
+                issuer_org = cert_obj.issuer.get_attributes_for_oid(NameOID.ORGANIZATION_NAME)
+                valid_to_dt = getattr(cert_obj, 'not_valid_after_utc', cert_obj.not_valid_after.replace(tzinfo=timezone.utc))
+
+                result.update({
+                    "issuer": issuer_cn[0].value if issuer_cn else (issuer_org[0].value if issuer_org else 'Unknown'),
+                    "issuer_org": issuer_org[0].value if issuer_org else None,
+                    "valid_to": valid_to_dt.isoformat() if valid_to_dt else None,
+                    "days_remaining": int((valid_to_dt - datetime.now(timezone.utc)).total_seconds() // 86400) if valid_to_dt else None,
+                })
+            except Exception as exc:
+                result["error"] = str(exc)
+
+            cache_set(cache_key, result)
+            return result
+
+        ordered = []
+        with ThreadPoolExecutor(max_workers=min(40, len(domains))) as pool:
+            future_map = {pool.submit(_check_one, domain): domain for domain in domains}
+            results_map = {}
+            for future in as_completed(future_map):
+                domain = future_map[future]
+                try:
+                    results_map[domain] = future.result()
+                except Exception as exc:
+                    results_map[domain] = {"domain": domain, "error": str(exc), "issuer": None, "issuer_org": None, "valid_to": None, "days_remaining": None}
+
+        for domain in domains:
+            ordered.append(results_map.get(domain) or {"domain": domain, "error": "No result"})
+
+        return jsonify({
+            "count": len(ordered),
+            "results": ordered,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
         }), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -2057,8 +2232,15 @@ DNS_CACHE_CLEAR_TARGETS = [
     },
 ]
 
-ISSUED_SSL_STORE_PATH = os.path.join(app.root_path, 'acme', 'issued_ssl_store.json')
+ISSUED_SSL_STORE_PATH = os.environ.get(
+    'ISSUED_SSL_STORE_PATH',
+    os.path.join(app.root_path, 'acme', 'issued_ssl_store.json'),
+)
 ISSUED_SSL_STORE_BACKUP_PATH = f"{ISSUED_SSL_STORE_PATH}.bak"
+
+# Replit Database — persistent store for issued SSL list (filesystem on Replit deployments is ephemeral).
+REPLIT_DB_URL = os.environ.get('REPLIT_DB_URL', '').rstrip('/')
+REPLIT_DB_STORE_KEY = os.environ.get('REPLIT_DB_STORE_KEY', 'issued_ssl_store')
 
 # In-memory session store  { session_id -> {...} }
 _ssl_sessions: Dict[str, dict] = {}
@@ -2269,8 +2451,56 @@ def _ensure_issued_ssl_store() -> None:
             json.dump([], f, ensure_ascii=False, indent=2)
 
 
+def _replit_db_get(key: str):
+    if not REPLIT_DB_URL:
+        return None
+    try:
+        resp = requests.get(f"{REPLIT_DB_URL}/{key}", timeout=5)
+        if resp.status_code == 200:
+            return resp.text
+    except Exception as exc:
+        logger.warning(f"Replit DB GET failed: {exc}")
+    return None
+
+
+def _replit_db_set(key: str, value: str) -> bool:
+    if not REPLIT_DB_URL:
+        return False
+    try:
+        resp = requests.post(REPLIT_DB_URL, data={key: value}, timeout=5)
+        return resp.status_code in (200, 201, 204)
+    except Exception as exc:
+        logger.warning(f"Replit DB SET failed: {exc}")
+        return False
+
+
 def _load_issued_ssl_store() -> List[dict]:
     _ensure_issued_ssl_store()
+
+    # Replit DB is authoritative when available (filesystem is ephemeral on Replit deployments).
+    db_raw = _replit_db_get(REPLIT_DB_STORE_KEY)
+    if db_raw and db_raw.strip():
+        try:
+            data = json.loads(db_raw)
+            if isinstance(data, list):
+                # Refresh local file cache so offline restarts still have a copy.
+                try:
+                    _save_issued_ssl_store(data, _skip_replit_db=True)
+                except Exception:
+                    pass
+                return data
+        except Exception as exc:
+            logger.warning(f"Invalid JSON in Replit DB store: {exc}")
+
+    # One-way migration: if the local file still has data but Replit DB does not, backfill DB.
+    try:
+        with open(ISSUED_SSL_STORE_PATH, 'r', encoding='utf-8') as f:
+            disk_data = json.loads(f.read() or '[]')
+        if isinstance(disk_data, list) and disk_data and REPLIT_DB_URL and not (db_raw and db_raw.strip()):
+            _replit_db_set(REPLIT_DB_STORE_KEY, json.dumps(disk_data, ensure_ascii=False))
+            logger.info('Migrated issued SSL store to Replit DB')
+    except Exception:
+        pass
 
     try:
         with open(ISSUED_SSL_STORE_PATH, 'r', encoding='utf-8') as f:
@@ -2298,8 +2528,58 @@ def _load_issued_ssl_store() -> List[dict]:
     return []
 
 
-def _save_issued_ssl_store(items: List[dict]) -> None:
+def _current_store_items() -> List[dict]:
+    """Best-effort read of the current store without triggering a save."""
+    db_raw = _replit_db_get(REPLIT_DB_STORE_KEY) if REPLIT_DB_URL else None
+    if db_raw and db_raw.strip():
+        try:
+            data = json.loads(db_raw)
+            if isinstance(data, list):
+                return data
+        except Exception:
+            pass
+    try:
+        with open(ISSUED_SSL_STORE_PATH, 'r', encoding='utf-8') as f:
+            data = json.loads(f.read() or '[]')
+        if isinstance(data, list):
+            return data
+    except Exception:
+        pass
+    return []
+
+
+def _save_issued_ssl_store(
+    items: List[dict],
+    _skip_replit_db: bool = False,
+    _merge: bool = False,
+    _allow_empty: bool = False,
+) -> None:
     _ensure_issued_ssl_store()
+
+    # Safety guard: never silently wipe a non-empty store with an empty list.
+    if not items and not _allow_empty:
+        existing = _current_store_items()
+        if existing:
+            logger.warning('Blocked overwriting non-empty SSL store with empty list')
+            return
+
+    # Merge by id so concurrent sessions / multi-instance writers don't lose records.
+    if _merge:
+        merged = {}
+        for item in _current_store_items():
+            if isinstance(item, dict) and item.get('id'):
+                merged[item['id']] = item
+        for item in items:
+            if isinstance(item, dict):
+                merged[item.get('id') or _gen_session_id()] = item
+        items = list(merged.values())
+
+    # Persist to Replit DB when available (survives redeploys/restarts).
+    if not _skip_replit_db and REPLIT_DB_URL:
+        try:
+            _replit_db_set(REPLIT_DB_STORE_KEY, json.dumps(items, ensure_ascii=False))
+        except Exception as exc:
+            logger.warning(f"Unable to persist SSL store to Replit DB: {exc}")
 
     if os.path.isfile(ISSUED_SSL_STORE_PATH):
         try:
@@ -2765,7 +3045,7 @@ def _upsert_issued_ssl_record(record: dict) -> dict:
             record['id'] = record.get('id') or _gen_session_id()
             record['updated_at'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             items.insert(0, record)
-        _save_issued_ssl_store(items)
+        _save_issued_ssl_store(items, _merge=True)
         return record
 
 
@@ -2779,7 +3059,7 @@ def _patch_issued_ssl_record_by_session(session_id: str, updates: dict) -> Optio
         item.update(updates or {})
         item['updated_at'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         items[idx] = item
-        _save_issued_ssl_store(items)
+        _save_issued_ssl_store(items, _merge=True)
         return item
 
 
@@ -3421,7 +3701,7 @@ def api_ssl_free_delete_item(item_id):
             new_items = [x for x in items if x.get('id') != item_id]
             if len(new_items) == len(items):
                 return jsonify({"error": "Stored SSL item not found"}), 404
-            _save_issued_ssl_store(new_items)
+            _save_issued_ssl_store(new_items, _allow_empty=True)
         return jsonify({"message": "Deleted successfully"}), 200
     except Exception as e:
         logger.error(f"[ACME] delete-item error: {e}", exc_info=True)

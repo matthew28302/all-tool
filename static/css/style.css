@@ -385,6 +385,7 @@
         .history-record-meta b { color: #0f172a; }
         .history-record-src {
             display: inline-block;
+            max-width: 100%;
             background: #f1f5f9;
             border: 1px solid #e2e8f0;
             color: #475569;
@@ -392,6 +393,40 @@
             padding: 2px 10px;
             font-size: 0.72rem;
             font-weight: 600;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            vertical-align: middle;
+        }
+        .history-record-meta-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 8px;
+            align-items: center;
+        }
+        .history-meta-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            color: #64748b;
+            border-radius: 8px;
+            padding: 2px 8px;
+            font-size: 0.74rem;
+            white-space: nowrap;
+        }
+        .history-meta-chip b { color: #0f172a; font-weight: 700; }
+        .history-source-btn.is-error {
+            border-color: #fca5a5;
+            color: #b91c1c;
+            background: #fef2f2;
+        }
+        .history-source-btn.is-error.active {
+            background: #dc2626;
+            border-color: #dc2626;
+            color: #fff;
         }
         .history-type-filter { cursor: pointer; }
         .history-type-filter.is-filtering {
@@ -1066,12 +1101,27 @@
             letter-spacing: 0.08em;
             text-transform: uppercase;
         }
+        .bulk-ssl-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            border-radius: 999px;
+            padding: 3px 12px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+        .bulk-ssl-badge.ok { background: #dcfce7; color: #15803d; }
+        .bulk-ssl-badge.warning { background: #fef3c7; color: #b45309; }
+        .bulk-ssl-badge.error { background: #fee2e2; color: #b91c1c; }
         .bulk-table-row {
             padding: 14px;
             border-radius: 16px;
             border: 1px solid #e2e8f0;
             background: #ffffff;
             box-shadow: 0 10px 24px rgba(15, 23, 42, 0.05);
+            content-visibility: auto;
+            contain-intrinsic-size: 0 90px;
         }
         .bulk-table-row:nth-child(even) {
             background: #fbfdff;

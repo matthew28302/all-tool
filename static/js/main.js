@@ -1,6 +1,6 @@
 
         // ========== Tab Switching ==========
-        const tabIds = ['dns', 'bulkdns', 'dnshistory', 'sslcheck', 'hostcheck', 'emailauth', 'ssl', 'ssldecoder', 'freessl'];
+        const tabIds = ['dns', 'bulkdns', 'bulkssl', 'dnshistory', 'sslcheck', 'hostcheck', 'emailauth', 'ssl', 'ssldecoder', 'freessl'];
 
         function switchTab(tab, options = {}) {
             const nextTab = tabIds.includes(tab) ? tab : 'dns';
@@ -576,7 +576,7 @@
             }
 
             // Batch settings
-            const batchSize = 40; // domains per request
+            const batchSize = 60; // domains per request
             const batches = [];
             for (let i = 0; i < domains.length; i += batchSize) {
                 batches.push(domains.slice(i, i + batchSize));
@@ -590,29 +590,33 @@
             document.getElementById('bulkSummaryTotal').textContent = domains.length;
 
             let aggregated = [];
+            const fetchBatch = async (batch) => {
+                const response = await fetch('/api/check-dns-bulk', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ domains: batch })
+                });
+                return response.json();
+            };
             try {
-                for (let i = 0; i < batches.length; i++) {
-                    const batch = batches[i];
-                    // Update loading note
+                // Two batches in flight at a time — keeps server busy without hammering it.
+                for (let i = 0; i < batches.length; i += 2) {
+                    const inFlight = [fetchBatch(batches[i])];
+                    if (i + 1 < batches.length) inFlight.push(fetchBatch(batches[i + 1]));
+
                     const note = document.querySelector('#bulkLoading .dns-loading-note');
-                    if (note) note.textContent = `Đang kiểm tra bulk DNS... (${i + 1}/${batches.length})`;
+                    if (note) note.textContent = `Đang kiểm tra bulk DNS... (${Math.min(i + 2, batches.length)}/${batches.length})`;
 
-                    const response = await fetch('/api/check-dns-bulk', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ domains: batch })
-                    });
-                    const data = await response.json();
-                    if (data.error) {
-                        alert('Lỗi: ' + data.error);
-                        break;
+                    const results = await Promise.all(inFlight);
+                    for (const data of results) {
+                        if (data.error) {
+                            alert('Lỗi: ' + data.error);
+                            throw new Error(data.error);
+                        }
+                        const rows = Array.isArray(data.results) ? data.results : [];
+                        aggregated = aggregated.concat(rows);
+                        appendBulkResults(rows);
                     }
-
-                    const results = Array.isArray(data.results) ? data.results : [];
-                    aggregated = aggregated.concat(results);
-
-                    // Append partial results to the table for smoother UI
-                    appendBulkResults(results);
 
                     // Update summaries progressively
                     const resolved = aggregated.filter(item => item.ip && item.ip !== '-').length;
@@ -714,6 +718,120 @@
             document.getElementById('bulkCountChip').textContent = '0 domains';
         }
 
+        function clearBulkSSL() {
+            const input = document.getElementById('bulkSslDomainsInput');
+            if (input) input.value = '';
+            document.getElementById('bulkSslResultsTable').innerHTML = '';
+            document.getElementById('bulkSslResults').classList.remove('show');
+            document.getElementById('bulkSslSummaryTotal').textContent = '-';
+            document.getElementById('bulkSslSummaryValid').textContent = '-';
+            document.getElementById('bulkSslSummaryExpiring').textContent = '-';
+            document.getElementById('bulkSslSummaryError').textContent = '-';
+            document.getElementById('bulkSslSummaryUpdated').textContent = '-';
+            document.getElementById('bulkSslCountChip').textContent = '0 domains';
+        }
+
+        function sslStatusBadge(item) {
+            if (item.error && item.days_remaining === null) {
+                return '<span class="bulk-ssl-badge error">❌ Lỗi</span>';
+            }
+            const days = item.days_remaining;
+            if (days === null || days === undefined) {
+                return '<span class="bulk-ssl-badge error">Không rõ</span>';
+            }
+            if (days < 0) return '<span class="bulk-ssl-badge error">⛔ Hết hạn (' + escapeHtml(String(days)) + 'd)</span>';
+            if (days < 30) return '<span class="bulk-ssl-badge warning">⚠️ Còn ' + escapeHtml(String(days)) + ' ngày</span>';
+            return '<span class="bulk-ssl-badge ok">✅ Còn ' + escapeHtml(String(days)) + ' ngày</span>';
+        }
+
+        function appendBulkSSL(results) {
+            const container = document.getElementById('bulkSslResultsTable');
+            if (!container) return;
+            const frag = document.createDocumentFragment();
+            results.forEach(item => {
+                const row = document.createElement('div');
+                row.className = 'bulk-table-row';
+                const validTo = item.valid_to ? new Date(item.valid_to).toLocaleDateString('vi-VN') : '-';
+                const err = item.error && item.days_remaining === null
+                    ? '<div class="bulk-error-note">' + escapeHtml(item.error) + '</div>' : '';
+                row.innerHTML = '<div class="bulk-cell"><span class="bulk-domain-pill">' + escapeHtml(item.domain || '-') + '</span>' + err + '</div>' +
+                    '<div class="bulk-cell">' + escapeHtml(item.issuer_org || item.issuer || '-') + '</div>' +
+                    '<div class="bulk-cell">' + escapeHtml(validTo) + '</div>' +
+                    '<div class="bulk-cell">' + sslStatusBadge(item) + '</div>';
+                frag.appendChild(row);
+            });
+            container.appendChild(frag);
+        }
+
+        function updateBulkSSLSummary(aggregated) {
+            const valid = aggregated.filter(i => !i.error && i.days_remaining !== null && i.days_remaining !== undefined && i.days_remaining >= 30).length;
+            const expiring = aggregated.filter(i => !i.error && i.days_remaining !== null && i.days_remaining !== undefined && i.days_remaining >= 0 && i.days_remaining < 30).length;
+            const errCount = aggregated.filter(i => i.error || i.days_remaining === null || i.days_remaining === undefined || i.days_remaining < 0).length;
+            document.getElementById('bulkSslSummaryValid').textContent = valid;
+            document.getElementById('bulkSslSummaryExpiring').textContent = expiring;
+            document.getElementById('bulkSslSummaryError').textContent = errCount;
+        }
+
+        async function checkBulkSSL() {
+            const bulkInput = document.getElementById('bulkSslDomainsInput');
+            const text = bulkInput ? bulkInput.value : '';
+            const domains = parseBulkDomains(text);
+
+            if (domains.length === 0) { alert('Vui lòng nhập ít nhất 1 tên miền'); return; }
+
+            const batchSize = 60;
+            const batches = [];
+            for (let i = 0; i < domains.length; i += batchSize) {
+                batches.push(domains.slice(i, i + batchSize));
+            }
+
+            document.getElementById('bulkSslLoading').classList.add('show');
+            document.getElementById('bulkSslResults').classList.remove('show');
+            document.getElementById('bulkSslResultsTable').innerHTML = '';
+            document.getElementById('bulkSslCountChip').textContent = domains.length + ' domains';
+            document.getElementById('bulkSslSummaryTotal').textContent = domains.length;
+
+            let aggregated = [];
+            const fetchBatch = async (batch) => {
+                const response = await fetch('/api/check-ssl-bulk', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ domains: batch })
+                });
+                return response.json();
+            };
+
+            try {
+                for (let i = 0; i < batches.length; i += 2) {
+                    const inFlight = [fetchBatch(batches[i])];
+                    if (i + 1 < batches.length) inFlight.push(fetchBatch(batches[i + 1]));
+
+                    const note = document.querySelector('#bulkSslLoading .dns-loading-note');
+                    if (note) note.textContent = `Đang kiểm tra bulk SSL... (${Math.min(i + 2, batches.length)}/${batches.length})`;
+
+                    const datas = await Promise.all(inFlight);
+                    for (const data of datas) {
+                        if (data.error) { alert('Lỗi: ' + data.error); throw new Error(data.error); }
+                        const rows = Array.isArray(data.results) ? data.results : [];
+                        aggregated = aggregated.concat(rows);
+                        appendBulkSSL(rows);
+                    }
+                    updateBulkSSLSummary(aggregated);
+                    document.getElementById('bulkSslSummaryUpdated').textContent = new Date().toLocaleString('vi-VN');
+                }
+                document.getElementById('bulkSslCountChip').textContent = (aggregated.length || domains.length) + ' domains';
+                document.getElementById('bulkSslResults').classList.add('show');
+            } catch (err) {
+                if (!String(err && err.message || '').startsWith('Lỗi')) {
+                    alert('Lỗi kết nối: ' + (err.message || err));
+                }
+            } finally {
+                const note = document.querySelector('#bulkSslLoading .dns-loading-note');
+                if (note) note.textContent = 'Hoàn tất';
+                setTimeout(() => document.getElementById('bulkSslLoading').classList.remove('show'), 600);
+            }
+        }
+
         let dnsHistorySourceId = 'combined';
 
         function formatHistoryTimestamp(value) {
@@ -763,17 +881,33 @@
             });
         }
 
+        function relativeHistoryTime(value) {
+            if (!value) return '';
+            const dt = new Date(value);
+            if (Number.isNaN(dt.getTime())) return '';
+            const sec = Math.floor((Date.now() - dt.getTime()) / 1000);
+            if (sec < 0) return 'trong tương lai';
+            if (sec < 3600) return Math.max(1, Math.floor(sec / 60)) + ' phút trước';
+            if (sec < 86400) return Math.floor(sec / 3600) + ' giờ trước';
+            if (sec < 30 * 86400) return Math.floor(sec / 86400) + ' ngày trước';
+            if (sec < 365 * 86400) return Math.floor(sec / (30 * 86400)) + ' tháng trước';
+            return Math.floor(sec / (365 * 86400)) + ' năm trước';
+        }
+
         function renderHistoryRecord(record) {
             const rrtype = String(record.rrtype || '-').toUpperCase();
-            const typeColor = { A: '#2563eb', AAAA: '#7c3aed', MX: '#d97706', NS: '#059669', TXT: '#db2777', CNAME: '#0891b2', SOA: '#64748b', CAA: '#b45309' }[rrtype] || '#475569';
+            const typeColor = { A: '#2563eb', AAAA: '#7c3aed', MX: '#d97706', NS: '#059669', TXT: '#db2777', CNAME: '#0891b2', SOA: '#64748b', CAA: '#b45309', SUBDOMAIN: '#0d9488' }[rrtype] || '#475569';
             const isLive = record.last_seen_ts && (Date.now() / 1000 - record.last_seen_ts) < 3 * 86400;
 
-            const metaParts = [
-                'First: <b>' + escapeHtml(formatHistoryTimestamp(record.first_seen)) + '</b>',
-                'Last: <b>' + escapeHtml(formatHistoryTimestamp(record.last_seen)) + '</b>',
-            ];
+            const lastRel = relativeHistoryTime(record.last_seen);
+            const metaChips = [];
+            metaChips.push('<span class="history-meta-chip" title="First seen">🕒 First <b>' + escapeHtml(formatHistoryTimestamp(record.first_seen)) + '</b></span>');
+            metaChips.push('<span class="history-meta-chip" title="Last seen">🕓 Last <b>' + escapeHtml(formatHistoryTimestamp(record.last_seen)) + '</b>' + (lastRel ? ' · ' + escapeHtml(lastRel) : '') + '</span>');
             if (record.count !== null && record.count !== undefined) {
-                metaParts.push('Count: <b>' + escapeHtml(String(record.count)) + '</b>');
+                metaChips.push('<span class="history-meta-chip" title="Số lần quan sát">📊 ' + escapeHtml(String(record.count)) + '</span>');
+            }
+            if (record.source_label) {
+                metaChips.push('<span class="history-record-src" title="Nguồn">' + escapeHtml(String(record.source_label)) + '</span>');
             }
 
             const noteHtml = record.note
@@ -787,12 +921,9 @@
                         '<div class="history-record-text">' +
                             '<div class="history-record-title">' + escapeHtml(String(record.query || '-')) + '</div>' +
                             '<div class="history-record-answer">' + (rrtype === 'A' || rrtype === 'AAAA' || rrtype === 'CNAME' || rrtype === 'NS' ? '→ ' : '') + escapeHtml(String(record.answer || '-')) + '</div>' +
+                            '<div class="history-record-meta-row">' + metaChips.join('') + '</div>' +
                         '</div>' +
                         (isLive ? '<span class="history-live-dot" title="Vẫn còn hiệu lực gần đây"></span>' : '') +
-                    '</div>' +
-                    '<div class="history-record-meta">' +
-                        '<span>' + metaParts.join('</span><span>') + '</span>' +
-                        '<span class="history-record-src">' + escapeHtml(String(record.source_label || '-')) + '</span>' +
                     '</div>' +
                 '</div>' +
                 noteHtml +
@@ -919,7 +1050,8 @@
                     sources.forEach(function(source, index) {
                         const sourceId = String(source.id || 'source-' + index);
                         const label = source.label || sourceId;
-                        tabs.push('<button type="button" class="history-source-btn" data-history-source="' + escapeHtml(sourceId) + '" onclick="setDNSHistorySource(\'' + sourceId.replace(/'/g, "\\'") + '\')">' + escapeHtml(label) + ' (' + escapeHtml(String(source.record_count || 0)) + ')</button>');
+                        const errBadge = source.status === 'ok' ? '' : ' ⚠';
+                        tabs.push('<button type="button" class="history-source-btn' + (source.status === 'ok' ? '' : ' is-error') + '" data-history-source="' + escapeHtml(sourceId) + '" onclick="setDNSHistorySource(\'' + sourceId.replace(/'/g, "\\'") + '\')">' + escapeHtml(label) + ' (' + escapeHtml(String(source.record_count || 0)) + ')' + errBadge + '</button>');
                         panes.push(renderHistorySourcePane(source));
                     });
 
