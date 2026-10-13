@@ -3816,7 +3816,7 @@ def api_ssl_free_session_status(session_id):
 
 if __name__ == '__main__':
     print("⚡ DNS Checker Tool - Ultra Fast Mode")
-    port = int(os.environ.get('PORT', 5000))
+    port = int(os.environ.get('PORT', 2803))
     debug_mode = os.environ.get('FLASK_DEBUG', '0') == '1'
     print(f"📍 Open: http://localhost:{port}")
     app.run(debug=debug_mode, host='0.0.0.0', port=port, threaded=True, use_reloader=False)

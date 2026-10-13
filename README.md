@@ -29,12 +29,12 @@ python -m venv .venv
 .venv/Scripts/python -m pip install -r requirements.txt   # Windows (Git Bash)
 # .venv/bin/python -m pip install -r requirements.txt     # Linux/macOS
 
-# 2. Chạy server (port mặc định 5000, đổi bằng env PORT)
+# 2. Chạy server (port mặc định 2803, đổi bằng env PORT)
 ./run_server.sh          # script tự detect python
 # hoặc:
 .venv/Scripts/python.exe app.py
 
-# 3. Mở http://localhost:5000
+# 3. Mở http://localhost:2803
 ```
 
 Dependencies: `Flask`, `Flask-Cors`, `dnspython`, `cryptography`, `requests`, `acme`, `josepy`.
@@ -120,7 +120,7 @@ GET  /api/ssl-free/session/<id>/status  Trạng thái session
 
 | Biến | Mặc định | Ý nghĩa |
 |---|---|---|
-| `PORT` | `5000` | Port server (local) |
+| `PORT` | `2803` | Port server (local) |
 | `SSL_CATALOG_DIR` | `~/Desktop/ssl` | Thư mục mặc định cho SSL Bundle scan folder |
 | `SSL_CATALOG_ALLOWED_ROOTS` | _(rỗng)_ | Các thư mục gốc được phép quét thêm, cách nhau `;` |
 | `WHOIS_CACHE_TTL_SECONDS` | `15` | TTL cache WHOIS |
