@@ -3,7 +3,8 @@ services:
     name: tool-update-app
     runtime: python
     buildCommand: pip install -r requirements.txt
-    startCommand: bash run_server.sh
+    # Production WSGI (waitress) thay cho Flask dev server
+    startCommand: waitress-serve --host=0.0.0.0 --port=$PORT --threads=16 app:app
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.9

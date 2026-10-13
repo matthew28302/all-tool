@@ -1,5 +1,7 @@
 # Local SSL issued store (do not commit)
 acme/issued_ssl_store.json
+# Local secrets (credentials chỉ nằm ở env / file này, không nằm trong source)
+local_secrets.json
 # Sensitive files / tabs to hide before pushing to GitHub
 # Install SSL UI and related data (REMOVED - legacy)
 templates/tabs/tab_installssl.html

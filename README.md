@@ -39,7 +39,9 @@ python -m venv .venv
 
 Dependencies: `Flask`, `Flask-Cors`, `dnspython`, `cryptography`, `requests`, `acme`, `josepy`.
 
-Deploy Render: xem `render.yaml` (runtime python, start `bash run_server.sh`).
+Deploy Render: xem `render.yaml` (runtime python, start `waitress-serve` — production WSGI, không dùng Flask dev server). Chạy local vẫn dùng `./run_server.sh`.
+
+> 🔐 **Secrets (2026-10-13):** toàn bộ credentials (CIRCL PDNS, ZeroSSL EAB, SSL.com EAB) đã được **xoá khỏi source code**. Thứ tự ưu tiên: biến môi trường → `local_secrets.json` (ngồi cạnh `app.py`, đã gitignore). ⚠️ Các key cũ vẫn còn trong git history — nên **rotate** key CIRCL/ZeroSSL/SSL.com nếu repo từng public.
 
 ---
 
@@ -118,9 +120,16 @@ GET  /api/ssl-free/session/<id>/status  Trạng thái session
 
 | Biến | Mặc định | Ý nghĩa |
 |---|---|---|
-| `PORT` | `5000` | Port server |
+| `PORT` | `5000` | Port server (local) |
 | `SSL_CATALOG_DIR` | `~/Desktop/ssl` | Thư mục mặc định cho SSL Bundle scan folder |
+| `SSL_CATALOG_ALLOWED_ROOTS` | _(rỗng)_ | Các thư mục gốc được phép quét thêm, cách nhau `;` |
 | `WHOIS_CACHE_TTL_SECONDS` | `15` | TTL cache WHOIS |
+| `CORS_ORIGINS` | `*` | Giới hạn CORS, ví dụ `https://a.com,https://b.com` |
+| `CACHE_TTL_SECONDS` / `CACHE_MAX_ENTRIES` | `300` / `2000` | TTL + giới hạn số entry cache DNS cơ bản |
+| `DNS_HISTORY_CACHE_TTL_SECONDS` / `..._MAX_ENTRIES` | `900` / `500` | TTL + giới hạn cache DNS History |
+| `CIRCL_PDNS_USER` / `CIRCL_PDNS_PASS` | _(rỗng)_ | Credentials CIRCL Passive DNS |
+| `ZEROSSL_EAB_KID` / `ZEROSSL_EAB_HMAC_KEY` | _(rỗng)_ | EAB ZeroSSL (bắt buộc khi chọn provider zerossl) |
+| `SSLCOM_EAB_KID` / `SSLCOM_EAB_HMAC_KEY` | _(rỗng)_ | EAB SSL.com (bắt buộc khi chọn provider sslcom) |
 
 ---
 
@@ -157,9 +166,26 @@ GET  /api/ssl-free/session/<id>/status  Trạng thái session
 
 ### Còn tồn tại 🟠
 1. **Bug layout mobile (<980px):** `.tab-nav` sticky `height:100vh` đè kín content — chưa sửa do cần thiết kế mobile riêng. Fix nhanh: trong media query mobile đặt `.tab-nav { position: relative; height: auto; max-height: none; }`.
-2. **CORS `*` toàn bộ** — cân nhắc khi deploy công khai.
-3. **CDN dependencies** (lucide/jszip/forge/fonts) — offline mất icon & một số tính năng.
-4. **Flask dev server** — production nên dùng waitress/gunicorn.
+2. **CDN dependencies** (lucide pinned `1.55.0`/jszip/forge/fonts) — offline mất icon & một số tính năng.
+3. **Credentials cũ trong git history** — đã xoá khỏi source nhưng cần rotate key CIRCL/ZeroSSL/SSL.com nếu repo từng public.
+
+### Đã tối ưu thêm (2026-10-13) ✅
+1. ✅ **Production server:** render.yaml dùng `waitress-serve` thay Flask dev server; thêm `waitress` vào requirements.
+2. ✅ **Cache hit không còn `deepcopy`:** DNS History cache lưu JSON đã serialize sẵn (2.6MB response: ~1s → **0.1s**); DNS basic dùng JSON clone.
+3. ✅ **Giới hạn cache:** thêm `CACHE_MAX_ENTRIES` / `DNS_HISTORY_CACHE_MAX_ENTRIES` + prune entry cũ nhất — chống phình memory khi chạy lâu.
+4. ✅ **Resolver `configure=False`** cho các query đã set nameservers thủ công — bỏ đọc `/etc/resolv.conf` mỗi query (200 lần/request với DNS Check).
+5. ✅ **DNSSEC dùng executor global** thay vì tạo ThreadPoolExecutor(2) mới mỗi lần gọi.
+6. ✅ **Connection pooling:** `_augment_history_sources` + `_request_public_dns_cache_clear` dùng session dùng chung thay `requests.get`.
+7. ✅ **Chống LFI:** `/api/ssl-catalog?path=` và `/api/check-cert-file` chỉ cho đọc trong `SSL_CATALOG_DIR` / roots env / thư mục upload tạm — chặn đọc file hệ thống tuỳ ý.
+8. ✅ **CORS cấu hình được** qua env `CORS_ORIGINS` (mặc định vẫn `*`).
+9. ✅ **Dọn imports:** bỏ `subprocess`, `ipaddress`, `ec`, `acme_challenges`, alias `cx509` trùng; shebang về dòng 1; log payload cert về `debug`.
+10. ✅ **Frontend — main.min.js chạy TRƯỚC CDN libs:** đổi thứ tự script (`main.min.js` đầu, rồi lucide/jszip/forge) + `?v=` cache-busting cho main.min.js → tab tương tác được ngay khi file local tải xong (~100ms) thay vì chờ ~190KB CDN (vài giây trên mạng chậm).
+11. ✅ **Lazy-load forge/jszip an toàn:** thêm `ensureForge()` / `ensureJszip()` (tự inject `<script>` khi cần); guard ở tất cả entry point dùng lib (SSL Bundle: file zip, folder, paste, tạo PFX; SSL Decoder: decode cert/key/csr, match key; Free SSL: gói download). Không còn window "main.js chưa chạy vì CDN".
+12. ✅ **Google Fonts không render-blocking:** load qua `media="print" onload` + `<noscript>` fallback (giữ `display=swap`).
+13. ✅ **`.tab-content` giảm blur 16px → 8px** (raster nhanh hơn; sidebar/hero giữ nguyên).
+14. ✅ **HTML response `Cache-Control: no-store`** — luôn lấy template mới nhất sau khi deploy (static assets vẫn cache qua `?v=`).
+
+> Kết quả đo (warm): toàn bộ script về đích ~166ms song song, main.min.js execute đầu tiên; idle 60fps, scroll panel chính 60fps (warm). Đã test luồng SSL Bundle/Decoder/Free SSL với CDN bị gỡ tag (mô phỏng CDN chậm) — decode/paste/lazy-load forge+JSZip đều chạy đúng, console sạch.
 
 ---
 

@@ -1,20 +1,23 @@
-import logging
-logging.basicConfig(level=logging.INFO, format='[%(asctime)s] %(levelname)s in %(module)s: %(message)s')
-logger = logging.getLogger(__name__)
-logging.getLogger('urllib3').setLevel(logging.WARNING)
 #!/usr/bin/env python3
 """
 DNS Checker Tool - Ultra Fast Version
 Parallel queries, no WHOIS, minimal timeouts
 """
 
-from flask import Flask, render_template, request, jsonify, Response
+import logging
+logging.basicConfig(level=logging.INFO, format='[%(asctime)s] %(levelname)s in %(module)s: %(message)s')
+logger = logging.getLogger(__name__)
+logging.getLogger('urllib3').setLevel(logging.WARNING)
+
+from flask import Flask, render_template, request, jsonify, Response, abort, json as flask_json, make_response
 import os
+import gzip as _gzip
+import mimetypes
+import uuid
 from cryptography import x509
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes, serialization
-from cryptography.hazmat.primitives.asymmetric import rsa, ec
-from cryptography import x509 as cx509
+from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.x509.oid import NameOID
 from flask_cors import CORS
 import dns.resolver
@@ -30,11 +33,8 @@ import requests
 import re
 import json
 import time
-import subprocess
 import hashlib
 import base64
-import ipaddress
-import copy
 from urllib.parse import urlparse, quote
 from dataclasses import asdict
 import whois_lookup
@@ -42,13 +42,16 @@ import python_detector
 
 # ACME / Let's Encrypt
 import josepy as jose
-import acme.client
-import acme.challenges
 import acme.messages
-from acme import client as acme_client, challenges as acme_challenges, messages as acme_messages
+from acme import client as acme_client, messages as acme_messages
 
 app = Flask(__name__, static_folder=None)
-CORS(app)
+# CORS: mặc định mở như cũ; giới hạn bằng env CORS_ORIGINS="https://a.com,https://b.com"
+_cors_config = os.environ.get('CORS_ORIGINS', '*')
+if _cors_config.strip() == '*':
+    CORS(app)
+else:
+    CORS(app, origins=[o.strip() for o in _cors_config.split(',') if o.strip()])
 
 # ==== Static files: cache 1 ngày + gzip (hiệu năng) ====
 _static_cache: dict = {}
@@ -56,18 +59,15 @@ _static_cache_lock = threading.Lock()
 
 @app.route('/static/<path:filename>', endpoint='static')
 def custom_static(filename):
-    import gzip as _gzip
     static_root = os.path.abspath(os.path.join(app.root_path, 'static'))
     full_path = os.path.abspath(os.path.join(static_root, filename))
     # Chống path traversal
     if not full_path.startswith(static_root + os.sep) or not os.path.isfile(full_path):
-        from flask import abort
         abort(404)
 
     try:
         mtime = os.path.getmtime(full_path)
     except OSError:
-        from flask import abort
         abort(404)
 
     # Trả về cache nếu file không đổi (tránh đọc + gzip lại mỗi request)
@@ -91,7 +91,6 @@ def custom_static(filename):
     with open(full_path, 'rb') as handle:
         data = handle.read()
 
-    import mimetypes
     mimetype = mimetypes.guess_type(full_path)[0] or 'application/octet-stream'
     compressible = full_path.endswith(('.js', '.css', '.svg', '.json')) and len(data) > 1024
     compressed = _gzip.compress(data, 6) if compressible else None
@@ -117,12 +116,28 @@ def custom_static(filename):
 # Simple in-memory TTL cache to speed up repeated checks (no external deps)
 # Set to 0 to disable caching (always fresh queries)
 CACHE_TTL = int(os.environ.get('CACHE_TTL_SECONDS', '300'))  # seconds
+CACHE_MAX_ENTRIES = int(os.environ.get('CACHE_MAX_ENTRIES', '2000'))
 _cache_lock = threading.Lock()
 _cache: dict = {}
 
 DNS_HISTORY_CACHE_TTL = int(os.environ.get('DNS_HISTORY_CACHE_TTL_SECONDS', '900'))  # seconds
+DNS_HISTORY_CACHE_MAX_ENTRIES = int(os.environ.get('DNS_HISTORY_CACHE_MAX_ENTRIES', '500'))
 _dns_history_cache_lock = threading.Lock()
 _dns_history_cache: dict = {}
+
+
+def _prune_cache(cache: dict, max_entries: int) -> None:
+    """Xoá entry cũ nhất khi vượt giới hạn (tránh memory tăng vô hạn)."""
+    if max_entries <= 0 or len(cache) <= max_entries:
+        return
+    overflow = len(cache) - max_entries
+    for key, _ in sorted(cache.items(), key=lambda kv: kv[1][0])[:overflow]:
+        cache.pop(key, None)
+
+
+def _clone_json(value):
+    """Deep-copy giá trị JSON-serializable — nhanh hơn copy.deepcopy nhiều lần."""
+    return json.loads(json.dumps(value))
 
 def cache_get(key: str):
     with _cache_lock:
@@ -138,6 +153,7 @@ def cache_get(key: str):
 def cache_set(key: str, value):
     with _cache_lock:
         _cache[key] = (time.time(), value)
+        _prune_cache(_cache, CACHE_MAX_ENTRIES)
 
 
 def dns_history_cache_get(key: str):
@@ -161,6 +177,7 @@ def dns_history_cache_set(key: str, value):
 
     with _dns_history_cache_lock:
         _dns_history_cache[key] = (time.time(), value)
+        _prune_cache(_dns_history_cache, DNS_HISTORY_CACHE_MAX_ENTRIES)
 
 
 @app.route('/ping')
@@ -275,11 +292,37 @@ def _scan_ssl_catalog(base_dir: str) -> List[dict]:
 
 SSL_CATALOG_DEFAULT_DIR = os.getenv('SSL_CATALOG_DIR', os.path.join(os.path.expanduser('~'), 'Desktop', 'ssl'))
 
+
+def _allowed_scan_roots() -> List[str]:
+    """Các thư mục gốc được phép quét: thư mục SSL cấu hình + roots bổ sung qua env SSL_CATALOG_ALLOWED_ROOTS (cách nhau bằng ;)."""
+    roots = [os.path.abspath(os.path.expanduser(SSL_CATALOG_DEFAULT_DIR))]
+    for extra in os.environ.get('SSL_CATALOG_ALLOWED_ROOTS', '').split(';'):
+        extra = extra.strip()
+        if extra:
+            roots.append(os.path.abspath(os.path.expanduser(extra)))
+    return roots
+
+
+def _is_scan_path_allowed(candidate: str) -> bool:
+    """Chỉ cho phép đọc file trong thư mục SSL được cấu hình hoặc thư mục upload tạm — chặn đọc file hệ thống tuỳ ý."""
+    candidate = os.path.abspath(os.path.expanduser(candidate))
+    # Thư mục upload tạm do chính server tạo qua tempfile.mkdtemp(prefix='alltool-ssl-upload-')
+    upload_prefix = os.path.join(os.path.abspath(tempfile.gettempdir()), 'alltool-ssl-upload-')
+    if candidate.startswith(upload_prefix):
+        return True
+    for root in _allowed_scan_roots():
+        if candidate == root or candidate.startswith(root + os.sep):
+            return True
+    return False
+
+
 @app.route('/api/ssl-catalog', methods=['GET'])
 def api_ssl_catalog():
     requested_dir = request.args.get('path', '').strip()
     if requested_dir:
         base_dir = os.path.abspath(os.path.expanduser(requested_dir))
+        if not _is_scan_path_allowed(base_dir):
+            return jsonify({"items": [], "error": f"Đường dẫn ngoài phạm vi cho phép: {base_dir}"}), 200
     else:
         base_dir = SSL_CATALOG_DEFAULT_DIR
 
@@ -340,7 +383,7 @@ def api_ssl_upload():
 @app.route('/api/check-cert-file', methods=['POST'])
 def api_check_cert_file():
     """Check and parse 3 certificate files: cert domain, ca bundle 1, ca bundle 2"""
-    logger.info(f"Received request: /api/check-cert-file | data: {request.json}")
+    logger.debug("Received request: /api/check-cert-file")
     try:
         data = request.json
         cert_path = data.get('cert_path', '').strip()
@@ -350,6 +393,11 @@ def api_check_cert_file():
         if not (cert_path and ca_bundle1_path and ca_bundle2_path):
             logger.warning("Missing one or more file paths in request body")
             return jsonify({"error": "cert_path, ca_bundle1_path, ca_bundle2_path are required"}), 400
+
+        # Chỉ cho phép đọc file trong thư mục SSL được cấu hình / thư mục upload tạm
+        for path_value in (cert_path, ca_bundle1_path, ca_bundle2_path):
+            if not _is_scan_path_allowed(path_value):
+                return jsonify({"error": f"Đường dẫn ngoài phạm vi cho phép: {path_value}"}), 400
 
         def load_cert_info(path):
             logger.debug(f"Loading cert info from: {path}")
@@ -362,7 +410,6 @@ def api_check_cert_file():
                 logger.debug(f"Read {len(data)} bytes from {path}")
                 # Có thể file chứa nhiều cert, lấy tất cả
                 certs = []
-                import re
                 for cert in re.findall(b'-----BEGIN CERTIFICATE-----(.*?)-----END CERTIFICATE-----', data, re.DOTALL):
                     pem = b'-----BEGIN CERTIFICATE-----' + cert + b'-----END CERTIFICATE-----'
                     x = x509.load_pem_x509_certificate(pem, default_backend())
@@ -383,7 +430,7 @@ def api_check_cert_file():
                         "signature_algorithm": c.signature_hash_algorithm.name if c.signature_hash_algorithm else None,
                         "version": c.version.name
                     })
-                logger.info(f"Parsed {len(infos)} cert(s) from {path}")
+                logger.debug(f"Parsed {len(infos)} cert(s) from {path}")
                 return {"certs": infos}
             except Exception as e:
                 logger.error(f"Error parsing {path}: {e}")
@@ -394,7 +441,7 @@ def api_check_cert_file():
             "ca_bundle1": load_cert_info(ca_bundle1_path),
             "ca_bundle2": load_cert_info(ca_bundle2_path)
         }
-        logger.info(f"Returning result for /api/check-cert-file: {result}")
+        logger.debug("Returning result for /api/check-cert-file")
         return jsonify(result), 200
     except Exception as e:
         logger.error(f"Exception in /api/check-cert-file: {e}")
@@ -451,7 +498,8 @@ executor = ThreadPoolExecutor(max_workers=128)
 def query_dns_record(domain: str, record_type: str, dns_server: str, server_name: str) -> Dict:
     """Query DNS record from specific server - returns result dict"""
     try:
-        resolver = dns.resolver.Resolver()
+        # configure=False: bỏ qua đọc /etc/resolv.conf mỗi query (nameservers đã set thủ công)
+        resolver = dns.resolver.Resolver(configure=False)
         resolver.cache = None
         resolver.nameservers = [dns_server]
         # Keep fast checks, but avoid overly aggressive timeouts that create false negatives.
@@ -499,27 +547,26 @@ def check_dnssec_fast(domain: str) -> Dict:
         resolver.lifetime = 3
         resolver.use_edns(0, dns.flags.DO, 4096)
         
-        # Check DNSKEY and DS in parallel
+        # Check DNSKEY and DS in parallel (dùng executor global, tránh tạo pool mới mỗi lần gọi)
         def check_dnskey():
             try:
                 response = resolver.resolve(domain, 'DNSKEY')
                 return True, len(list(response))
             except:
                 return False, 0
-        
+
         def check_ds():
             try:
                 response = resolver.resolve(domain, 'DS')
                 return True, len(list(response))
             except:
                 return False, 0
-        
-        with ThreadPoolExecutor(max_workers=2) as ex:
-            dnskey_future = ex.submit(check_dnskey)
-            ds_future = ex.submit(check_ds)
-            
-            dnskey_result = dnskey_future.result()
-            ds_result = ds_future.result()
+
+        dnskey_future = executor.submit(check_dnskey)
+        ds_future = executor.submit(check_ds)
+
+        dnskey_result = dnskey_future.result()
+        ds_result = ds_future.result()
         
         result["details"]["dnskey"] = dnskey_result[0]
         result["details"]["dnskey_count"] = dnskey_result[1]
@@ -636,7 +683,7 @@ def build_dns_basic_result(domain: str, record_types: List[str], include_dnssec:
     cache_key = f"basic:{domain}:{','.join(valid_types)}:dnssec={1 if include_dnssec else 0}:ssl={1 if include_ssl else 0}"
     cached = cache_get(cache_key)
     if cached is not None:
-        cached_copy = copy.deepcopy(cached)
+        cached_copy = _clone_json(cached)
         cached_copy['timestamp'] = datetime.now(timezone.utc).isoformat()
         return cached_copy
 
@@ -770,8 +817,29 @@ _DOH_HTTP.headers.update({'accept': 'application/dns-json', 'User-Agent': 'all-t
 _DNS_HISTORY_HTTP = requests.Session()
 _DNS_HISTORY_HTTP.headers.update({'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) all-tool/1.0'})
 
-CIRCL_PDNS_USER = os.environ.get('CIRCL_PDNS_USER', 'admin@imfishball.id.vn')
-CIRCL_PDNS_PASS = os.environ.get('CIRCL_PDNS_PASS', 'JHk2ihEy0Q3ZSDQEOyQh+6m7N0Nr7cellIvA/httB5k=')
+
+# ==== Secrets: ưu tiên biến môi trường, fallback sang local_secrets.json (không commit) ====
+def _load_local_secrets() -> dict:
+    """Đọc local_secrets.json (nằm cạnh app.py, đã được .gitignore) — không lưu key trong source."""
+    path = os.path.join(app.root_path, 'local_secrets.json')
+    try:
+        with open(path, 'r', encoding='utf-8') as handle:
+            data = json.load(handle)
+        return data if isinstance(data, dict) else {}
+    except Exception:
+        return {}
+
+
+_LOCAL_SECRETS = _load_local_secrets()
+
+
+def _secret(env_key: str, default: str = '') -> str:
+    """Lấy secret theo thứ tự: env var -> local_secrets.json -> default."""
+    return os.environ.get(env_key) or str(_LOCAL_SECRETS.get(env_key, '')) or default
+
+
+CIRCL_PDNS_USER = _secret('CIRCL_PDNS_USER')
+CIRCL_PDNS_PASS = _secret('CIRCL_PDNS_PASS')
 
 
 def _fetch_urlscan_history(domain: str) -> dict:
@@ -1109,6 +1177,12 @@ def _build_history_source(source_id: str, source_label: str, records: List[dict]
 def _fetch_circl_history(domain: str) -> dict:
     """CIRCL Passive DNS — JSONL rows via basic auth."""
     endpoint = f'https://www.circl.lu/pdns/query/{quote(domain)}'
+    if not (CIRCL_PDNS_USER and CIRCL_PDNS_PASS):
+        return _build_history_source(
+            'circl', 'CIRCL PDNS', [],
+            error='Thiếu CIRCL_PDNS_USER / CIRCL_PDNS_PASS (env hoặc local_secrets.json)',
+            endpoint=endpoint,
+        )
     try:
         resp = _DNS_HISTORY_HTTP.get(
             endpoint,
@@ -1331,7 +1405,7 @@ def _augment_history_sources(domain: str, sources: List[dict]) -> List[dict]:
     related_records = []
     for lookup_type, answer, endpoint, params in related_queries:
         try:
-            resp = requests.get(endpoint, params=params, timeout=12)
+            resp = _DNS_HISTORY_HTTP.get(endpoint, params=params, timeout=12)
             payload = resp.json() if resp.content else {}
             if resp.status_code != 200:
                 continue
@@ -1397,10 +1471,11 @@ def api_check_dns_history():
         cache_key = f'history:{domain}'
         cached = dns_history_cache_get(cache_key)
         if cached is not None:
-            cached_copy = copy.deepcopy(cached)
-            cached_copy['cached'] = True
-            cached_copy['timestamp'] = datetime.now(timezone.utc).isoformat()
-            return jsonify(cached_copy), 200
+            # Cache lưu JSON đã serialize sẵn — tránh deepcopy payload lớn khi cache hit
+            payload = json.loads(cached)
+            payload['cached'] = True
+            payload['timestamp'] = datetime.now(timezone.utc).isoformat()
+            return Response(flask_json.dumps(payload), mimetype='application/json'), 200
 
         # Query free DNS/passive-DNS sources in parallel (no API keys required).
         source_fetchers = {
@@ -1432,7 +1507,7 @@ def api_check_dns_history():
                 'provider_count': len(source_fetchers),
         }
 
-        dns_history_cache_set(cache_key, payload)
+        dns_history_cache_set(cache_key, flask_json.dumps(payload))
         return jsonify(payload), 200
 
     except Exception as exc:
@@ -1442,7 +1517,10 @@ def api_check_dns_history():
 
 @app.route('/')
 def index():
-    return render_template('index.html')
+    # HTML luôn phải lấy bản mới nhất (static assets đã có ?v= cache-busting)
+    response = make_response(render_template('index.html'))
+    response.headers['Cache-Control'] = 'no-store'
+    return response
 
 
 @app.route('/api/check-dns', methods=['POST'])
@@ -2132,7 +2210,8 @@ def api_check_host():
                 result["hostname"] = host
                 try:
                     # Use public DNS to resolve, not local hosts file
-                    resolver = dns.resolver.Resolver()
+                    # configure=False: bỏ qua đọc resolv.conf (nameservers đã set)
+                    resolver = dns.resolver.Resolver(configure=False)
                     resolver.nameservers = ['8.8.8.8']  # Google DNS
                     resolver.timeout = 2
                     resolver.lifetime = 2
@@ -2185,13 +2264,13 @@ LETSENCRYPT_STAGING   = "https://acme-staging-v02.api.letsencrypt.org/directory"
 ZEROSSL_DIRECTORY     = "https://acme.zerossl.com/v2/DV90"
 SSLCOM_DIRECTORY      = "https://acme.ssl.com/sslcom-dv-rsa"
 
-# ZeroSSL EAB credentials
-ZEROSSL_EAB_KID      = "kyaE5yBCELSi9mkeIMWGJQ"
-ZEROSSL_EAB_HMAC_KEY = "kC71g9TNBKJte-0w_PTYrx3C19q8yETcG-yFKOsCoB3gDFzUsGz6TdRrMvFbZCmKAqd0Au-9dSocDkG6aoxyAA"
+# ZeroSSL EAB credentials (env hoặc local_secrets.json — không lưu trong source)
+ZEROSSL_EAB_KID      = _secret('ZEROSSL_EAB_KID')
+ZEROSSL_EAB_HMAC_KEY = _secret('ZEROSSL_EAB_HMAC_KEY')
 
-# SSL.com EAB credentials (can override via env vars)
-SSLCOM_EAB_KID      = os.environ.get("SSLCOM_EAB_KID", "da187936f992")
-SSLCOM_EAB_HMAC_KEY = os.environ.get("SSLCOM_EAB_HMAC_KEY", "VyCwgtb-h19dlmNEwIRrqdi9WPGqs21PcyVRWVO6xaI")
+# SSL.com EAB credentials (env hoặc local_secrets.json — không lưu trong source)
+SSLCOM_EAB_KID      = _secret('SSLCOM_EAB_KID')
+SSLCOM_EAB_HMAC_KEY = _secret('SSLCOM_EAB_HMAC_KEY')
 
 ACME_PROVIDER_DIRECTORIES = {
     'letsencrypt': LETSENCRYPT_DIRECTORY,
@@ -2254,7 +2333,6 @@ SSL_STORE_SYNC_MIN_INTERVAL_SECONDS = 1.5
 
 
 def _gen_session_id() -> str:
-    import uuid
     return str(uuid.uuid4())
 
 
@@ -2276,6 +2354,8 @@ def _get_acme_client(email: str, provider: str = 'letsencrypt') -> tuple:
     new_reg_kwargs: dict = dict(email=email, terms_of_service_agreed=True)
     # ZeroSSL requires External Account Binding (EAB)
     if provider == 'zerossl':
+        if not (ZEROSSL_EAB_KID and ZEROSSL_EAB_HMAC_KEY):
+            raise ValueError("Thiếu ZEROSSL_EAB_KID / ZEROSSL_EAB_HMAC_KEY (env hoặc local_secrets.json)")
         eab = acme_messages.ExternalAccountBinding.from_data(
             account_public_key=account_key.public_key(),
             kid=ZEROSSL_EAB_KID,
@@ -2286,7 +2366,7 @@ def _get_acme_client(email: str, provider: str = 'letsencrypt') -> tuple:
     # SSL.com also requires External Account Binding (EAB)
     elif provider == 'sslcom':
         if not SSLCOM_EAB_KID or not SSLCOM_EAB_HMAC_KEY or '...' in SSLCOM_EAB_HMAC_KEY:
-            raise ValueError("SSL.com EAB chưa đầy đủ. Cập nhật SSLCOM_EAB_KID và SSLCOM_EAB_HMAC_KEY trong môi trường/server.")
+            raise ValueError("SSL.com EAB chưa đầy đủ. Cập nhật SSLCOM_EAB_KID và SSLCOM_EAB_HMAC_KEY (env hoặc local_secrets.json).")
         eab = acme_messages.ExternalAccountBinding.from_data(
             account_public_key=account_key.public_key(),
             kid=SSLCOM_EAB_KID,
@@ -2319,14 +2399,14 @@ def _generate_csr_pem(domain: str, sans: list, private_key_pem: bytes) -> bytes:
     alt_names = []
     all_domains = list(dict.fromkeys([domain] + [s for s in sans if s and s != domain]))
     for d in all_domains:
-        alt_names.append(cx509.DNSName(d))
+        alt_names.append(x509.DNSName(d))
     builder = (
-        cx509.CertificateSigningRequestBuilder()
-        .subject_name(cx509.Name([
-            cx509.NameAttribute(NameOID.COMMON_NAME, domain),
+        x509.CertificateSigningRequestBuilder()
+        .subject_name(x509.Name([
+            x509.NameAttribute(NameOID.COMMON_NAME, domain),
         ]))
         .add_extension(
-            cx509.SubjectAlternativeName(alt_names),
+            x509.SubjectAlternativeName(alt_names),
             critical=False
         )
     )
@@ -2681,7 +2761,7 @@ def _request_public_dns_cache_clear(dns_name: str) -> List[dict]:
                 headers = {
                     "accept": "application/dns-json"
                 }
-                resp = requests.get(doh_url, params=params, headers=headers, timeout=5)
+                resp = _DOH_HTTP.get(doh_url, params=params, headers=headers, timeout=5)
                 if resp.status_code < 400:
                     entry["doh_query"] = "ok"
                 else:

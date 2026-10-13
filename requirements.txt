@@ -5,3 +5,4 @@ cryptography
 requests
 acme
 josepy
+waitress

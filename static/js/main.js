@@ -1,4 +1,27 @@
 
+        // ========== Lazy library loader (jszip/forge không còn chặn khởi động trang) ==========
+        // main.min.js chạy TRƯỚC các CDN libs; các hàm dùng forge/JSZip sẽ tự chờ tải xong.
+        const __libPromises = {};
+        function ensureLib(name, url, globalName) {
+            if (window[globalName]) return Promise.resolve();
+            if (__libPromises[name]) return __libPromises[name];
+            __libPromises[name] = new Promise((resolve) => {
+                const s = document.createElement('script');
+                s.src = url;
+                s.async = true;
+                s.addEventListener('load', () => resolve(window[globalName] !== undefined));
+                s.addEventListener('error', () => resolve(false));
+                document.head.appendChild(s);
+            });
+            return __libPromises[name];
+        }
+        function ensureForge() {
+            return ensureLib('forge', 'https://cdnjs.cloudflare.com/ajax/libs/forge/0.10.0/forge.min.js', 'forge');
+        }
+        function ensureJszip() {
+            return ensureLib('jszip', 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js', 'JSZip');
+        }
+
         // ========== Tab Switching ==========
         const tabIds = ['dns', 'bulkdns', 'bulkssl', 'dnshistory', 'sslcheck', 'hostcheck', 'emailauth', 'ssl', 'ssldecoder', 'freessl'];
 
@@ -1393,7 +1416,7 @@
         privateKeyInput.addEventListener('input', updateGenerateButtonState);
 
         if (sslPasteInput) {
-            sslPasteInput.addEventListener('input', () => {
+            sslPasteInput.addEventListener('input', async () => {
                 if (inputMode !== 'paste') setSSLInputMode('paste');
 
                 const rawValue = sslPasteInput.value || '';
@@ -1404,6 +1427,8 @@
                     return;
                 }
 
+                await ensureForge();
+                if (!window.forge) { showSSLMessage('❌ Không tải được thư viện xử lý chứng chỉ, vui lòng thử lại sau!', 'error'); return; }
                 const parsed = parseSslPasteContent(rawValue);
                 if (parsed.valid) {
                     applySslBundleParts({ cert: parsed.certPem, bundle: parsed.caBundlePem, all: parsed.allPem }, { privateKey: parsed.privateKeyPem, domain: 'ssl-paste-bundle' });
@@ -1461,6 +1486,10 @@
             document.getElementById('additionalResults').innerHTML = '';
             showSSLMessage('Đang xử lý file...', 'info');
 
+            await ensureJszip();
+            await ensureForge();
+            if (!window.JSZip) { showSSLMessage('❌ Không tải được thư viện đọc ZIP, vui lòng thử lại sau!', 'error'); return; }
+
             try {
                 const zip = await JSZip.loadAsync(file);
                 currentDomain = file.name.replace('.zip', '').toLowerCase();
@@ -1507,6 +1536,9 @@
             renderSslPasteSummary([]);
             document.getElementById('additionalResults').innerHTML = '';
             showSSLMessage('Đang đọc thư mục...', 'info');
+
+            await ensureForge();
+            if (!window.forge) { showSSLMessage('❌ Không tải được thư viện xử lý chứng chỉ, vui lòng thử lại sau!', 'error'); return; }
 
             try {
                 const { files, originalFiles } = await readFilesFromFileList(fileList);
@@ -1847,6 +1879,7 @@
         }
 
         async function verifyKeyAndCert(privateKeyPem, certBundle) {
+            await ensureForge();
             try {
                 const privateKey = forge.pki.privateKeyFromPem(privateKeyPem);
                 const certMatches = certBundle.match(/-----BEGIN CERTIFICATE-----[\s\S]+?-----END CERTIFICATE-----/g);
@@ -1879,7 +1912,9 @@
         async function generatePemAndPfx() {
             const privateKey = privateKeyInput.value.trim();
             if (!privateKey || !currentBundle) { showSSLMessage('❌ Vui lòng nhập private key!', 'error'); return; }
-            if (typeof forge === 'undefined') { showSSLMessage('❌ Đang tải thư viện...', 'error'); return; }
+            await ensureForge();
+            await ensureJszip();
+            if (!window.forge || !window.JSZip) { showSSLMessage('❌ Không tải được thư viện xử lý, vui lòng thử lại sau!', 'error'); return; }
 
             showSSLMessage('🔧 Đang kiểm tra private key...', 'info');
             generateBtn.disabled = true;
@@ -1915,6 +1950,7 @@
         }
 
         async function createPFX(privateKey, certBundle, password) {
+            await ensureForge();
             const privateKeyPem = forge.pki.privateKeyFromPem(privateKey);
             const certs = [];
             const certMatches = certBundle.match(/-----BEGIN CERTIFICATE-----[\s\S]+?-----END CERTIFICATE-----/g);
@@ -2064,7 +2100,8 @@
             }
         }
 
-        function checkCertKeyMatch() {
+        async function checkCertKeyMatch() {
+            await ensureForge();
             const certPem = document.getElementById('matchCertInput').value.trim();
             const keyPem = document.getElementById('matchKeyInput').value.trim();
             const resultDiv = document.getElementById('matchResult');
@@ -2110,7 +2147,8 @@
             }
         }
         
-        function decodeCertificate() {
+        async function decodeCertificate() {
+            await ensureForge();
             const certPem = document.getElementById('decodeCertInput').value.trim();
             const resultDiv = document.getElementById('certDecodeResult');
             
@@ -2229,7 +2267,8 @@
             }
         }
         
-        function decodeCSR() {
+        async function decodeCSR() {
+            await ensureForge();
             const csrPem = document.getElementById('decodeCSRInput').value.trim();
             const resultDiv = document.getElementById('csrDecodeResult');
             
@@ -3158,7 +3197,9 @@
                 return;
             }
 
-            if (typeof forge === 'undefined') {
+            await ensureForge();
+            await ensureJszip();
+            if (!window.forge || !window.JSZip) {
                 freeSslShowMessage('Chưa tải xong thư viện tạo PFX, vui lòng thử lại sau vài giây.', 'error');
                 return;
             }
