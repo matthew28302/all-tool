@@ -78,6 +78,9 @@
 </div>
 </div>
 <div class="message" id="sslMessage"></div>
+<div class="ssl-quick-float is-hidden" id="sslQuickFloat">
+<button class="btn btn-secondary" onclick="openSslQuickPopupByMode()" type="button">📂 Hiển thị SSL</button>
+</div>
 <div class="ssl-result-area" id="sslResultArea">
 <div class="result-box">
 <h3>
@@ -104,5 +107,18 @@
 </div>
 </div>
 <div id="additionalResults"></div>
+</div>
+<div class="ssl-quick-backdrop is-hidden" id="sslQuickBackdrop" role="dialog" aria-modal="true" aria-labelledby="sslQuickTitle">
+<div class="ssl-quick-modal">
+<div class="ssl-quick-head">
+<div>
+<div class="ssl-quick-title" id="sslQuickTitle">Chọn SSL</div>
+<div class="ssl-quick-subtitle" id="sslQuickSubtitle"></div>
+</div>
+<button class="ssl-quick-close" onclick="closeSslQuickPopup()" type="button" aria-label="Đóng">✕</button>
+</div>
+<input class="ssl-quick-search" id="sslQuickSearch" type="text" placeholder="🔍 Tìm kiếm theo từ khoá..." oninput="renderSslQuickList()" autocomplete="off"/>
+<div class="ssl-quick-list" id="sslQuickList"></div>
+</div>
 </div>
 </div>

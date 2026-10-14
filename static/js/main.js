@@ -47,6 +47,10 @@
                 const activeBtn = document.querySelector(`.tab-btn[data-tab="${nextTab}"]`);
                 if (activeBtn) activeBtn.focus();
             }
+
+            if (typeof updateSslQuickFloat === 'function') {
+                try { updateSslQuickFloat(); } catch (e) {}
+            }
         }
 
         function updateTabScrollHint() {
@@ -1321,6 +1325,7 @@
             setSslSectionState(sslZipSection, nextMode === 'zip');
             setSslSectionState(sslFolderSection, nextMode === 'folder');
             setSslSectionState(sslPasteSection, nextMode === 'paste');
+            updateSslQuickFloat();
             if (nextMode === 'paste' && sslPasteInput && document.activeElement !== sslPasteInput) {
                 setTimeout(() => sslPasteInput.focus(), 0);
             }
@@ -1333,6 +1338,7 @@
             setSslSectionState(sslZipSection, false);
             setSslSectionState(sslPasteSection, false);
             if (sslModeLabel) sslModeLabel.textContent = 'Chọn phương thức nhập';
+            updateSslQuickFloat();
             if (fileInput) fileInput.value = '';
             if (folderInput) folderInput.value = '';
             if (sslPasteInput) sslPasteInput.value = '';
@@ -1463,6 +1469,17 @@
             folderInput.addEventListener('change', (e) => { if (e.target.files.length > 0) handleFolderFiles(e.target.files); });
         }
 
+        const sslQuickBackdrop = document.getElementById('sslQuickBackdrop');
+        if (sslQuickBackdrop) {
+            sslQuickBackdrop.addEventListener('click', (e) => { if (e.target === sslQuickBackdrop) closeSslQuickPopup(); });
+        }
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                const backdrop = document.getElementById('sslQuickBackdrop');
+                if (backdrop && !backdrop.classList.contains('is-hidden')) closeSslQuickPopup();
+            }
+        });
+
         function showSSLMessage(msg, type) {
             if (sslMessageTimer) {
                 clearTimeout(sslMessageTimer);
@@ -1563,6 +1580,204 @@
             } catch (error) {
                 clearParsedSslBundleState();
                 showSSLMessage('❌ Lỗi khi đọc thư mục: ' + error.message, 'error');
+            }
+        }
+
+        // ========== SSL Quick open (Hiển thị SSL) ==========
+        let sslQuickKind = 'zip';
+        let sslQuickItems = [];
+        let sslQuickBaseDir = '';
+        let sslQuickLoading = false;
+
+        function updateSslQuickFloat() {
+            const floatEl = document.getElementById('sslQuickFloat');
+            if (!floatEl) return;
+            const sslTabActive = document.getElementById('tab-ssl') && document.getElementById('tab-ssl').classList.contains('active');
+            const shouldShow = !!sslTabActive && (inputMode === 'zip' || inputMode === 'folder');
+            floatEl.classList.toggle('is-hidden', !shouldShow);
+        }
+
+        function openSslQuickPopupByMode() {
+            openSslQuickPopup(inputMode === 'folder' ? 'folder' : 'zip');
+        }
+
+        function escapeSslQuickHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = String(text == null ? '' : text);
+            return div.innerHTML;
+        }
+
+        async function openSslQuickPopup(kind) {
+            sslQuickKind = (kind === 'folder') ? 'folder' : 'zip';
+            sslQuickItems = [];
+            sslQuickBaseDir = '';
+            const backdrop = document.getElementById('sslQuickBackdrop');
+            const title = document.getElementById('sslQuickTitle');
+            const subtitle = document.getElementById('sslQuickSubtitle');
+            const search = document.getElementById('sslQuickSearch');
+            const list = document.getElementById('sslQuickList');
+            if (search) search.value = '';
+            if (title) title.textContent = sslQuickKind === 'zip' ? 'Chọn file SSL trong Downloads' : 'Chọn thư mục SSL trong Desktop/ssl';
+            if (subtitle) subtitle.textContent = 'Đang tải danh sách...';
+            if (list) list.innerHTML = '<div class="ssl-quick-empty">Đang tải danh sách...</div>';
+            if (backdrop) backdrop.classList.remove('is-hidden');
+            document.body.classList.add('no-scroll');
+            if (sslQuickKind === 'zip') setSSLInputMode('zip'); else setSSLInputMode('folder');
+            setTimeout(() => { if (search) search.focus(); }, 0);
+            await loadSslQuickList();
+        }
+
+        function closeSslQuickPopup() {
+            const backdrop = document.getElementById('sslQuickBackdrop');
+            if (backdrop) backdrop.classList.add('is-hidden');
+            document.body.classList.remove('no-scroll');
+        }
+
+        async function loadSslQuickList() {
+            const subtitle = document.getElementById('sslQuickSubtitle');
+            const list = document.getElementById('sslQuickList');
+            sslQuickLoading = true;
+            try {
+                const resp = await fetch('/api/ssl-quick-list?kind=' + encodeURIComponent(sslQuickKind), { headers: { 'Accept': 'application/json' } });
+                const data = await resp.json();
+                sslQuickItems = Array.isArray(data.items) ? data.items : [];
+                sslQuickBaseDir = data.base_dir || '';
+                if (data.error) {
+                    if (list) list.innerHTML = '<div class="ssl-quick-error">❌ ' + escapeSslQuickHtml(data.error) + '</div>';
+                    if (subtitle) subtitle.textContent = sslQuickBaseDir || '';
+                    return;
+                }
+                renderSslQuickList();
+            } catch (error) {
+                if (list) list.innerHTML = '<div class="ssl-quick-error">❌ Không tải được danh sách: ' + escapeSslQuickHtml(error.message || error) + '</div>';
+            } finally {
+                sslQuickLoading = false;
+            }
+        }
+
+        function renderSslQuickList() {
+            const search = document.getElementById('sslQuickSearch');
+            const subtitle = document.getElementById('sslQuickSubtitle');
+            const list = document.getElementById('sslQuickList');
+            if (!list) return;
+            const keyword = (search ? search.value : '').trim().toLowerCase();
+            const filtered = sslQuickItems.filter(item => {
+                if (!keyword) return true;
+                return String(item.name || '').toLowerCase().includes(keyword);
+            });
+            if (subtitle) {
+                const base = sslQuickBaseDir ? (' — ' + sslQuickBaseDir) : '';
+                subtitle.textContent = (sslQuickKind === 'zip' ? ('Tìm thấy ' + filtered.length + ' file ZIP trong ~/Downloads') : ('Tìm thấy ' + filtered.length + ' thư mục trong ~/Desktop/ssl')) + base;
+            }
+            if (filtered.length === 0) {
+                list.innerHTML = '<div class="ssl-quick-empty">' + (sslQuickItems.length === 0 ? 'Trống — chưa có dữ liệu.' : 'Không khớp từ khoá "' + escapeSslQuickHtml(search ? search.value : '') + '".') + '</div>';
+                return;
+            }
+            list.innerHTML = filtered.map(item => {
+                const name = escapeSslQuickHtml(item.name);
+                const meta = sslQuickKind === 'zip'
+                    ? escapeSslQuickHtml([item.size_str, item.mtime_str].filter(Boolean).join(' • '))
+                    : escapeSslQuickHtml([(item.file_count != null ? item.file_count + ' files' : ''), item.mtime_str].filter(Boolean).join(' • '));
+                const safePath = escapeSslQuickHtml(item.path).replace(/'/g, '&#39;');
+                return '<button type="button" class="ssl-quick-item" data-path="' + safePath + '">'
+                    + '<span><span class="ssl-quick-item-name">' + (sslQuickKind === 'zip' ? '📦 ' : '📁 ') + name + '</span>'
+                    + (meta ? '<div class="ssl-quick-item-meta">' + meta + '</div>' : '')
+                    + '</span><span class="ssl-quick-item-go">Mở →</span></button>';
+            }).join('');
+            list.querySelectorAll('.ssl-quick-item').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const targetPath = btn.getAttribute('data-path') || '';
+                    const targetName = (btn.querySelector('.ssl-quick-item-name') || {}).textContent || '';
+                    sslQuickOpenItem(targetPath, targetName);
+                });
+            });
+        }
+
+        async function sslQuickOpenItem(targetPath, targetName) {
+            if (!targetPath || sslQuickLoading) return;
+            sslQuickLoading = true;
+            const list = document.getElementById('sslQuickList');
+            if (list) list.querySelectorAll('.ssl-quick-item').forEach(btn => { btn.disabled = true; });
+            try {
+                if (sslQuickKind === 'zip') {
+                    await sslQuickOpenZip(targetPath);
+                } else {
+                    await sslQuickOpenFolder(targetPath);
+                }
+                closeSslQuickPopup();
+            } finally {
+                sslQuickLoading = false;
+                if (list) list.querySelectorAll('.ssl-quick-item').forEach(btn => { btn.disabled = false; });
+            }
+        }
+
+        async function sslQuickOpenZip(targetPath) {
+            setSSLInputMode('zip');
+            clearParsedSslBundleState();
+            renderSslPasteSummary([]);
+            const additional = document.getElementById('additionalResults');
+            if (additional) additional.innerHTML = '';
+            showSSLMessage('Đang mở file ZIP từ ~/Downloads...', 'info');
+            await ensureJszip();
+            await ensureForge();
+            if (!window.JSZip) { showSSLMessage('❌ Không tải được thư viện đọc ZIP, vui lòng thử lại sau!', 'error'); return; }
+            if (!window.forge) { showSSLMessage('❌ Không tải được thư viện xử lý chứng chỉ, vui lòng thử lại sau!', 'error'); return; }
+            const resp = await fetch('/api/ssl-quick-zip?path=' + encodeURIComponent(targetPath));
+            if (!resp.ok) {
+                let message = 'HTTP ' + resp.status;
+                try { const errJson = await resp.json(); if (errJson && errJson.error) message = errJson.error; } catch (e) {}
+                clearParsedSslBundleState();
+                showSSLMessage('❌ ' + message, 'error');
+                return;
+            }
+            const blob = await resp.blob();
+            const filename = String(targetPath.split('/').pop() || 'download.zip');
+            const fileObj = new File([blob], filename, { type: 'application/zip' });
+            await handleFile(fileObj);
+        }
+
+        async function sslQuickOpenFolder(targetPath) {
+            setSSLInputMode('folder');
+            clearParsedSslBundleState();
+            renderSslPasteSummary([]);
+            const additional = document.getElementById('additionalResults');
+            if (additional) additional.innerHTML = '';
+            showSSLMessage('Đang mở thư mục từ ~/Desktop/ssl...', 'info');
+            await ensureForge();
+            if (!window.forge) { showSSLMessage('❌ Không tải được thư viện xử lý chứng chỉ, vui lòng thử lại sau!', 'error'); return; }
+            const resp = await fetch('/api/ssl-quick-folder?path=' + encodeURIComponent(targetPath));
+            const data = await resp.json();
+            if (!resp.ok || data.error) {
+                clearParsedSslBundleState();
+                showSSLMessage('❌ ' + (data.error || ('HTTP ' + resp.status)), 'error');
+                return;
+            }
+            const serverFiles = data.files || {};
+            const files = {};
+            const originalFiles = {};
+            Object.entries(serverFiles).forEach(([relPath, content]) => {
+                const normalizedKey = String(relPath || '').replace(/\\/g, '/');
+                if (!normalizedKey) return;
+                files[normalizedKey.toLowerCase()] = content;
+                originalFiles[normalizedKey.toLowerCase()] = content;
+            });
+            const folderName = String(targetPath.split('/').pop() || 'folder-upload');
+            currentDomain = folderName.toLowerCase();
+            currentZipFilename = '';
+            currentOriginalFiles = originalFiles;
+            const bundleParts = processFullBundle(files);
+            if (bundleParts && bundleParts.all) {
+                const privateKeyPem = detectPrivateKeyFromFiles(files);
+                applySslBundleParts(bundleParts, { domain: currentDomain, filename: 'folder', privateKey: privateKeyPem });
+                renderSslPasteSummary([
+                    { label: 'Folder: ' + folderName, state: 'success' },
+                    { label: 'Certificate bundle ready', state: 'success' }
+                ]);
+                sslResultArea.classList.add('show');
+                showSSLMessage('✅ Đã mở "' + folderName + '"! Tìm thấy ' + (bundleParts.all.match(/BEGIN CERTIFICATE/g) || []).length + ' certificates.', 'success');
+            } else {
+                clearParsedSslBundleState();
+                showSSLMessage('❌ Không tìm thấy file certificate hợp lệ trong thư mục!', 'error');
             }
         }
 
@@ -3280,5 +3495,15 @@
         freeSslUpdateProviderNote();
         setSSLDecoderMode('match');
         setupSSLDecoderAutoRun();
+
+        // Nút "Hiển thị SSL" ghim giữa-trang bên phải: đưa ra document.body để
+        // position:fixed bám theo viewport (tránh bị backdrop-filter của tab giữ lại).
+        const sslQuickFloatEl = document.getElementById('sslQuickFloat');
+        if (sslQuickFloatEl && sslQuickFloatEl.parentElement !== document.body) {
+            document.body.appendChild(sslQuickFloatEl);
+        }
+        if (typeof updateSslQuickFloat === 'function') {
+            try { updateSslQuickFloat(); } catch (e) {}
+        }
     
 

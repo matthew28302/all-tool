@@ -9,7 +9,7 @@ logging.basicConfig(level=logging.INFO, format='[%(asctime)s] %(levelname)s in %
 logger = logging.getLogger(__name__)
 logging.getLogger('urllib3').setLevel(logging.WARNING)
 
-from flask import Flask, render_template, request, jsonify, Response, abort, json as flask_json, make_response
+from flask import Flask, render_template, request, jsonify, Response, abort, json as flask_json, make_response, send_file
 import os
 import gzip as _gzip
 import mimetypes
@@ -82,7 +82,11 @@ def custom_static(filename):
                 and 'gzip' in request.headers.get('Accept-Encoding', '')
             )
             response = Response(compressed if gzip_ok else data, mimetype=mimetype)
-            response.headers['Cache-Control'] = 'public, max-age=86400'
+            # File versioned (?v=) thì cho phép cache immutable — khỏi revalidate
+            if request.args.get('v'):
+                response.headers['Cache-Control'] = 'public, max-age=31536000, immutable'
+            else:
+                response.headers['Cache-Control'] = 'public, max-age=86400'
             if gzip_ok:
                 response.headers['Content-Encoding'] = 'gzip'
                 response.headers['Vary'] = 'Accept-Encoding'
@@ -102,7 +106,11 @@ def custom_static(filename):
         }
 
     response = Response(data, mimetype=mimetype)
-    response.headers['Cache-Control'] = 'public, max-age=86400'
+    # File versioned (?v=) thì cho phép cache immutable — khỏi revalidate
+    if request.args.get('v'):
+        response.headers['Cache-Control'] = 'public, max-age=31536000, immutable'
+    else:
+        response.headers['Cache-Control'] = 'public, max-age=86400'
 
     if compressible and compressed is not None and len(compressed) < len(data):
         if 'gzip' in request.headers.get('Accept-Encoding', ''):
@@ -291,20 +299,31 @@ def _scan_ssl_catalog(base_dir: str) -> List[dict]:
 
 
 SSL_CATALOG_DEFAULT_DIR = os.getenv('SSL_CATALOG_DIR', os.path.join(os.path.expanduser('~'), 'Desktop', 'ssl'))
+SSL_DOWNLOADS_DEFAULT_DIR = os.getenv('SSL_DOWNLOADS_DIR', os.path.join(os.path.expanduser('~'), 'Downloads'))
 
 
 def _allowed_scan_roots() -> List[str]:
-    """Các thư mục gốc được phép quét: thư mục SSL cấu hình + roots bổ sung qua env SSL_CATALOG_ALLOWED_ROOTS (cách nhau bằng ;)."""
-    roots = [os.path.abspath(os.path.expanduser(SSL_CATALOG_DEFAULT_DIR))]
+    """Các thư mục gốc được phép quét: ~/Desktop/ssl + ~/Downloads + roots bổ sung qua env SSL_CATALOG_ALLOWED_ROOTS (cách nhau bằng ;)."""
+    roots = [
+        os.path.abspath(os.path.expanduser(SSL_CATALOG_DEFAULT_DIR)),
+        os.path.abspath(os.path.expanduser(SSL_DOWNLOADS_DEFAULT_DIR)),
+    ]
     for extra in os.environ.get('SSL_CATALOG_ALLOWED_ROOTS', '').split(';'):
         extra = extra.strip()
         if extra:
             roots.append(os.path.abspath(os.path.expanduser(extra)))
-    return roots
+    # Loại trùng, giữ thứ tự
+    seen = set()
+    unique_roots = []
+    for root in roots:
+        if root not in seen:
+            seen.add(root)
+            unique_roots.append(root)
+    return unique_roots
 
 
 def _is_scan_path_allowed(candidate: str) -> bool:
-    """Chỉ cho phép đọc file trong thư mục SSL được cấu hình hoặc thư mục upload tạm — chặn đọc file hệ thống tuỳ ý."""
+    """Chỉ cho phép đọc file trong ~/Desktop/ssl, ~/Downloads, roots env hoặc thư mục upload tạm — chặn đọc file hệ thống tuỳ ý."""
     candidate = os.path.abspath(os.path.expanduser(candidate))
     # Thư mục upload tạm do chính server tạo qua tempfile.mkdtemp(prefix='alltool-ssl-upload-')
     upload_prefix = os.path.join(os.path.abspath(tempfile.gettempdir()), 'alltool-ssl-upload-')
@@ -314,6 +333,99 @@ def _is_scan_path_allowed(candidate: str) -> bool:
         if candidate == root or candidate.startswith(root + os.sep):
             return True
     return False
+
+
+def _format_file_size(size: int) -> str:
+    try:
+        size = int(size)
+    except Exception:
+        return '-'
+    if size < 1024:
+        return f"{size} B"
+    if size < 1024 * 1024:
+        return f"{size / 1024:.1f} KB"
+    return f"{size / (1024 * 1024):.1f} MB"
+
+
+def _format_mtime(ts: float) -> str:
+    try:
+        return datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M')
+    except Exception:
+        return ''
+
+
+def _list_download_zip_files(keyword: str = '') -> List[dict]:
+    """Liệt kê file .zip trong ~/Downloads (top-level), mới nhất trước."""
+    base_dir = os.path.abspath(os.path.expanduser(SSL_DOWNLOADS_DEFAULT_DIR))
+    if not os.path.isdir(base_dir):
+        return []
+    keyword = (keyword or '').strip().lower()
+    items = []
+    try:
+        with os.scandir(base_dir) as entries:
+            for entry in entries:
+                try:
+                    if not entry.is_file(follow_symlinks=False):
+                        continue
+                    name = entry.name
+                    if not name.lower().endswith('.zip'):
+                        continue
+                    if keyword and keyword not in name.lower():
+                        continue
+                    stat = entry.stat(follow_symlinks=False)
+                    items.append({
+                        "name": name,
+                        "path": os.path.join(base_dir, name),
+                        "size": stat.st_size,
+                        "size_str": _format_file_size(stat.st_size),
+                        "mtime": stat.st_mtime,
+                        "mtime_str": _format_mtime(stat.st_mtime),
+                    })
+                except Exception:
+                    continue
+    except Exception:
+        return []
+    items.sort(key=lambda item: item.get('mtime') or 0, reverse=True)
+    return items
+
+
+def _list_ssl_folders(keyword: str = '') -> List[dict]:
+    """Liệt kê thư mục con trong ~/Desktop/ssl (top-level), mới nhất trước."""
+    base_dir = os.path.abspath(os.path.expanduser(SSL_CATALOG_DEFAULT_DIR))
+    if not os.path.isdir(base_dir):
+        return []
+    keyword = (keyword or '').strip().lower()
+    items = []
+    try:
+        with os.scandir(base_dir) as entries:
+            for entry in entries:
+                try:
+                    if not entry.is_dir(follow_symlinks=False):
+                        continue
+                    name = entry.name
+                    if name.startswith('.'):
+                        continue
+                    if keyword and keyword not in name.lower():
+                        continue
+                    full_path = os.path.join(base_dir, name)
+                    try:
+                        file_count = sum(1 for _ in os.scandir(full_path) if _.is_file(follow_symlinks=False))
+                    except Exception:
+                        file_count = 0
+                    stat = entry.stat(follow_symlinks=False)
+                    items.append({
+                        "name": name,
+                        "path": full_path,
+                        "file_count": file_count,
+                        "mtime": stat.st_mtime,
+                        "mtime_str": _format_mtime(stat.st_mtime),
+                    })
+                except Exception:
+                    continue
+    except Exception:
+        return []
+    items.sort(key=lambda item: item.get('mtime') or 0, reverse=True)
+    return items
 
 
 @app.route('/api/ssl-catalog', methods=['GET'])
@@ -334,6 +446,86 @@ def api_ssl_catalog():
         "items": results,
         "base_dir": base_dir
     }), 200
+
+
+@app.route('/api/ssl-quick-list', methods=['GET'])
+def api_ssl_quick_list():
+    """Danh sách nhanh cho popup 'Hiển thị SSL': kind=zip -> file .zip trong ~/Downloads; kind=folder -> thư mục trong ~/Desktop/ssl."""
+    kind = (request.args.get('kind', '') or '').strip().lower()
+    keyword = (request.args.get('q', '') or '').strip()
+    if kind not in ('zip', 'folder'):
+        kind = 'zip'
+    if kind == 'zip':
+        base_dir = os.path.abspath(os.path.expanduser(SSL_DOWNLOADS_DEFAULT_DIR))
+        if not os.path.isdir(base_dir):
+            return jsonify({"kind": kind, "base_dir": base_dir, "items": [], "error": f"Thư mục không tồn tại: {base_dir}"}), 200
+        return jsonify({"kind": kind, "base_dir": base_dir, "items": _list_download_zip_files(keyword), "error": ""}), 200
+    base_dir = os.path.abspath(os.path.expanduser(SSL_CATALOG_DEFAULT_DIR))
+    if not os.path.isdir(base_dir):
+        return jsonify({"kind": kind, "base_dir": base_dir, "items": [], "error": f"Thư mục không tồn tại: {base_dir}"}), 200
+    return jsonify({"kind": kind, "base_dir": base_dir, "items": _list_ssl_folders(keyword), "error": ""}), 200
+
+
+@app.route('/api/ssl-quick-zip', methods=['GET'])
+def api_ssl_quick_zip():
+    """Trả về bytes của 1 file .zip trong ~/Downloads để frontend phân giải như Upload ZIP."""
+    raw_path = (request.args.get('path', '') or '').strip()
+    if not raw_path:
+        return jsonify({"error": "Thiếu tham số path"}), 400
+    full_path = os.path.abspath(os.path.expanduser(raw_path))
+    if not _is_scan_path_allowed(full_path):
+        return jsonify({"error": f"Đường dẫn ngoài phạm vi cho phép: {full_path}"}), 403
+    if not os.path.isfile(full_path) or not full_path.lower().endswith('.zip'):
+        return jsonify({"error": f"File ZIP không tồn tại: {full_path}"}), 404
+    try:
+        return send_file(full_path, as_attachment=True, download_name=os.path.basename(full_path))
+    except Exception as exc:
+        logger.exception('Error in /api/ssl-quick-zip')
+        return jsonify({"error": str(exc)}), 500
+
+
+@app.route('/api/ssl-quick-folder', methods=['GET'])
+def api_ssl_quick_folder():
+    """Trả về nội dung text của 1 thư mục trong ~/Desktop/ssl để frontend phân giải như Scan Folder."""
+    raw_path = (request.args.get('path', '') or '').strip()
+    if not raw_path:
+        return jsonify({"error": "Thiếu tham số path"}), 400
+    full_path = os.path.abspath(os.path.expanduser(raw_path))
+    if not _is_scan_path_allowed(full_path):
+        return jsonify({"error": f"Đường dẫn ngoài phạm vi cho phép: {full_path}"}), 403
+    if not os.path.isdir(full_path):
+        return jsonify({"error": f"Thư mục không tồn tại: {full_path}"}), 404
+
+    files: dict = {}
+    total_bytes = 0
+    file_count = 0
+    # Đọc tối đa 200 file text, tổng tối đa ~8MB để tránh payload quá lớn
+    for root, dirs, filenames in os.walk(full_path):
+        dirs.sort()
+        depth = root.count(os.sep) - full_path.count(os.sep)
+        if depth > 1:
+            dirs[:] = []
+            continue
+        dirs[:] = [d for d in dirs if not d.startswith('.')]
+        for filename in sorted(filenames):
+            if file_count >= 200 or total_bytes >= 8 * 1024 * 1024:
+                break
+            abs_path = os.path.join(root, filename)
+            try:
+                if os.path.getsize(abs_path) > 2 * 1024 * 1024:
+                    continue
+                with open(abs_path, 'r', encoding='utf-8', errors='strict') as handle:
+                    content = handle.read()
+            except Exception:
+                continue
+            rel_path = os.path.relpath(abs_path, full_path).replace(os.sep, '/')
+            files[rel_path] = content
+            total_bytes += len(content)
+            file_count += 1
+
+    if not files:
+        return jsonify({"path": full_path, "files": {}, "error": "Không tìm thấy file text hợp lệ trong thư mục"}), 200
+    return jsonify({"path": full_path, "files": files, "error": ""}), 200
 
 
 def _secure_relative_path(path: str) -> str:

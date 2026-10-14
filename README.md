@@ -106,6 +106,9 @@ POST /api/check-host            IP/ASN/geolocation của host
 POST /api/check-email-auth     SPF/DKIM/DMARC/MX và mail platform fingerprints
 POST /api/ssl-catalog           Quét thư mục cert trên server
 POST /api/ssl-upload            Upload ZIP/folder cert
+GET  /api/ssl-quick-list        Popup "Hiển thị SSL": kind=zip (file .zip trong ~/Downloads) / kind=folder (thư mục trong ~/Desktop/ssl), hỗ trợ ?q=
+GET  /api/ssl-quick-zip         Tải bytes 1 file ZIP trong ~/Downloads (?path=...) để phân giải như Upload ZIP
+GET  /api/ssl-quick-folder      Đọc text 1 thư mục trong ~/Desktop/ssl (?path=...) để phân giải như Scan Folder
 POST /api/check-cert-file       Parse file cert
 POST /api/ssl-free/start        Bắt đầu order ACME (tạo CSR, gửi order)
 POST /api/ssl-free/check-challenge   Verify DNS-01/HTTP-01
@@ -122,6 +125,7 @@ GET  /api/ssl-free/session/<id>/status  Trạng thái session
 |---|---|---|
 | `PORT` | `2803` | Port server (local) |
 | `SSL_CATALOG_DIR` | `~/Desktop/ssl` | Thư mục mặc định cho SSL Bundle scan folder |
+| `SSL_DOWNLOADS_DIR` | `~/Downloads` | Thư mục mặc định cho popup "Hiển thị SSL" ở Upload ZIP |
 | `SSL_CATALOG_ALLOWED_ROOTS` | _(rỗng)_ | Các thư mục gốc được phép quét thêm, cách nhau `;` |
 | `WHOIS_CACHE_TTL_SECONDS` | `15` | TTL cache WHOIS |
 | `CORS_ORIGINS` | `*` | Giới hạn CORS, ví dụ `https://a.com,https://b.com` |

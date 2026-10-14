@@ -1621,6 +1621,33 @@
         }
         
         .btn-group { display: flex; gap: 8px; flex-wrap: wrap; }
+
+        .ssl-quick-float { position: fixed; right: 26px; top: 50%; transform: translateY(-50%); z-index: 900; margin: 0; }
+        .ssl-quick-float.is-hidden { display: none; }
+        .ssl-quick-float .btn { background: #ffffff; box-shadow: 0 12px 28px rgba(139, 92, 246, 0.28); border-color: #c4b5fd; font-weight: 700; white-space: nowrap; }
+        .ssl-quick-float .btn:hover { background: #f5f3ff; border-color: #8b5cf6; }
+        @media (max-width: 768px) {
+            .ssl-quick-float { right: 12px; }
+        }
+        .ssl-quick-backdrop { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.45); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 20px; }
+        .ssl-quick-backdrop.is-hidden { display: none; }
+        .ssl-quick-modal { width: min(640px, 100%); max-height: 80vh; background: #fff; border-radius: 16px; box-shadow: 0 24px 60px rgba(15, 23, 42, 0.25); display: flex; flex-direction: column; overflow: hidden; border: 1px solid #ddd6fe; }
+        .ssl-quick-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 16px 18px 12px; border-bottom: 1px solid #ede9fe; background: linear-gradient(180deg, #faf5ff 0%, #ffffff 100%); }
+        .ssl-quick-title { font-size: 1.05rem; font-weight: 800; color: #1e293b; }
+        .ssl-quick-subtitle { font-size: 0.82rem; color: #64748b; margin-top: 4px; word-break: break-all; }
+        .ssl-quick-close { border: 1px solid #e2e8f0; background: #f8fafc; border-radius: 10px; width: 34px; height: 34px; cursor: pointer; font-size: 1rem; color: #475569; flex-shrink: 0; }
+        .ssl-quick-close:hover { background: #e2e8f0; }
+        .ssl-quick-search { margin: 12px 18px 8px; padding: 11px 14px; border: 1px solid #c4b5fd; border-radius: 12px; font-size: 0.92rem; color: #1e293b; background: #fff; }
+        .ssl-quick-search:focus { outline: none; border-color: #8b5cf6; box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.12); }
+        .ssl-quick-list { padding: 8px 14px 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; min-height: 120px; }
+        .ssl-quick-item { display: flex; align-items: center; justify-content: space-between; gap: 12px; border: 1px solid #e2e8f0; border-radius: 12px; padding: 11px 13px; background: #f8fafc; cursor: pointer; transition: border-color 0.15s ease, background 0.15s ease, transform 0.15s ease; text-align: left; width: 100%; font-size: 0.9rem; color: #1e293b; }
+        .ssl-quick-item:hover { border-color: #8b5cf6; background: #f5f3ff; transform: translateY(-1px); }
+        .ssl-quick-item:disabled { opacity: 0.6; cursor: wait; transform: none; }
+        .ssl-quick-item-name { font-weight: 700; word-break: break-all; }
+        .ssl-quick-item-meta { font-size: 0.78rem; color: #64748b; margin-top: 3px; }
+        .ssl-quick-item-go { flex-shrink: 0; font-size: 0.8rem; font-weight: 800; color: #6d28d9; background: #ede9fe; border: 1px solid #ddd6fe; border-radius: 999px; padding: 5px 11px; }
+        .ssl-quick-empty { padding: 22px 12px; text-align: center; color: #64748b; border: 1px dashed #cbd5e1; border-radius: 12px; background: #f8fafc; }
+        .ssl-quick-error { padding: 12px 14px; border: 1px solid #fecaca; background: #fef2f2; color: #b91c1c; border-radius: 12px; font-size: 0.88rem; }
         
         .message { margin-bottom: 16px; }
         .message-error { background: #fee2e2; border-left: 4px solid #dc2626; color: #991b1b; padding: 12px 16px; border-radius: 8px; }
@@ -3262,5 +3289,50 @@ button:active,
 .search-row .btn:active {
     transform: translateY(1px);
     box-shadow: 0 3px 8px rgba(15, 23, 42, 0.08) !important;
+}
+
+/* ==== Hiệu năng: tắt các hiệu ứng gây lag khi cuộn/chuyển tab ====
+   - backdrop-filter blur diện rộng: tốn GPU mỗi frame
+   - background-attachment: fixed: Chromium repaint nền khi cuộn
+   - animation chuyển tab ~0.5s: cảm giác delay
+   - hover translate: cảm giác floaty + ép repaint
+   Giao diện giữ nguyên màu sắc/bố cục, chỉ phản hồi tức thì. */
+body {
+    background-attachment: scroll;
+}
+.tab-nav,
+.tab-content,
+.app-brand,
+.app-hero-card {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+}
+.tab-content.active,
+.tab-content.active .decoder-section,
+.tab-content.active .dns-card,
+.tab-content.active .freessl-card,
+.tab-content.active .host-info-card,
+.tab-content.active .result-box,
+.tab-content.active .search-box,
+.tab-content.active .ssl-info-card {
+    animation: none;
+}
+.tab-btn:hover,
+.btn:hover,
+button:hover,
+.ssl-choice-card:hover,
+.ssl-quick-item:hover {
+    transform: none !important;
+}
+
+/* ==== Hiệu năng: bỏ qua layout/paint cho card ngoài màn hình ====
+   Không đổi giao diện; trình duyệt chỉ dựng hình khi cuộn tới. */
+.dns-resolver-card,
+.history-record-item,
+.freessl-storage-item,
+.ssl-quick-item,
+.certificate-chain-item {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 120px;
 }
 

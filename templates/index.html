@@ -12,7 +12,7 @@
 <noscript>
 <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@500;600;700;800&amp;family=JetBrains+Mono:wght@400;600&amp;display=swap" rel="stylesheet"/>
 </noscript>
-<link href="{{ url_for('static', filename='css/style.min.css') }}?v=1791926000" rel="stylesheet"/>
+<link href="{{ url_for('static', filename='css/style.min.css') }}?v=1791995010" rel="stylesheet"/>
 </head>
 <body>
 <div class="container">
@@ -72,9 +72,10 @@
 {% include 'tabs/tab_freessl.html' %}
  
 </div>
-<script defer src="{{ url_for('static', filename='js/main.min.js') }}?v=1791926000"></script>
+<script defer src="{{ url_for('static', filename='js/main.min.js') }}?v=1791995010"></script>
+<link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <script defer src="https://cdn.jsdelivr.net/npm/lucide@1.55.0/dist/umd/lucide.min.js" onload="lucide&&lucide.createIcons&&lucide.createIcons()"></script>
-<script defer src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-<script defer src="https://cdnjs.cloudflare.com/ajax/libs/forge/0.10.0/forge.min.js"></script>
+<!-- jszip/forge KHÔNG tải sẵn: main.js tự lazy-load khi vào luồng SSL (đỡ ~385KB + ~2s cho lần mở trang đầu) -->
 </div></body>
 </html>
