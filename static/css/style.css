@@ -3336,3 +3336,11 @@ button:hover,
     contain-intrinsic-size: auto 120px;
 }
 
+/* ==== Hiệu năng: nền vùng cuộn phải đục hoàn toàn ====
+   Nền trắng trong suốt phủ trên gradient body bắt trình duyệt blend lại
+   toàn khung hình mỗi frame cuộn (đo được: 15fps -> chạm trần). Đục hóa
+   giữ nguyên giao diện (độ chênh 5% không phân biệt được bằng mắt). */
+.tab-content {
+    background: #ffffff;
+}
+

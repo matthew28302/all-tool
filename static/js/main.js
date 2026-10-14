@@ -2628,6 +2628,7 @@
         let freeSslCurrentOrderId = null;
         let freeSslSidebarLastFocus = null;
 
+        let freeSslDomainProgressHtml = '';
         function freeSslRenderDomainProgress(domains) {
             if (!Array.isArray(domains) || domains.length === 0) return;
             const html = domains.map(d => {
@@ -2635,6 +2636,9 @@
                 const cls = st === 'valid' ? 'ok' : (st === 'invalid' ? 'fail' : 'pending');
                 return `<div class="check-result-row ${cls}"><div><strong>${d.domain || '-'}</strong><br><span class="small-line">Authorization: ${st}</span></div></div>`;
             }).join('');
+            // Polling 3s/lần: chỉ chạm DOM khi nội dung thật sự đổi
+            if (html === freeSslDomainProgressHtml) return;
+            freeSslDomainProgressHtml = html;
             document.getElementById('freesslCheckResults').innerHTML = html;
         }
 
@@ -2752,8 +2756,13 @@
             row.className = 'freessl-log-row ' + type;
             row.textContent = message;
             box.appendChild(row);
+            // Giữ tối đa 300 dòng để DOM không phình khi order chạy lâu
+            while (box.children.length > 300) {
+                box.removeChild(box.firstChild);
+            }
+            // Chỉ cuộn hộp log bên trong; KHÔNG scrollIntoView toàn trang
+            // (scroll mượt mỗi dòng log sẽ giật/giành cuộn với tay người dùng)
             box.scrollTop = box.scrollHeight;
-            box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         }
 
         function freeSslSetActionState(status) {
@@ -2961,15 +2970,13 @@
             }
 
             const checkResults = Array.isArray(data.last_check_results) ? data.last_check_results : [];
-            if (checkResults.length > 0) {
-                document.getElementById('freesslCheckResults').innerHTML = checkResults.map(r => `
+            const checkResultsHtml = checkResults.length > 0 ? checkResults.map(r => `
                     <div class="check-result-row ${r.ok ? 'ok' : 'fail'}">
                         <div><strong>${r.domain}</strong><br><span class="small-line">${r.detail}</span></div>
                     </div>
-                `).join('');
-            } else {
-                document.getElementById('freesslCheckResults').innerHTML = '';
-            }
+                `).join('') : '';
+            document.getElementById('freesslCheckResults').innerHTML = checkResultsHtml;
+            freeSslDomainProgressHtml = checkResultsHtml;
 
             if (Array.isArray(data.domains) && data.domains.length > 0 && checkResults.length === 0) {
                 freeSslRenderDomainProgress(data.domains);
@@ -3157,6 +3164,7 @@
                 freeSslRenderChallenges(data.challenges, freeSslChallengeType, freeSslProvider);
                 document.getElementById('freesslChallengeCard').style.display = 'block';
                 document.getElementById('freesslCheckResults').innerHTML = '';
+                freeSslDomainProgressHtml = '';
                 document.getElementById('freesslFinalizeCard').style.display = 'none';
                 freeSslSetStep(2);
                 freeSslSetActionState('pending');
@@ -3274,6 +3282,7 @@
                     </div>`;
                 });
                 document.getElementById('freesslCheckResults').innerHTML = html;
+                freeSslDomainProgressHtml = html;
                 freeSslLog(`Kết quả pre-check: ${okCount}/${data.results.length} bản ghi hợp lệ`, data.all_ok ? 'success' : 'info');
 
                 if (data.status === 'invalid') {
@@ -3463,6 +3472,7 @@
             document.getElementById('freesslFinalizeCard').style.display = 'none';
             document.getElementById('freesslResultArea').classList.remove('show');
             document.getElementById('freesslCheckResults').innerHTML = '';
+            freeSslDomainProgressHtml = '';
             document.getElementById('freesslMessage').innerHTML = '';
             freeSslClearLog();
             freeSslSelectChallenge('dns-01');
