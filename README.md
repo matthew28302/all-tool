@@ -126,6 +126,7 @@ GET  /api/ssl-free/session/<id>/status  Trạng thái session
 | `PORT` | `2803` | Port server (local) |
 | `SSL_CATALOG_DIR` | `~/Desktop/ssl` | Thư mục mặc định cho SSL Bundle scan folder |
 | `SSL_DOWNLOADS_DIR` | `~/Downloads` | Thư mục mặc định cho popup "Hiển thị SSL" ở Upload ZIP |
+| `DATABASE_URL` | _(rỗng = lưu file local)_ | Postgres để lưu lịch sử Free SSL **khi deploy cloud** (Render/Replit filesystem bị xóa mỗi restart). Replit: Postgres có sẵn (`DATABASE_URL` tự có). Render: tạo Postgres free ở Neon/Supabase rồi set env này. Không set → lưu file `acme/issued_ssl_store.json` như cũ |
 | `SSL_CATALOG_ALLOWED_ROOTS` | _(rỗng)_ | Các thư mục gốc được phép quét thêm, cách nhau `;` |
 | `WHOIS_CACHE_TTL_SECONDS` | `15` | TTL cache WHOIS |
 | `CORS_ORIGINS` | `*` | Giới hạn CORS, ví dụ `https://a.com,https://b.com` |

@@ -26,6 +26,7 @@ from datetime import datetime, timezone
 from typing import Dict, List, Optional
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import threading
+import functools
 import ssl
 import tempfile
 import socket
@@ -164,6 +165,48 @@ def cache_set(key: str, value):
         _prune_cache(_cache, CACHE_MAX_ENTRIES)
 
 
+def _cached_post_api():
+    """Cache kết quả JSON thành công của API POST theo body — chống query lặp (F5/double-click).
+    Chỉ cache response 200 không có trường 'error'. Dùng chung TTL của cache DNS."""
+    def deco(fn):
+        @functools.wraps(fn)
+        def wrapper(*args, **kwargs):
+            try:
+                body = request.get_json(silent=True) or {}
+            except Exception:
+                body = {}
+            try:
+                canon = json.dumps(body, sort_keys=True, ensure_ascii=True, default=str)[:1000]
+            except Exception:
+                canon = ''
+            key = f"api:{fn.__name__}:{hashlib.sha256(canon.encode('utf-8')).hexdigest()}"
+            try:
+                hit = cache_get(key)
+            except Exception:
+                hit = None
+            if hit is not None:
+                resp = _clone_json(hit)
+                if isinstance(resp, dict):
+                    resp['cached'] = True
+                return jsonify(resp), 200
+            out = fn(*args, **kwargs)
+            try:
+                status = out[1] if isinstance(out, tuple) else 200
+                if status == 200:
+                    raw = out[0].get_data()
+                    # Không cache response quá lớn (vd history vài MB) để khỏi phình RAM
+                    if isinstance(raw, (bytes, bytearray)) and len(raw) > 512 * 1024:
+                        return out
+                    payload = out[0].get_json()
+                    if isinstance(payload, dict) and not payload.get('error'):
+                        cache_set(key, payload)
+            except Exception:
+                pass
+            return out
+        return wrapper
+    return deco
+
+
 def dns_history_cache_get(key: str):
     if DNS_HISTORY_CACHE_TTL <= 0:
         return None
@@ -234,10 +277,12 @@ def _pick_ssl_file(files: List[str], candidates: List[str], *, allow_generic: bo
     return None
 
 
-def _read_text_file(path: str) -> str:
+def _read_text_file(path: str, max_bytes: int = 256 * 1024) -> str:
     if not os.path.isfile(path):
         return ''
     try:
+        if os.path.getsize(path) > max_bytes:
+            return ''
         with open(path, 'r', encoding='utf-8') as handle:
             return handle.read()
     except Exception:
@@ -577,7 +622,7 @@ def api_check_cert_file():
     """Check and parse 3 certificate files: cert domain, ca bundle 1, ca bundle 2"""
     logger.debug("Received request: /api/check-cert-file")
     try:
-        data = request.json
+        data = request.get_json(silent=True) or {}
         cert_path = data.get('cert_path', '').strip()
         ca_bundle1_path = data.get('ca_bundle1_path', '').strip()
         ca_bundle2_path = data.get('ca_bundle2_path', '').strip()
@@ -597,6 +642,8 @@ def api_check_cert_file():
                 logger.error(f"File not found: {path}")
                 return {"error": f"File not found: {path}"}
             try:
+                if os.path.getsize(path) > 5 * 1024 * 1024:
+                    return {"error": f"File quá lớn (>5MB): {path}"}
                 with open(path, 'rb') as f:
                     data = f.read()
                 logger.debug(f"Read {len(data)} bytes from {path}")
@@ -1652,6 +1699,7 @@ def _augment_history_sources(domain: str, sources: List[dict]) -> List[dict]:
 
 
 @app.route('/api/check-dns-history', methods=['POST'])
+@_cached_post_api()
 def api_check_dns_history():
     try:
         data = request.get_json(silent=True) or {}
@@ -1716,9 +1764,10 @@ def index():
 
 
 @app.route('/api/check-dns', methods=['POST'])
+@_cached_post_api()
 def api_check_dns():
     try:
-        data = request.json
+        data = request.get_json(silent=True) or {}
         domain = data.get('domain', '').strip().lower()
         record_types = data.get('record_types', ['A'])
         
@@ -1759,6 +1808,7 @@ def api_check_dns_basic():
 
 
 @app.route('/api/check-dns-bulk', methods=['POST'])
+@_cached_post_api()
 def api_check_dns_bulk():
     """Bulk DNS basic checks for a list of domains."""
     try:
@@ -1778,6 +1828,10 @@ def api_check_dns_bulk():
 
         if not domains:
             return jsonify({"error": "Domain list is required"}), 400
+
+        # Giới hạn mỗi request để khỏi chiếm hết thread pool (frontend chia batch 60)
+        if len(domains) > 100:
+            return jsonify({"error": f"Tối đa 100 domain/request (nhận {len(domains)}). Hãy chia nhỏ."}), 413
 
         # Bulk uses the fast record set only: A, MX, NS.
         record_types = ['A', 'MX', 'NS']
@@ -1831,6 +1885,7 @@ def api_check_dns_bulk():
 
 
 @app.route('/api/check-ssl-bulk', methods=['POST'])
+@_cached_post_api()
 def api_check_ssl_bulk():
     """Bulk SSL expiry/issuer checks for a list of domains."""
     try:
@@ -1850,6 +1905,10 @@ def api_check_ssl_bulk():
 
         if not domains:
             return jsonify({"error": "Domain list is required"}), 400
+
+        # Giới hạn mỗi request để khỏi chiếm hết thread pool (frontend chia batch 60)
+        if len(domains) > 100:
+            return jsonify({"error": f"Tối đa 100 domain/request (nhận {len(domains)}). Hãy chia nhỏ."}), 413
 
         def _check_one(domain: str) -> dict:
             cache_key = f"sslbasic:{domain}"
@@ -1921,6 +1980,7 @@ def api_check_ssl_bulk():
 
 
 @app.route('/api/whois', methods=['POST'])
+@_cached_post_api()
 def api_whois():
     """Return WHOIS information for a domain using whois_lookup.py logic.
     Returns the same JSON schema as `python3 whois_lookup.py <domain> --json`.
@@ -1956,10 +2016,22 @@ def api_dns_servers():
 
 @app.route('/api/clear-cache', methods=['POST'])
 def api_clear_cache():
+    cleared = 0
+    try:
+        with _cache_lock:
+            cleared += len(_cache)
+            _cache.clear()
+    except Exception:
+        pass
+    try:
+        with _dns_history_cache_lock:
+            cleared += len(_dns_history_cache)
+            _dns_history_cache.clear()
+    except Exception:
+        pass
     return jsonify({
         "message": "Cache cleared",
-        "cache_enabled": False,
-        "note": "All DNS queries are always fresh (no caching)"
+        "cleared_entries": cleared,
     }), 200
 
 
@@ -2005,6 +2077,7 @@ def _resolve_email_auth_record(name: str, record_type: str) -> dict:
 
 
 @app.route('/api/check-email-auth', methods=['POST'])
+@_cached_post_api()
 def api_check_email_auth():
     """Check SPF, DKIM, DMARC and common mail-platform DNS fingerprints."""
     try:
@@ -2074,6 +2147,7 @@ def api_check_email_auth():
 
 
 @app.route('/api/check-ssl', methods=['POST'])
+@_cached_post_api()
 def api_check_ssl():
     """Check SSL certificate for a domain"""
     try:
@@ -2350,6 +2424,7 @@ def api_check_ssl():
 
 
 @app.route('/api/check-host', methods=['POST'])
+@_cached_post_api()
 def api_check_host():
     """Check hosting information for IP or domain"""
     try:
@@ -2509,9 +2584,100 @@ ISSUED_SSL_STORE_PATH = os.environ.get(
 )
 ISSUED_SSL_STORE_BACKUP_PATH = f"{ISSUED_SSL_STORE_PATH}.bak"
 
-# Replit Database — persistent store for issued SSL list (filesystem on Replit deployments is ephemeral).
+# Replit Database (legacy KV) — persistent store for issued SSL list (filesystem on Replit deployments is ephemeral).
 REPLIT_DB_URL = os.environ.get('REPLIT_DB_URL', '').rstrip('/')
 REPLIT_DB_STORE_KEY = os.environ.get('REPLIT_DB_STORE_KEY', 'issued_ssl_store')
+
+# Postgres (DATABASE_URL) — persistent store chủ lực khi deploy cloud (Render/Replit):
+# Replit Postgres (Helium/Neon) tự có DATABASE_URL; Render thì trỏ sang Neon/Supabase free.
+# Ưu tiên đọc: Postgres -> Replit KV -> file. Ghi: đồng thời cả 3 nơi có sẵn.
+DATABASE_URL = _secret('DATABASE_URL', '').strip()
+_PG_STORE_KEY = os.environ.get('PG_STORE_KEY', 'issued_ssl_store')
+_pg_conn = None
+_pg_conn_lock = threading.Lock()
+_pg_last_fail_at = 0.0
+_PG_FAIL_COOLDOWN = 60
+
+
+def _pg_connect():
+    """Kết nối Postgres lười (lazy), tự reconnect, thất bại thì thôi (fallback backend khác)."""
+    global _pg_conn, _pg_last_fail_at
+    if not DATABASE_URL:
+        return None
+    with _pg_conn_lock:
+        if _pg_conn is not None:
+            try:
+                with _pg_conn.cursor() as cur:
+                    cur.execute('SELECT 1')
+                return _pg_conn
+            except Exception:
+                try:
+                    _pg_conn.close()
+                except Exception:
+                    pass
+                _pg_conn = None
+        if time.time() - _pg_last_fail_at < _PG_FAIL_COOLDOWN:
+            return None
+        try:
+            import psycopg
+            _pg_conn = psycopg.connect(DATABASE_URL, connect_timeout=5, autocommit=True)
+            with _pg_conn.cursor() as cur:
+                cur.execute('CREATE TABLE IF NOT EXISTS alltool_kv (k TEXT PRIMARY KEY, v TEXT)')
+            return _pg_conn
+        except Exception as exc:
+            _pg_last_fail_at = time.time()
+            logger.warning(f"Postgres store unavailable: {exc}")
+            _pg_conn = None
+            return None
+
+
+def _pg_get(key: str):
+    conn = _pg_connect()
+    if conn is None:
+        return None
+    try:
+        with _pg_conn_lock:
+            with conn.cursor() as cur:
+                cur.execute('SELECT v FROM alltool_kv WHERE k = %s', (key,))
+                row = cur.fetchone()
+        return row[0] if row else None
+    except Exception as exc:
+        logger.warning(f"Postgres GET failed: {exc}")
+        with _pg_conn_lock:
+            global _pg_conn
+            try:
+                conn.close()
+            except Exception:
+                pass
+            if _pg_conn is conn:
+                _pg_conn = None
+        return None
+
+
+def _pg_set(key: str, value: str) -> bool:
+    conn = _pg_connect()
+    if conn is None:
+        return False
+    try:
+        with _pg_conn_lock:
+            with conn.cursor() as cur:
+                cur.execute(
+                    'INSERT INTO alltool_kv (k, v) VALUES (%s, %s) '
+                    'ON CONFLICT (k) DO UPDATE SET v = EXCLUDED.v',
+                    (key, value),
+                )
+        return True
+    except Exception as exc:
+        logger.warning(f"Postgres SET failed: {exc}")
+        with _pg_conn_lock:
+            global _pg_conn
+            try:
+                conn.close()
+            except Exception:
+                pass
+            if _pg_conn is conn:
+                _pg_conn = None
+        return False
 
 # In-memory session store  { session_id -> {...} }
 _ssl_sessions: Dict[str, dict] = {}
@@ -2749,6 +2915,21 @@ def _replit_db_set(key: str, value: str) -> bool:
 def _load_issued_ssl_store() -> List[dict]:
     _ensure_issued_ssl_store()
 
+    # Postgres là authoritative khi có DATABASE_URL (Render/Replit cloud).
+    pg_raw = _pg_get(_PG_STORE_KEY)
+    if pg_raw and pg_raw.strip():
+        try:
+            data = json.loads(pg_raw)
+            if isinstance(data, list):
+                # Refresh local file cache so offline restarts still have a copy.
+                try:
+                    _save_issued_ssl_store(data, _skip_replit_db=True)
+                except Exception:
+                    pass
+                return data
+        except Exception as exc:
+            logger.warning(f"Invalid JSON in Postgres store: {exc}")
+
     # Replit DB is authoritative when available (filesystem is ephemeral on Replit deployments).
     db_raw = _replit_db_get(REPLIT_DB_STORE_KEY)
     if db_raw and db_raw.strip():
@@ -2758,6 +2939,11 @@ def _load_issued_ssl_store() -> List[dict]:
                 # Refresh local file cache so offline restarts still have a copy.
                 try:
                     _save_issued_ssl_store(data, _skip_replit_db=True)
+                except Exception:
+                    pass
+                # Backfill Postgres để lần sau đọc nhanh từ 1 nguồn chính.
+                try:
+                    _pg_set(_PG_STORE_KEY, json.dumps(data, ensure_ascii=False))
                 except Exception:
                     pass
                 return data
@@ -2771,6 +2957,10 @@ def _load_issued_ssl_store() -> List[dict]:
         if isinstance(disk_data, list) and disk_data and REPLIT_DB_URL and not (db_raw and db_raw.strip()):
             _replit_db_set(REPLIT_DB_STORE_KEY, json.dumps(disk_data, ensure_ascii=False))
             logger.info('Migrated issued SSL store to Replit DB')
+        # One-way migration file -> Postgres (deploy cloud lần đầu).
+        if isinstance(disk_data, list) and disk_data and DATABASE_URL and not (pg_raw and pg_raw.strip()):
+            if _pg_set(_PG_STORE_KEY, json.dumps(disk_data, ensure_ascii=False)):
+                logger.info('Migrated issued SSL store to Postgres')
     except Exception:
         pass
 
@@ -2802,6 +2992,14 @@ def _load_issued_ssl_store() -> List[dict]:
 
 def _current_store_items() -> List[dict]:
     """Best-effort read of the current store without triggering a save."""
+    pg_raw = _pg_get(_PG_STORE_KEY) if DATABASE_URL else None
+    if pg_raw and pg_raw.strip():
+        try:
+            data = json.loads(pg_raw)
+            if isinstance(data, list):
+                return data
+        except Exception:
+            pass
     db_raw = _replit_db_get(REPLIT_DB_STORE_KEY) if REPLIT_DB_URL else None
     if db_raw and db_raw.strip():
         try:
@@ -2853,6 +3051,13 @@ def _save_issued_ssl_store(
         except Exception as exc:
             logger.warning(f"Unable to persist SSL store to Replit DB: {exc}")
 
+    # Persist to Postgres when DATABASE_URL is set (Render/Replit cloud).
+    if DATABASE_URL:
+        try:
+            _pg_set(_PG_STORE_KEY, json.dumps(items, ensure_ascii=False))
+        except Exception as exc:
+            logger.warning(f"Unable to persist SSL store to Postgres: {exc}")
+
     if os.path.isfile(ISSUED_SSL_STORE_PATH):
         try:
             with open(ISSUED_SSL_STORE_PATH, 'r', encoding='utf-8') as f:
@@ -2872,6 +3077,41 @@ def _save_issued_ssl_store(
     finally:
         if os.path.exists(tmp_path):
             os.remove(tmp_path)
+
+    _maybe_snapshot_ssl_store()
+
+
+_SSL_STORE_SNAPSHOT_DIR = os.path.join(app.root_path, 'acme', 'store_backups')
+_SSL_STORE_SNAPSHOT_KEEP = 20
+_SSL_STORE_SNAPSHOT_MIN_INTERVAL = 3600
+
+
+def _maybe_snapshot_ssl_store() -> None:
+    """Chụp snapshot file lịch sử theo giờ, giữ tối đa 20 bản — chống mất trắng khi file bị ghi đè/lỗi."""
+    try:
+        os.makedirs(_SSL_STORE_SNAPSHOT_DIR, exist_ok=True)
+        snaps = sorted(
+            (os.path.join(_SSL_STORE_SNAPSHOT_DIR, name)
+             for name in os.listdir(_SSL_STORE_SNAPSHOT_DIR)
+             if name.startswith('issued_ssl_store-') and name.endswith('.json')),
+            key=lambda p: os.path.getmtime(p),
+        )
+        now = time.time()
+        if snaps and (now - os.path.getmtime(snaps[-1]) < _SSL_STORE_SNAPSHOT_MIN_INTERVAL):
+            return
+        stamp = datetime.now().strftime('%Y%m%d-%H%M%S')
+        dest = os.path.join(_SSL_STORE_SNAPSHOT_DIR, f"issued_ssl_store-{stamp}.json")
+        with open(ISSUED_SSL_STORE_PATH, 'r', encoding='utf-8') as src:
+            content = src.read()
+        with open(dest, 'w', encoding='utf-8') as out:
+            out.write(content)
+        for old_snap in snaps[:max(0, len(snaps) + 1 - _SSL_STORE_SNAPSHOT_KEEP)]:
+            try:
+                os.remove(old_snap)
+            except Exception:
+                pass
+    except Exception as exc:
+        logger.warning(f"Unable to snapshot SSL store: {exc}")
 
 
 def _ensure_ssl_store_writable() -> None:
@@ -3115,6 +3355,9 @@ def _query_txt_values(dns_name: str, resolvers: Optional[List[str]] = None) -> L
                     values.append(s.decode() if isinstance(s, bytes) else str(s))
         except Exception:
             continue
+        # Đã có kết quả thì khỏi hỏi resolver tiếp theo (đỡ ~5s mỗi lần verify)
+        if values:
+            break
     return list(dict.fromkeys(values))
 
 
@@ -3453,7 +3696,7 @@ def api_ssl_free_start():
     """
     try:
         _cleanup_expired_ssl_sessions()
-        data = request.json or {}
+        data = request.get_json(silent=True) or {}
         domain_input = data.get('domain', '')
         sans_raw = data.get('sans', [])
         challenge_type = data.get('challenge_type', 'dns-01')  # dns-01 | http-01
@@ -3629,7 +3872,7 @@ def api_ssl_free_start():
         }), 200
 
     except ValueError as e:
-        logger.warning(f"[ACME] start 400 (ValueError): {request.json} -> {e}")
+        logger.warning(f"[ACME] start 400 (ValueError): {request.get_json(silent=True)} -> {e}")
         return jsonify({"error": str(e)}), 400
     except requests.exceptions.RequestException as e:
         logger.error(f"[ACME] Network error: {e}", exc_info=True)
@@ -3651,7 +3894,7 @@ def api_ssl_free_check_challenge():
     """
     try:
         _cleanup_expired_ssl_sessions()
-        data = request.json or {}
+        data = request.get_json(silent=True) or {}
         session_id = data.get('session_id', '')
 
         with _ssl_sessions_lock:
@@ -3834,7 +4077,7 @@ def api_ssl_free_clear_dns_cache():
     Body: { session_id }
     """
     try:
-        data = request.json or {}
+        data = request.get_json(silent=True) or {}
         session_id = data.get('session_id', '')
 
         with _ssl_sessions_lock:
@@ -3878,7 +4121,7 @@ def api_ssl_free_finalize():
     """
     try:
         _cleanup_expired_ssl_sessions()
-        data = request.json or {}
+        data = request.get_json(silent=True) or {}
         session_id = data.get('session_id', '')
 
         with _ssl_sessions_lock:

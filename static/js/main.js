@@ -51,6 +51,18 @@
             if (typeof updateSslQuickFloat === 'function') {
                 try { updateSslQuickFloat(); } catch (e) {}
             }
+            // Rời tab FreeSSL thì dừng polling trạng thái ACME (đỡ fetch ngầm mỗi 3s)
+            if (nextTab !== 'freessl' && typeof freeSslStopStatusMonitor === 'function') {
+                try { freeSslStopStatusMonitor(); } catch (e) {}
+            }
+            // Quay lại tab FreeSSL mà order còn chạy dở thì nối lại polling
+            if (nextTab === 'freessl' && typeof freeSslStartStatusMonitor === 'function') {
+                try {
+                    if (typeof freeSslStatus !== 'undefined' && (freeSslStatus === 'processing' || freeSslStatus === 'finalizing')) {
+                        freeSslStartStatusMonitor();
+                    }
+                } catch (e) {}
+            }
         }
 
         function updateTabScrollHint() {
@@ -128,25 +140,52 @@
         async function checkEmailAuth() {
             const domain = document.getElementById('emailAuthDomainInput').value.trim();
             if (!domain) { alert('Vui lòng nhập tên miền'); return; }
+            const ctrl = __takeover('emailauth');
+            __setBusy('checkEmailBtn', true);
             document.getElementById('emailAuthLoading').classList.add('show');
             document.getElementById('emailAuthResults').classList.remove('show');
             clearMessage('emailAuthMessage');
             try {
                 const response = await fetch('/api/check-email-auth', {
                     method: 'POST', headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ domain })
+                    body: JSON.stringify({ domain }), signal: ctrl.signal
                 });
                 const data = await response.json();
                 if (!response.ok || data.error) throw new Error(data.error || 'Không thể kiểm tra Email Authentication');
                 renderEmailAuth(data);
             } catch (error) {
+                if (error && error.name === 'AbortError') return;
                 setMessage('emailAuthMessage', 'error', 'Lỗi: ' + error.message);
             } finally {
-                document.getElementById('emailAuthLoading').classList.remove('show');
+                __settle('emailauth', ctrl, () => {
+                    document.getElementById('emailAuthLoading').classList.remove('show');
+                    __setBusy('checkEmailBtn', false);
+                });
             }
         }
 
         function escapeHtml(text) { var div = document.createElement('div'); div.textContent = text; return div.innerHTML; }
+
+        // Chống double-click/race: request mới hủy request cũ cùng tính năng.
+        // Dùng kèm __settle để chỉ request mới nhất được dọn UI (loading, nút bấm).
+        const __reqControllers = {};
+        function __takeover(key) {
+            const prev = __reqControllers[key];
+            if (prev) { try { prev.abort(); } catch (e) {} }
+            const ctrl = new AbortController();
+            __reqControllers[key] = ctrl;
+            return ctrl;
+        }
+        function __settle(key, ctrl, onDone) {
+            if (__reqControllers[key] !== ctrl) return false;
+            delete __reqControllers[key];
+            if (typeof onDone === 'function') { try { onDone(); } catch (e) {} }
+            return true;
+        }
+        function __setBusy(btnId, busy) {
+            const btn = btnId && document.getElementById(btnId);
+            if (btn) btn.disabled = !!busy;
+        }
 
         if (window.lucide) {
             window.lucide.createIcons();
@@ -183,6 +222,8 @@
             const domain = document.getElementById('sslDomainInput').value.trim();
             if (!domain) { alert('Vui lòng nhập tên miền'); return; }
 
+            const ctrl = __takeover('sslcheck');
+            __setBusy('checkSslBtn', true);
             document.getElementById('sslLoading').classList.add('show');
             document.getElementById('sslCheckResults').classList.remove('show');
             clearMessage('sslCheckMessage');
@@ -191,7 +232,8 @@
                 const response = await fetch('/api/check-ssl', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ domain: domain })
+                    body: JSON.stringify({ domain: domain }),
+                    signal: ctrl.signal
                 });
                 const data = await response.json();
 
@@ -206,9 +248,13 @@
                     }
                 }
             } catch (err) {
+                if (err && err.name === 'AbortError') return;
                 setMessage('sslCheckMessage', 'error', '❌ Lỗi kết nối: ' + err.message);
             } finally {
-                document.getElementById('sslLoading').classList.remove('show');
+                __settle('sslcheck', ctrl, () => {
+                    document.getElementById('sslLoading').classList.remove('show');
+                    __setBusy('checkSslBtn', false);
+                });
             }
         }
 
@@ -313,6 +359,8 @@
             const host = document.getElementById('hostInput').value.trim();
             if (!host) { alert('Vui lòng nhập IP hoặc Domain'); return; }
 
+            const ctrl = __takeover('hostcheck');
+            __setBusy('checkHostBtn', true);
             document.getElementById('hostLoading').classList.add('show');
             document.getElementById('hostCheckResults').classList.remove('show');
             clearMessage('hostCheckMessage');
@@ -321,7 +369,8 @@
                 const response = await fetch('/api/check-host', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ host: host })
+                    body: JSON.stringify({ host: host }),
+                    signal: ctrl.signal
                 });
                 const data = await response.json();
 
@@ -334,9 +383,13 @@
                     }
                 }
             } catch (err) {
+                if (err && err.name === 'AbortError') return;
                 setMessage('hostCheckMessage', 'error', '❌ Lỗi kết nối: ' + err.message);
             } finally {
-                document.getElementById('hostLoading').classList.remove('show');
+                __settle('hostcheck', ctrl, () => {
+                    document.getElementById('hostLoading').classList.remove('show');
+                    __setBusy('checkHostBtn', false);
+                });
             }
         }
 
@@ -435,6 +488,8 @@
             }
             if (recordTypes.length === 0) { alert('Vui lòng chọn ít nhất 1 loại record'); return; }
 
+            const ctrl = __takeover('dns');
+            __setBusy('checkDnsBtn', true);
             document.getElementById('loading').classList.add('show');
             document.getElementById('results').classList.remove('show');
 
@@ -450,7 +505,8 @@
                 var dnsPromise = fetch(endpoint, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(body)
+                    body: JSON.stringify(body),
+                    signal: ctrl.signal
                 });
                 
                 if (dnsMode === 'basic') {
@@ -467,9 +523,13 @@
                     renderResults(data);
                 }
             } catch (err) {
+                if (err && err.name === 'AbortError') return;
                 alert('Lỗi kết nối: ' + err.message);
             } finally {
-                document.getElementById('loading').classList.remove('show');
+                __settle('dns', ctrl, () => {
+                    document.getElementById('loading').classList.remove('show');
+                    __setBusy('checkDnsBtn', false);
+                });
             }
         }
 
@@ -592,6 +652,8 @@
             return domains;
         }
 
+        const BULK_MAX_DOMAINS = 500;
+
         async function checkBulkDNS() {
             const bulkInput = document.getElementById('bulkDomainsInput');
             const text = bulkInput ? bulkInput.value : '';
@@ -599,6 +661,10 @@
 
             if (domains.length === 0) {
                 alert('Vui lòng nhập ít nhất 1 tên miền');
+                return;
+            }
+            if (domains.length > BULK_MAX_DOMAINS) {
+                alert(`Tối đa ${BULK_MAX_DOMAINS} domain/lần (bạn nhập ${domains.length}). Hãy chia nhỏ danh sách.`);
                 return;
             }
 
@@ -609,6 +675,8 @@
                 batches.push(domains.slice(i, i + batchSize));
             }
 
+            const ctrl = __takeover('bulkdns');
+            __setBusy('bulkDnsBtn', true);
             // Prepare UI
             document.getElementById('bulkLoading').classList.add('show');
             document.getElementById('bulkResults').classList.remove('show');
@@ -617,17 +685,20 @@
             document.getElementById('bulkSummaryTotal').textContent = domains.length;
 
             let aggregated = [];
+            let resolvedCount = 0;
             const fetchBatch = async (batch) => {
                 const response = await fetch('/api/check-dns-bulk', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ domains: batch })
+                    body: JSON.stringify({ domains: batch }),
+                    signal: ctrl.signal
                 });
                 return response.json();
             };
             try {
                 // Two batches in flight at a time — keeps server busy without hammering it.
                 for (let i = 0; i < batches.length; i += 2) {
+                    if (ctrl.signal.aborted) return;
                     const inFlight = [fetchBatch(batches[i])];
                     if (i + 1 < batches.length) inFlight.push(fetchBatch(batches[i + 1]));
 
@@ -642,13 +713,13 @@
                         }
                         const rows = Array.isArray(data.results) ? data.results : [];
                         aggregated = aggregated.concat(rows);
+                        resolvedCount += rows.filter(item => item.ip && item.ip !== '-').length;
                         appendBulkResults(rows);
                     }
 
-                    // Update summaries progressively
-                    const resolved = aggregated.filter(item => item.ip && item.ip !== '-').length;
-                    document.getElementById('bulkSummaryResolved').textContent = resolved;
-                    document.getElementById('bulkSummaryMissing').textContent = aggregated.length - resolved;
+                    // Update summaries progressively (bộ đếm cộng dồn, không filter lại toàn bộ)
+                    document.getElementById('bulkSummaryResolved').textContent = resolvedCount;
+                    document.getElementById('bulkSummaryMissing').textContent = aggregated.length - resolvedCount;
                     document.getElementById('bulkSummaryUpdated').textContent = new Date().toLocaleString('vi-VN');
                 }
 
@@ -656,11 +727,17 @@
                 document.getElementById('bulkCountChip').textContent = (aggregated.length || domains.length) + ' domains';
                 document.getElementById('bulkResults').classList.add('show');
             } catch (err) {
+                if (err && err.name === 'AbortError') return;
                 alert('Lỗi kết nối: ' + (err.message || err));
             } finally {
-                const note = document.querySelector('#bulkLoading .dns-loading-note');
-                if (note) note.textContent = 'Hoàn tất';
-                setTimeout(() => document.getElementById('bulkLoading').classList.remove('show'), 600);
+                __settle('bulkdns', ctrl, () => {
+                    const note = document.querySelector('#bulkLoading .dns-loading-note');
+                    if (note) note.textContent = 'Hoàn tất';
+                    __setBusy('bulkDnsBtn', false);
+                    setTimeout(() => {
+                        if (!__reqControllers['bulkdns']) document.getElementById('bulkLoading').classList.remove('show');
+                    }, 600);
+                });
             }
         }
 
@@ -805,6 +882,10 @@
             const domains = parseBulkDomains(text);
 
             if (domains.length === 0) { alert('Vui lòng nhập ít nhất 1 tên miền'); return; }
+            if (domains.length > BULK_MAX_DOMAINS) {
+                alert(`Tối đa ${BULK_MAX_DOMAINS} domain/lần (bạn nhập ${domains.length}). Hãy chia nhỏ danh sách.`);
+                return;
+            }
 
             const batchSize = 60;
             const batches = [];
@@ -812,6 +893,8 @@
                 batches.push(domains.slice(i, i + batchSize));
             }
 
+            const ctrl = __takeover('bulkssl');
+            __setBusy('bulkSslBtn', true);
             document.getElementById('bulkSslLoading').classList.add('show');
             document.getElementById('bulkSslResults').classList.remove('show');
             document.getElementById('bulkSslResultsTable').innerHTML = '';
@@ -819,17 +902,20 @@
             document.getElementById('bulkSslSummaryTotal').textContent = domains.length;
 
             let aggregated = [];
+            let sslValid = 0, sslExpiring = 0, sslErr = 0;
             const fetchBatch = async (batch) => {
                 const response = await fetch('/api/check-ssl-bulk', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ domains: batch })
+                    body: JSON.stringify({ domains: batch }),
+                    signal: ctrl.signal
                 });
                 return response.json();
             };
 
             try {
                 for (let i = 0; i < batches.length; i += 2) {
+                    if (ctrl.signal.aborted) return;
                     const inFlight = [fetchBatch(batches[i])];
                     if (i + 1 < batches.length) inFlight.push(fetchBatch(batches[i + 1]));
 
@@ -842,20 +928,34 @@
                         const rows = Array.isArray(data.results) ? data.results : [];
                         aggregated = aggregated.concat(rows);
                         appendBulkSSL(rows);
+                        for (const item of rows) {
+                            const d = item.days_remaining;
+                            if (!item.error && d !== null && d !== undefined && d >= 30) sslValid += 1;
+                            else if (!item.error && d !== null && d !== undefined && d >= 0) sslExpiring += 1;
+                            else sslErr += 1;
+                        }
                     }
-                    updateBulkSSLSummary(aggregated);
+                    document.getElementById('bulkSslSummaryValid').textContent = sslValid;
+                    document.getElementById('bulkSslSummaryExpiring').textContent = sslExpiring;
+                    document.getElementById('bulkSslSummaryError').textContent = sslErr;
                     document.getElementById('bulkSslSummaryUpdated').textContent = new Date().toLocaleString('vi-VN');
                 }
                 document.getElementById('bulkSslCountChip').textContent = (aggregated.length || domains.length) + ' domains';
                 document.getElementById('bulkSslResults').classList.add('show');
             } catch (err) {
+                if (err && err.name === 'AbortError') return;
                 if (!String(err && err.message || '').startsWith('Lỗi')) {
                     alert('Lỗi kết nối: ' + (err.message || err));
                 }
             } finally {
-                const note = document.querySelector('#bulkSslLoading .dns-loading-note');
-                if (note) note.textContent = 'Hoàn tất';
-                setTimeout(() => document.getElementById('bulkSslLoading').classList.remove('show'), 600);
+                __settle('bulkssl', ctrl, () => {
+                    const note = document.querySelector('#bulkSslLoading .dns-loading-note');
+                    if (note) note.textContent = 'Hoàn tất';
+                    __setBusy('bulkSslBtn', false);
+                    setTimeout(() => {
+                        if (!__reqControllers['bulkssl']) document.getElementById('bulkSslLoading').classList.remove('show');
+                    }, 600);
+                });
             }
         }
 
@@ -998,6 +1098,8 @@
                         const visibleRecords = typeRecords.slice(0, renderLimit);
                         const hiddenCount = typeRecords.length - visibleRecords.length;
                         const recordIdBase = 'hist-' + escapeHtml(String(source.id || 'src')) + '-' + escapeHtml(String(bucket.bucket_key || 'bk')) + '-' + escapeHtml(type);
+                        const moreKey = 'hm' + (++__historyMoreSeq);
+                        __historyMoreStore[moreKey] = typeRecords.slice(renderLimit);
                         return '<div class="history-type-card">' +
                             '<div class="history-type-head">' +
                                 '<div class="history-type-title">' + escapeHtml(type) + '</div>' +
@@ -1005,7 +1107,7 @@
                             '</div>' +
                             '<div class="history-type-body">' + visibleRecords.map(renderHistoryRecord).join('') +
                                 (hiddenCount > 0
-                                    ? '<button type="button" class="btn btn-secondary history-show-more" data-target="' + recordIdBase + '" onclick="showMoreHistoryRecords(this)" data-records=\'' + escapeHtml(JSON.stringify(typeRecords.slice(renderLimit).map(function(r){ return r; }))).replace(/'/g, '&#39;') + '\'>Xem thêm ' + hiddenCount + ' records</button>'
+                                    ? '<button type="button" class="btn btn-secondary history-show-more" data-target="' + recordIdBase + '" onclick="showMoreHistoryRecords(this)" data-more-key="' + moreKey + '">Xem thêm ' + hiddenCount + ' records</button>'
                                     : '') +
                             '</div>' +
                         '</div>';
@@ -1033,6 +1135,11 @@
             '</section>';
         }
 
+        // Kho "xem thêm" của history: giữ mảng gốc trong JS thay vì nhúng JSON
+        // hàng MB vào attribute data-records (HTML phình + parse đắt)
+        const __historyMoreStore = {};
+        let __historyMoreSeq = 0;
+
         let historyActiveTypeFilter = null;
         function toggleHistoryTypeFilter(type, btnEl) {
             historyActiveTypeFilter = historyActiveTypeFilter === type ? null : type;
@@ -1045,17 +1152,23 @@
         }
 
         function showMoreHistoryRecords(btnEl) {
-            let records = [];
-            try { records = JSON.parse(btnEl.dataset.records || '[]'); } catch (e) { records = []; }
+            const moreKey = (btnEl.dataset && btnEl.dataset.moreKey) || '';
+            const records = __historyMoreStore[moreKey] || [];
+            delete __historyMoreStore[moreKey];
             const container = btnEl.parentElement;
             btnEl.remove();
+            if (!Array.isArray(records) || records.length === 0) return;
+            // Nối 1 chuỗi rồi gán 1 lần thay vì innerHTML từng record
+            const host = document.createElement('div');
+            host.innerHTML = records.map(renderHistoryRecord).join('');
             const frag = document.createDocumentFragment();
-            const tmp = document.createElement('div');
-            records.forEach(function(record) { tmp.innerHTML = renderHistoryRecord(record); frag.appendChild(tmp.firstChild); });
+            while (host.firstChild) frag.appendChild(host.firstChild);
             container.appendChild(frag);
         }
 
         function renderDNSHistoryResults(data) {
+            // Xóa kho "xem thêm" của lần check trước để khỏi rò rỉ bộ nhớ
+            for (const key of Object.keys(__historyMoreStore)) delete __historyMoreStore[key];
             document.getElementById('dnsHistoryCountChip').textContent = (data.total_records || 0) + ' records';
             document.getElementById('historySummaryDomain').textContent = data.domain || '-';
             document.getElementById('historySummarySources').textContent = String(data.provider_count || (data.sources ? data.sources.length : 0) || 0) + ' sources';
@@ -1098,6 +1211,8 @@
             const domain = input ? input.value.trim() : '';
             if (!domain) { alert('Vui lòng nhập tên miền'); return; }
 
+            const ctrl = __takeover('dnshistory');
+            __setBusy('checkHistoryBtn', true);
             document.getElementById('dnsHistoryLoading').classList.add('show');
             document.getElementById('dnsHistoryResults').classList.remove('show');
 
@@ -1105,7 +1220,8 @@
                 const response = await fetch('/api/check-dns-history', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ domain: domain })
+                    body: JSON.stringify({ domain: domain }),
+                    signal: ctrl.signal
                 });
                 const data = await response.json();
                 if (data.error) {
@@ -1114,26 +1230,31 @@
                 }
                 renderDNSHistoryResults(data);
             } catch (err) {
+                if (err && err.name === 'AbortError') return;
                 alert('Lỗi kết nối: ' + err.message);
             } finally {
-                document.getElementById('dnsHistoryLoading').classList.remove('show');
+                __settle('dnshistory', ctrl, () => {
+                    document.getElementById('dnsHistoryLoading').classList.remove('show');
+                    __setBusy('checkHistoryBtn', false);
+                });
             }
         }
 
-        function escapeHtml(text) { var div = document.createElement('div'); div.textContent = text; return div.innerHTML; }
         function clearCache() { fetch('/api/clear-cache', { method: 'POST' }).then(() => alert('✓ Cache đã được xóa')).catch(err => alert('Lỗi: ' + err.message)); }
 
         // WHOIS integration: call backend /api/whois and render fields similar to whois_lookup.py --json
         async function checkWhois(domain) {
             domain = (domain || document.getElementById('domainInput').value.trim()).trim();
             if (!domain) { alert('Vui lòng nhập tên miền'); return; }
+            const ctrl = __takeover('whois');
             var panel = document.getElementById('whoisPanel');
             panel.innerHTML = '<div class="result-box message-info">Đang lấy WHOIS…</div>';
             try {
                 var resp = await fetch('/api/whois', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ domain: domain, include_html: false })
+                    body: JSON.stringify({ domain: domain, include_html: false }),
+                    signal: ctrl.signal
                 });
                 var data = await resp.json();
                 if (data.error) {
@@ -1142,6 +1263,7 @@
                 }
                 renderWhois(data);
             } catch (err) {
+                if (err && err.name === 'AbortError') return;
                 panel.innerHTML = '<div class="message message-error">Lỗi kết nối WHOIS: ' + escapeHtml(err.message) + '</div>';
             }
         }
@@ -1178,7 +1300,13 @@
             }
             html += '</div></div>';
             panel.innerHTML = html;
-            panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            // Chỉ cuộn tới khi panel ngoài màn hình, không dùng smooth để khỏi giành cuộn
+            try {
+                const rect = panel.getBoundingClientRect();
+                if (rect.bottom > window.innerHeight || rect.top < 0) {
+                    panel.scrollIntoView({ block: 'nearest' });
+                }
+            } catch (e) {}
         }
 
         // ========== SSL Tool ==========
@@ -1250,9 +1378,17 @@
         async function readFilesFromFileList(fileList) {
             const files = {};
             const originalFiles = {};
+            let totalBytes = 0;
+            let readCount = 0;
             for (const file of Array.from(fileList || [])) {
                 if (!file || file.size === 0) continue;
+                if (file.size > 2 * 1024 * 1024) continue; // bỏ file đơn lẻ >2MB (không phải PEM)
+                readCount += 1;
+                if (readCount > SSL_MAX_FILES || totalBytes > SSL_MAX_TOTAL_BYTES) {
+                    throw new Error(`Thư mục quá lớn (>${readCount > SSL_MAX_FILES ? SSL_MAX_FILES + ' file' : '30MB'}), hãy thu gọn trước khi quét.`);
+                }
                 const content = await file.text();
+                totalBytes += content.length;
                 const relativePath = String(file.webkitRelativePath || file.name || '').replace(/\\/g, '/');
                 const normalizedKey = relativePath || String(file.name || '');
                 files[normalizedKey.toLowerCase()] = content;
@@ -1422,29 +1558,38 @@
         privateKeyInput.addEventListener('input', updateGenerateButtonState);
 
         if (sslPasteInput) {
-            sslPasteInput.addEventListener('input', async () => {
-                if (inputMode !== 'paste') setSSLInputMode('paste');
+            let sslPasteTimer = null;
+            sslPasteInput.addEventListener('input', () => {
+                if (sslPasteTimer) clearTimeout(sslPasteTimer);
+                // Debounce 500ms: parse forge trên mỗi ký tự gây giật với bundle lớn
+                sslPasteTimer = setTimeout(async () => {
+                    if (inputMode !== 'paste') setSSLInputMode('paste');
 
-                const rawValue = sslPasteInput.value || '';
-                if (!rawValue.trim()) {
-                    clearParsedSslBundleState();
-                    renderSslPasteSummary([]);
-                    showSSLMessage('', 'info');
-                    return;
-                }
+                    const rawValue = sslPasteInput.value || '';
+                    if (!rawValue.trim()) {
+                        clearParsedSslBundleState();
+                        renderSslPasteSummary([]);
+                        showSSLMessage('', 'info');
+                        return;
+                    }
+                    // Chưa có khối PEM hoàn chỉnh thì chờ gõ tiếp, khỏi parse vô ích
+                    if (!/-----BEGIN (?:[A-Z ]+ )?PRIVATE KEY-----/i.test(rawValue) || !/-----BEGIN CERTIFICATE-----/i.test(rawValue)) {
+                        return;
+                    }
 
-                await ensureForge();
-                if (!window.forge) { showSSLMessage('❌ Không tải được thư viện xử lý chứng chỉ, vui lòng thử lại sau!', 'error'); return; }
-                const parsed = parseSslPasteContent(rawValue);
-                if (parsed.valid) {
-                    applySslBundleParts({ cert: parsed.certPem, bundle: parsed.caBundlePem, all: parsed.allPem }, { privateKey: parsed.privateKeyPem, domain: 'ssl-paste-bundle' });
-                    renderSslPasteSummary(parsed.summary);
-                    showSSLMessage('✅ Đã nhận diện Private Key, Certificate và CA Bundle.', 'success');
-                } else {
-                    clearParsedSslBundleState();
-                    renderSslPasteSummary([{ label: parsed.errors[0] || 'Chưa sẵn sàng', state: 'error' }]);
-                    showSSLMessage('❌ ' + parsed.errors[0], 'error');
-                }
+                    await ensureForge();
+                    if (!window.forge) { showSSLMessage('❌ Không tải được thư viện xử lý chứng chỉ, vui lòng thử lại sau!', 'error'); return; }
+                    const parsed = parseSslPasteContent(rawValue);
+                    if (parsed.valid) {
+                        applySslBundleParts({ cert: parsed.certPem, bundle: parsed.caBundlePem, all: parsed.allPem }, { privateKey: parsed.privateKeyPem, domain: 'ssl-paste-bundle' });
+                        renderSslPasteSummary(parsed.summary);
+                        showSSLMessage('✅ Đã nhận diện Private Key, Certificate và CA Bundle.', 'success');
+                    } else {
+                        clearParsedSslBundleState();
+                        renderSslPasteSummary([{ label: parsed.errors[0] || 'Chưa sẵn sàng', state: 'error' }]);
+                        showSSLMessage('❌ ' + parsed.errors[0], 'error');
+                    }
+                }, 500);
             });
         }
 
@@ -1473,6 +1618,17 @@
         if (sslQuickBackdrop) {
             sslQuickBackdrop.addEventListener('click', (e) => { if (e.target === sslQuickBackdrop) closeSslQuickPopup(); });
         }
+        // 1 listener ủy quyền cho mọi nút .ssl-quick-item (kể cả render lại sau này)
+        const sslQuickListEl = document.getElementById('sslQuickList');
+        if (sslQuickListEl) {
+            sslQuickListEl.addEventListener('click', (e) => {
+                const btn = e.target && e.target.closest ? e.target.closest('.ssl-quick-item') : null;
+                if (!btn || btn.disabled) return;
+                const targetPath = btn.getAttribute('data-path') || '';
+                const targetName = (btn.querySelector('.ssl-quick-item-name') || {}).textContent || '';
+                sslQuickOpenItem(targetPath, targetName);
+            });
+        }
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
                 const backdrop = document.getElementById('sslQuickBackdrop');
@@ -1494,8 +1650,17 @@
             }
         }
 
+        // Giới hạn đọc file SSL phía client để khỏi treo tab với file quá lớn
+        const SSL_MAX_ZIP_BYTES = 20 * 1024 * 1024;
+        const SSL_MAX_FILES = 300;
+        const SSL_MAX_TOTAL_BYTES = 30 * 1024 * 1024;
+
         async function handleFile(file) {
             if (!file.name.endsWith('.zip')) { showSSLMessage('Vui lòng chọn file ZIP!', 'error'); return; }
+            if (file.size > SSL_MAX_ZIP_BYTES) {
+                showSSLMessage(`❌ File ZIP quá lớn (${(file.size / 1048576).toFixed(1)}MB, tối đa 20MB).`, 'error');
+                return;
+            }
 
             setSSLInputMode('zip');
             clearParsedSslBundleState();
@@ -1513,13 +1678,18 @@
                 currentZipFilename = file.name;
 
                 const files = {};
+                let entryCount = 0;
                 for (const [filename, fileObj] of Object.entries(zip.files)) {
-                    if (!fileObj.dir) {
-                        const content = await fileObj.async('string');
-                        const basename = filename.split('/').pop().toLowerCase();
-                        files[basename] = content;
-                        currentOriginalFiles[basename] = content;
+                    if (fileObj.dir) continue;
+                    entryCount += 1;
+                    if (entryCount > SSL_MAX_FILES) {
+                        showSSLMessage(`❌ ZIP có quá ${SSL_MAX_FILES} file, hãy thu gọn trước khi upload.`, 'error');
+                        return;
                     }
+                    const content = await fileObj.async('string');
+                    const basename = filename.split('/').pop().toLowerCase();
+                    files[basename] = content;
+                    currentOriginalFiles[basename] = content;
                 }
 
                 const bundleParts = processFullBundle(files);
@@ -1673,7 +1843,10 @@
                 list.innerHTML = '<div class="ssl-quick-empty">' + (sslQuickItems.length === 0 ? 'Trống — chưa có dữ liệu.' : 'Không khớp từ khoá "' + escapeSslQuickHtml(search ? search.value : '') + '".') + '</div>';
                 return;
             }
-            list.innerHTML = filtered.map(item => {
+            // Chỉ render tối đa 150 mục để popup nhẹ; gõ từ khoá để lọc tiếp
+            const RENDER_LIMIT = 150;
+            const visible = filtered.slice(0, RENDER_LIMIT);
+            list.innerHTML = visible.map(item => {
                 const name = escapeSslQuickHtml(item.name);
                 const meta = sslQuickKind === 'zip'
                     ? escapeSslQuickHtml([item.size_str, item.mtime_str].filter(Boolean).join(' • '))
@@ -1683,14 +1856,9 @@
                     + '<span><span class="ssl-quick-item-name">' + (sslQuickKind === 'zip' ? '📦 ' : '📁 ') + name + '</span>'
                     + (meta ? '<div class="ssl-quick-item-meta">' + meta + '</div>' : '')
                     + '</span><span class="ssl-quick-item-go">Mở →</span></button>';
-            }).join('');
-            list.querySelectorAll('.ssl-quick-item').forEach(btn => {
-                btn.addEventListener('click', () => {
-                    const targetPath = btn.getAttribute('data-path') || '';
-                    const targetName = (btn.querySelector('.ssl-quick-item-name') || {}).textContent || '';
-                    sslQuickOpenItem(targetPath, targetName);
-                });
-            });
+            }).join('') + (filtered.length > visible.length
+                ? '<div class="ssl-quick-empty">Hiển thị ' + visible.length + '/' + filtered.length + ' — gõ thêm từ khoá để lọc.</div>' : '');
+            // Click xử lý bằng 1 listener ủy quyền gắn sẵn trên #sslQuickList (không gắn từng nút)
         }
 
         async function sslQuickOpenItem(targetPath, targetName) {
@@ -1796,7 +1964,6 @@
                     certFiles.push([filename, content]);
                 }
             }
-            console.log('Tất cả file chứng chỉ:', certFiles.map(([n]) => n));
 
             const certRegex = /-----BEGIN CERTIFICATE-----[\s\S]*?-----END CERTIFICATE-----/g;
             const extracted = [];
@@ -1806,7 +1973,6 @@
                 matches.forEach(pem => extracted.push({ pem: normalizePemText(pem), filename }));
             }
 
-            console.log('Tổng số đoạn cert tách được:', extracted.length);
 
             // Parse + dedupe theo fingerprint DER để tránh trùng giữa .crt và .txt
             const parsedCerts = [];
@@ -1965,9 +2131,6 @@
 
             const finalList = [...chain, ...extraCAs];
 
-            console.log('Domain cert selected:', leaf.filename, '| CN:', leaf.subjectCN || leaf.subjectDN);
-            console.log('Bundle certs selected:', finalList.slice(1).map(c => c.subjectCN || c.subjectDN));
-            console.log('Bundle có', finalList.length, 'đoạn cert');
 
             const bundle = normalizePemText(finalList.map(c => c.pem).join('\n'));
             const certPem = normalizePemText(leaf.pem);
@@ -2183,17 +2346,20 @@
             const domainCert = certMatches[0] || '';
             const caBundle = certMatches.slice(1).join('\n') || '';
             const privateKeyText = privateKeyInput.value.trim();
-            
+
             const copyFormat = `SSL xác thực thành công. Kỹ thuật xin phép gửi Quý khách thông tin Cert:\nPrivate key:\n\n${privateKeyText}\n\nCert:\n\n${domainCert}\n\nCA bundle:\n\n${caBundle}`;
-            
+
+            window.sslFiles = { pem: pemContent, pfx: pfxBuffer, zip: zipBlob, zipName: zipFilename, copy: copyFormat };
+            // Dựng khung tĩnh, gán nội dung PEM qua .value để tránh vỡ layout/XSS
+            // (PEM có thể chứa </textarea> hoặc dấu nháy làm hỏng template cũ)
             document.getElementById('additionalResults').innerHTML = `
                 <div class="result-box" style="background: #fef3c7;">
-                    <h3>📋 Thông tin Cert (Copy)<div class="btn-group"><button class="btn btn-success" onclick="navigator.clipboard.writeText(decodeURIComponent('${encodeURIComponent(copyFormat)}')).then(()=>showSSLMessage('✅ Copied!','success'))">📋 Copy</button></div></h3>
-                    <textarea readonly style="min-height: 180px;">${copyFormat}</textarea>
+                    <h3>📋 Thông tin Cert (Copy)<div class="btn-group"><button class="btn btn-success" onclick="copySslCopyFormat()">📋 Copy</button></div></h3>
+                    <textarea readonly style="min-height: 180px;" id="sslCopyFormatArea"></textarea>
                 </div>
                 <div class="result-box">
                     <h3>📄 PEM File<div class="btn-group"><button class="btn btn-info" onclick="downloadFile('pem')">⬇️ Download</button></div></h3>
-                    <textarea readonly style="min-height: 100px;">${pemContent.substring(0, 400)}...</textarea>
+                    <textarea readonly style="min-height: 100px;" id="sslPemPreviewArea"></textarea>
                 </div>
                 <div class="result-box">
                     <h3>🔐 PFX File (Password: 123456)<div class="btn-group"><button class="btn btn-info" onclick="downloadFile('pfx')">⬇️ Download</button></div></h3>
@@ -2203,8 +2369,12 @@
                     <h3>📦 Complete Package<div class="btn-group"><button class="btn btn-success" onclick="downloadFile('zip')">⬇️ Download ZIP</button></div></h3>
                     <p style="color: #64748b;">Chứa: private.key, .pem, .crt, .pfx</p>
                 </div>`;
-            
-            window.sslFiles = { pem: pemContent, pfx: pfxBuffer, zip: zipBlob, zipName: zipFilename };
+            document.getElementById('sslCopyFormatArea').value = copyFormat;
+            document.getElementById('sslPemPreviewArea').value = pemContent.substring(0, 400) + '...';
+        }
+
+        function copySslCopyFormat() {
+            copyTextToClipboard(window.sslFiles && window.sslFiles.copy, '✅ Copied!');
         }
 
         function downloadFile(type) {
@@ -2387,11 +2557,16 @@
                     return obj;
                 }, {});
                 
+                // Escape mọi giá trị parse từ cert trước khi nối vào HTML (cert lạ có thể chứa mã độc)
+                for (const bag of [subject, issuer]) {
+                    for (const key of Object.keys(bag)) bag[key] = escapeHtml(bag[key]);
+                }
+                
                 // Get SAN (Subject Alternative Names)
                 let sans = [];
                 const sanExt = cert.extensions.find(ext => ext.name === 'subjectAltName');
                 if (sanExt && sanExt.altNames) {
-                    sans = sanExt.altNames.filter(n => n.type === 2).map(n => n.value);
+                    sans = sanExt.altNames.filter(n => n.type === 2).map(n => escapeHtml(n.value));
                 }
                 
                 // Calculate days remaining
@@ -2414,7 +2589,7 @@
                     '1.2.840.113549.1.1.5': 'SHA1withRSA',
                     '1.2.840.10045.4.3.2': 'ECDSA-SHA256',
                     '1.2.840.10045.4.3.3': 'ECDSA-SHA384'
-                }[sigAlg] || sigAlg;
+                }[sigAlg] || escapeHtml(String(sigAlg ?? ''));
                 
                 // Key info
                 let keyInfo = 'Unknown';
@@ -2422,7 +2597,7 @@
                     const keyBits = cert.publicKey.n.bitLength();
                     keyInfo = `RSA ${keyBits} bits`;
                 } else if (cert.publicKey.curve) {
-                    keyInfo = `ECDSA ${cert.publicKey.curve}`;
+                    keyInfo = escapeHtml(`ECDSA ${cert.publicKey.curve}`);
                 }
                 
                 resultDiv.innerHTML = `
@@ -2478,7 +2653,7 @@
                     </div>
                 `;
             } catch (e) {
-                resultDiv.innerHTML = `<div class="message message-error">❌ Lỗi parse Certificate: ${e.message}</div>`;
+                resultDiv.innerHTML = `<div class="message message-error">❌ Lỗi parse Certificate: ${escapeHtml(e.message || e)}</div>`;
             }
         }
         
@@ -2500,6 +2675,8 @@
                     obj[attr.shortName || attr.name] = attr.value;
                     return obj;
                 }, {});
+                // Escape giá trị parse từ CSR trước khi nối vào HTML
+                for (const key of Object.keys(subject)) subject[key] = escapeHtml(subject[key]);
                 
                 // Key info
                 let keyInfo = 'Unknown';
@@ -2507,7 +2684,7 @@
                     const keyBits = csr.publicKey.n.bitLength();
                     keyInfo = `RSA ${keyBits} bits`;
                 } else if (csr.publicKey.curve) {
-                    keyInfo = `ECDSA ${csr.publicKey.curve}`;
+                    keyInfo = escapeHtml(`ECDSA ${csr.publicKey.curve}`);
                 }
                 
                 // Get SAN from extensions (if present)
@@ -2517,7 +2694,7 @@
                     if (extReq && extReq.extensions) {
                         const sanExt = extReq.extensions.find(ext => ext.name === 'subjectAltName');
                         if (sanExt && sanExt.altNames) {
-                            sans = sanExt.altNames.filter(n => n.type === 2).map(n => n.value);
+                            sans = sanExt.altNames.filter(n => n.type === 2).map(n => escapeHtml(n.value));
                         }
                     }
                 }
@@ -2530,7 +2707,7 @@
                     '1.2.840.113549.1.1.13': 'SHA512withRSA',
                     '1.2.840.113549.1.1.5': 'SHA1withRSA',
                     '1.2.840.10045.4.3.2': 'ECDSA-SHA256'
-                }[sigAlg] || sigAlg;
+                }[sigAlg] || escapeHtml(String(sigAlg ?? ''));
                 
                 resultDiv.innerHTML = `
                     <div class="decode-info-grid">
@@ -2577,7 +2754,7 @@
                     </div>
                 `;
             } catch (e) {
-                resultDiv.innerHTML = `<div class="message message-error">❌ Lỗi parse CSR: ${e.message}</div>`;
+                resultDiv.innerHTML = `<div class="message message-error">❌ Lỗi parse CSR: ${escapeHtml(e.message || e)}</div>`;
             }
         }
 
@@ -2595,24 +2772,25 @@
                 }
                 resp = await fetch(url, options);
             } catch (networkErr) {
-                return { ok: false, data: null, errorText: 'Không kết nối được tới server. Hãy đảm bảo server đang chạy. (' + networkErr.message + ')' };
+                return { ok: false, data: null, status: 0, errorText: 'Không kết nối được tới server. Hãy đảm bảo server đang chạy. (' + networkErr.message + ')' };
             }
+            const status = resp.status || 0;
             const text = await resp.text();
             if (!text || !text.trim().startsWith('{')) {
                 // Server trả về HTML thay vì JSON — thường do server chưa restart
                 const hint = !resp.ok
                     ? `Server trả về HTTP ${resp.status}. Hãy restart server Flask rồi thử lại.`
                     : 'Server trả về nội dung không hợp lệ. Hãy restart server Flask.';
-                return { ok: false, data: null, errorText: hint };
+                return { ok: false, data: null, status, errorText: hint };
             }
             let data;
             try { data = JSON.parse(text); } catch (e) {
-                return { ok: false, data: null, errorText: 'JSON parse error: ' + e.message };
+                return { ok: false, data: null, status, errorText: 'JSON parse error: ' + e.message };
             }
             if (!resp.ok || data.error) {
-                return { ok: false, data, errorText: data.error || `HTTP ${resp.status}` };
+                return { ok: false, data, status, errorText: data.error || `HTTP ${resp.status}` };
             }
-            return { ok: true, data, errorText: null };
+            return { ok: true, data, status, errorText: null };
         }
 
         let freeSslSessionId = null;
@@ -2622,6 +2800,7 @@
         let freeSslProvider = 'letsencrypt';
         let freeSslResultData = null;
         let freeSslStatus = 'pending';
+        let freeSslRenderedStatus = 'pending';
         let freeSslStatusMonitorTimer = null;
         let freeSslLogCursor = 0;
         let freeSslCurrentRunId = null;
@@ -2634,7 +2813,7 @@
             const html = domains.map(d => {
                 const st = (d.status || 'pending').toLowerCase();
                 const cls = st === 'valid' ? 'ok' : (st === 'invalid' ? 'fail' : 'pending');
-                return `<div class="check-result-row ${cls}"><div><strong>${d.domain || '-'}</strong><br><span class="small-line">Authorization: ${st}</span></div></div>`;
+                return `<div class="check-result-row ${cls}"><div><strong>${escapeHtml(d.domain || '-')}</strong><br><span class="small-line">Authorization: ${st}</span></div></div>`;
             }).join('');
             // Polling 3s/lần: chỉ chạm DOM khi nội dung thật sự đổi
             if (html === freeSslDomainProgressHtml) return;
@@ -2766,7 +2945,11 @@
         }
 
         function freeSslSetActionState(status) {
-            freeSslStatus = status || 'pending';
+            const next = status || 'pending';
+            // Polling gọi mỗi 3s: status không đổi thì khỏi chạm DOM
+            if (next === freeSslRenderedStatus) return;
+            freeSslRenderedStatus = next;
+            freeSslStatus = next;
             const verifyBtn = document.getElementById('freesslVerifyBtn');
             const finalizeBtn = document.getElementById('freesslFinalizeBtn');
             const retryBtn = document.getElementById('freesslRetryBtn');
@@ -2802,12 +2985,24 @@
             else localStorage.removeItem('freessl_active_storage_id');
         }
 
-        async function freeSslRestoreActiveFromStorage() {
+        async function freeSslRestoreActiveFromStorage(retryOnce = true) {
             const storageId = localStorage.getItem('freessl_active_storage_id');
             if (!storageId) return;
-            const { ok, data } = await freeSslFetch('/api/ssl-free/item/' + encodeURIComponent(storageId), null, 'GET');
+            const { ok, data, status } = await freeSslFetch('/api/ssl-free/item/' + encodeURIComponent(storageId), null, 'GET');
             if (!ok || !data) {
-                localStorage.removeItem('freessl_active_storage_id');
+                // Chỉ quên order đang theo dõi khi server xác nhận đã xóa (404).
+                // Lỗi mạng/server restart thì GIỮ key để tự khôi phục sau.
+                if (status === 404) {
+                    localStorage.removeItem('freessl_active_storage_id');
+                    return;
+                }
+                if (retryOnce) {
+                    setTimeout(() => {
+                        if (localStorage.getItem('freessl_active_storage_id') === storageId) {
+                            freeSslRestoreActiveFromStorage(false);
+                        }
+                    }, 8000);
+                }
                 return;
             }
             freeSslApplyStoredItem(data);
@@ -3009,7 +3204,8 @@
                 `;
                 return;
             }
-            listEl.innerHTML = data.items.map(item => {
+            const visibleItems = data.items.slice(0, 100);
+            listEl.innerHTML = visibleItems.map(item => {
                 const status = item.status || 'issued';
                 const statusMap = {
                     issued: { text: '✅ issued', style: 'background:#dcfce7;color:#166534;' },
@@ -3018,27 +3214,29 @@
                     finalizing: { text: '🟠 finalizing', style: 'background:#ffedd5;color:#9a3412;' },
                     pending: { text: '🟡 pending', style: 'background:#fef3c7;color:#92400e;' }
                 };
-                const st = statusMap[status] || { text: 'ℹ️ ' + status, style: 'background:#e2e8f0;color:#334155;' };
+                const st = statusMap[status] || { text: 'ℹ️ ' + escapeHtml(status), style: 'background:#e2e8f0;color:#334155;' };
+                const safeId = escapeHtml(String(item.id || '')).replace(/'/g, '&#39;');
 
                 return `
                 <div class="freessl-storage-item">
                     <div>
-                        <div class="freessl-storage-domain">${item.domain}</div>
+                        <div class="freessl-storage-domain">${escapeHtml(item.domain || '')}</div>
                         <div class="freessl-storage-meta">
-                            <span class="freessl-storage-badge">📅 Cấp: ${item.issued_at || '-'}</span>
-                            <span class="freessl-storage-badge">⏳ Hết hạn: ${item.valid_to || '-'}</span>
-                            <span class="freessl-storage-badge">🧩 ${item.challenge_type || '-'}</span>
-                            <span class="freessl-storage-badge" style="background:#e0f2fe;color:#0369a1;">🏪 ${item.provider || 'letsencrypt'}</span>
+                            <span class="freessl-storage-badge">📅 Cấp: ${escapeHtml(item.issued_at || '-')}</span>
+                            <span class="freessl-storage-badge">⏳ Hết hạn: ${escapeHtml(item.valid_to || '-')}</span>
+                            <span class="freessl-storage-badge">🧩 ${escapeHtml(item.challenge_type || '-')}</span>
+                            <span class="freessl-storage-badge" style="background:#e0f2fe;color:#0369a1;">🏪 ${escapeHtml(item.provider || 'letsencrypt')}</span>
                             <span class="freessl-storage-badge" style="${st.style}">${st.text}</span>
                         </div>
                     </div>
                     <div class="freessl-storage-actions">
-                        <button class="btn btn-secondary" onclick="freeSslViewStoredItem('${item.id}')">👁️ Mở</button>
-                        <button class="btn btn-danger" onclick="freeSslDeleteStoredItem('${item.id}')">🗑️ Xóa</button>
+                        <button class="btn btn-secondary" onclick="freeSslViewStoredItem('${safeId}')">👁️ Mở</button>
+                        <button class="btn btn-danger" onclick="freeSslDeleteStoredItem('${safeId}')">🗑️ Xóa</button>
                     </div>
                 </div>
             `;
-            }).join('');
+            }).join('') + (data.items.length > visibleItems.length
+                ? `<div class="freessl-storage-empty">… và ${data.items.length - visibleItems.length} mục nữa (dùng ô tìm kiếm để lọc).</div>` : '');
         }
 
         async function freeSslViewStoredItem(itemId) {
@@ -3087,9 +3285,21 @@
 
         function freeSslRenderSans() {
             const container = document.getElementById('freesslSansTags');
-            container.innerHTML = freeSslSans.map(s =>
-                `<div class="sans-tag"><span>${s}</span><button onclick="freeSslRemoveSan('${s}')" title="Xóa">✕</button></div>`
-            ).join('');
+            container.innerHTML = '';
+            freeSslSans.forEach(s => {
+                const tag = document.createElement('div');
+                tag.className = 'sans-tag';
+                const label = document.createElement('span');
+                label.textContent = s;
+                const btn = document.createElement('button');
+                btn.textContent = '✕';
+                btn.title = 'Xóa';
+                btn.dataset.san = s;
+                btn.addEventListener('click', () => freeSslRemoveSan(s));
+                tag.appendChild(label);
+                tag.appendChild(btn);
+                container.appendChild(tag);
+            });
         }
 
         function freeSslUpdateSANsPreview() {
@@ -3098,7 +3308,9 @@
 
         function freeSslShowMessage(msg, type) {
             const el = document.getElementById('freesslMessage');
-            el.innerHTML = `<div class="message-${type}">${msg}</div>`;
+            if (!el) return;
+            // msg có thể chứa text lỗi từ server — luôn escape, không cho HTML lạ
+            el.innerHTML = msg ? `<div class="message-${type}">${escapeHtml(msg)}</div>` : '';
         }
 
         function freeSslSetLoading(show, text) {
@@ -3185,10 +3397,16 @@
             const provName = providerNames[provider] || provider;
             let html = '';
             challenges.forEach((ch, idx) => {
+                // Escape toàn bộ field từ server trước khi nối HTML
+                const chDomain = escapeHtml(ch.domain || '');
+                const chDnsName = escapeHtml(ch.dns_name || '');
+                const chDnsValue = escapeHtml(ch.dns_value || '');
+                const chFilePath = escapeHtml(ch.file_path || '');
+                const chFileContent = escapeHtml(ch.file_content || '');
                 html += `<div class="challenge-info-box">
                     <div class="challenge-info-header">
-                        <span>${type === 'dns-01' ? '🌐 DNS Challenge' : '📁 HTTP Challenge'} — <strong>${ch.domain}</strong></span>
-                        <span class="freessl-storage-badge provider-badge">🏪 ${provName}</span>
+                        <span>${type === 'dns-01' ? '🌐 DNS Challenge' : '📁 HTTP Challenge'} — <strong>${chDomain}</strong></span>
+                        <span class="freessl-storage-badge provider-badge">🏪 ${escapeHtml(provName)}</span>
                     </div>
                     <div class="challenge-info-body">`;
 
@@ -3201,19 +3419,19 @@
                         <div class="challenge-field">
                             <label>Tên bản ghi (Host/Name)</label>
                             <div class="challenge-value">
-                                <span id="dns_name_${idx}">${ch.dns_name}</span>
+                                <span id="dns_name_${idx}">${chDnsName}</span>
                                 <button class="copy-btn-small" onclick="freeSslCopyText('dns_name_${idx}')">📋 Copy</button>
                             </div>
                         </div>
                         <div class="challenge-field">
                             <label>Giá trị TXT (Value)</label>
                             <div class="challenge-value">
-                                <span id="dns_val_${idx}">${ch.dns_value}</span>
+                                <span id="dns_val_${idx}">${chDnsValue}</span>
                                 <button class="copy-btn-small" onclick="freeSslCopyText('dns_val_${idx}')">📋 Copy</button>
                             </div>
                         </div>
                         <div class="message-info challenge-note">
-                            📌 Vào nhà cung cấp DNS, thêm bản ghi TXT với tên <code>${ch.dns_name}</code> và giá trị trên.
+                            📌 Vào nhà cung cấp DNS, thêm bản ghi TXT với tên <code>${chDnsName}</code> và giá trị trên.
                             DNS có thể mất 1–5 phút để lan truyền.
                         </div>`;
                 } else {
@@ -3221,14 +3439,14 @@
                         <div class="challenge-field">
                             <label>Đường dẫn file cần tạo (trên webserver)</label>
                             <div class="challenge-value">
-                                <span id="file_path_${idx}">http://${ch.domain}${ch.file_path}</span>
+                                <span id="file_path_${idx}">http://${chDomain}${chFilePath}</span>
                                 <button class="copy-btn-small" onclick="freeSslCopyText('file_path_${idx}')">📋 Copy</button>
                             </div>
                         </div>
                         <div class="challenge-field">
                             <label>Nội dung file</label>
                             <div class="challenge-value">
-                                <span id="file_content_${idx}">${ch.file_content}</span>
+                                <span id="file_content_${idx}">${chFileContent}</span>
                                 <button class="copy-btn-small" onclick="freeSslCopyText('file_content_${idx}')">📋 Copy</button>
                             </div>
                         </div>
@@ -3278,7 +3496,7 @@
                 data.results.forEach(r => {
                     if (r.ok) okCount += 1;
                     html += `<div class="check-result-row ${r.ok ? 'ok' : 'fail'}">
-                        <div><strong>${r.domain}</strong><br><span class="small-line">${r.detail}</span></div>
+                        <div><strong>${escapeHtml(r.domain || '')}</strong><br><span class="small-line">${escapeHtml(r.detail || '')}</span></div>
                     </div>`;
                 });
                 document.getElementById('freesslCheckResults').innerHTML = html;

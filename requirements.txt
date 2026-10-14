@@ -6,3 +6,4 @@ requests
 acme
 josepy
 waitress
+psycopg[binary]
