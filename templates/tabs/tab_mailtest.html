@@ -1,0 +1,131 @@
+<div aria-labelledby="tabbtn-mailtest" class="tab-content" hidden="" id="tab-mailtest" role="tabpanel">
+<div class="mailtest-layout">
+<div class="mailtest-panel">
+<div class="dns-panel-header">
+<div>
+<div class="dns-panel-title">SMTP / POP / IMAP Test</div>
+<div class="dns-panel-subtitle">Kiểm tra kết nối, TLS, đăng nhập và gửi email test trên một hoặc nhiều giao thức cùng lúc.</div>
+</div>
+</div>
+<form class="mailtest-form" id="mailTestForm" onsubmit="mailTestSubmit(event)">
+<div class="mailtest-field-grid">
+<div class="mailtest-field fullwidth">
+<label class="field-label" for="mailTestServer">Server name</label>
+<input autocomplete="off" class="dns-input" id="mailTestServer" name="server" placeholder="vd: mail.example.com" required="" spellcheck="false" type="text"/>
+<div class="mailtest-hint">Có thể nhập hostname hoặc IP. Nếu nhập kèm port, port trong ô bên dưới sẽ được dùng.</div>
+</div>
+<div class="mailtest-field">
+<label class="field-label" for="mailTestUsername">Username</label>
+<input autocomplete="username" class="dns-input" id="mailTestUsername" name="username" oninput="mailTestSyncFrom()" placeholder="user@example.com" required="" spellcheck="false" type="text"/>
+</div>
+<div class="mailtest-field">
+<label class="field-label" for="mailTestPassword">Password</label>
+<div class="mailtest-password-row">
+<input autocomplete="current-password" class="dns-input" id="mailTestPassword" name="password" placeholder="Mật khẩu email" required="" type="password"/>
+<button aria-label="Hiện mật khẩu" aria-controls="mailTestPassword" class="btn btn-secondary mailtest-eye" id="mailTestTogglePassword" type="button">Hiện</button>
+</div>
+</div>
+<div class="mailtest-section-title">Giao thức cần test</div>
+<div class="mailtest-protocols fullwidth">
+<article class="mailtest-protocol is-enabled" data-protocol="smtp">
+<div class="mailtest-protocol-head">
+<label class="mailtest-check" for="mailTestSmtpEnabled">
+<input checked="" id="mailTestSmtpEnabled" onchange="mailTestProtocolToggled('smtp')" type="checkbox"/>
+<span>SMTP</span>
+</label>
+<span class="mailtest-badge">Gửi email test</span>
+</div>
+<div class="mailtest-protocol-fields">
+<label class="field-label" for="mailTestSmtpPort">Port</label>
+<div class="mailtest-port-security">
+<input class="dns-input mailtest-port" id="mailTestSmtpPort" inputmode="numeric" max="65535" min="1" type="number" value="465"/>
+<select class="dns-input" id="mailTestSmtpSecurity" onchange="mailTestSecurityChanged('smtp')">
+<option selected="" value="ssl">SSL/TLS</option>
+<option value="starttls">STARTTLS</option>
+<option value="none">Không mã hóa</option>
+</select>
+</div>
+</div>
+<div class="mailtest-smtp-options" id="mailTestSmtpOptions">
+<div class="mailtest-field">
+<label class="field-label" for="mailTestSmtpFrom">From (tự động = username)</label>
+<input class="dns-input" id="mailTestSmtpFrom" placeholder="Tự động lấy từ username" readonly="" type="text"/>
+</div>
+<div class="mailtest-field">
+<label class="field-label" for="mailTestSmtpTo">To</label>
+<div class="mailtest-to-row">
+<input autocomplete="off" class="dns-input" id="mailTestSmtpTo" inputmode="email" oninput="mailTestSyncTo()" spellcheck="false" type="text" value="email.kietvu@gmail.com"/>
+<button class="btn btn-secondary btn-compact" data-mode="default" id="mailTestUseUsernameBtn" onclick="mailTestUseUsernameAsTo()" type="button">Dùng username</button>
+</div>
+</div>
+<label class="mailtest-send-toggle" for="mailTestSmtpSend">
+<input checked="" id="mailTestSmtpSend" onchange="mailTestSyncSmtpSend()" type="checkbox"/>
+<span>Gửi email test qua SMTP (bỏ chọn nếu chỉ muốn kiểm tra đăng nhập)</span>
+</label>
+</div>
+</article>
+<article class="mailtest-protocol" data-protocol="pop">
+<div class="mailtest-protocol-head">
+<label class="mailtest-check" for="mailTestPopEnabled">
+<input id="mailTestPopEnabled" onchange="mailTestProtocolToggled('pop')" type="checkbox"/>
+<span>POP3</span>
+</label>
+<span class="mailtest-badge">Đọc hộp thư</span>
+</div>
+<div class="mailtest-protocol-fields">
+<label class="field-label" for="mailTestPopPort">Port</label>
+<div class="mailtest-port-security">
+<input class="dns-input mailtest-port" id="mailTestPopPort" inputmode="numeric" max="65535" min="1" type="number" value="995"/>
+<select class="dns-input" id="mailTestPopSecurity" onchange="mailTestSecurityChanged('pop')">
+<option selected="" value="ssl">SSL/TLS</option>
+<option value="starttls">STARTTLS</option>
+<option value="none">Không mã hóa</option>
+</select>
+</div>
+</div>
+</article>
+<article class="mailtest-protocol" data-protocol="imap">
+<div class="mailtest-protocol-head">
+<label class="mailtest-check" for="mailTestImapEnabled">
+<input id="mailTestImapEnabled" onchange="mailTestProtocolToggled('imap')" type="checkbox"/>
+<span>IMAP</span>
+</label>
+<span class="mailtest-badge">Đọc hộp thư</span>
+</div>
+<div class="mailtest-protocol-fields">
+<label class="field-label" for="mailTestImapPort">Port</label>
+<div class="mailtest-port-security">
+<input class="dns-input mailtest-port" id="mailTestImapPort" inputmode="numeric" max="65535" min="1" type="number" value="993"/>
+<select class="dns-input" id="mailTestImapSecurity" onchange="mailTestSecurityChanged('imap')">
+<option selected="" value="ssl">SSL/TLS</option>
+<option value="starttls">STARTTLS</option>
+<option value="none">Không mã hóa</option>
+</select>
+</div>
+</div>
+</article>
+</div>
+</div>
+<div class="mailtest-actions">
+<button class="btn btn-primary" id="mailTestBtn" type="submit"><span class="icon" data-lucide="mail-check"></span> Test kết nối</button>
+<button class="btn btn-secondary" onclick="mailTestReset()" type="button">🧹 Reset</button>
+</div>
+<div class="message mailtest-message" id="mailTestMessage"></div>
+</form>
+</div>
+<div class="mailtest-panel alt">
+<div class="dns-panel-header">
+<div>
+<div class="dns-panel-title">Kết quả</div>
+<div class="dns-panel-subtitle">Kết quả từng giao thức sẽ hiển thị ở đây.</div>
+</div>
+</div>
+<div class="mailtest-results" id="mailTestResults">
+<div class="mailtest-empty-state">
+<span class="icon" data-lucide="inbox"></span>
+<p>Chưa có kết quả. Nhập thông tin và bấm Test kết nối.</p>
+</div>
+</div>
+</div>
+</div>
+</div>

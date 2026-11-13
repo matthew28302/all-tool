@@ -9,8 +9,10 @@ logging.basicConfig(level=logging.INFO, format='[%(asctime)s] %(levelname)s in %
 logger = logging.getLogger(__name__)
 logging.getLogger('urllib3').setLevel(logging.WARNING)
 
-from flask import Flask, render_template, request, jsonify, Response, abort, json as flask_json, make_response, send_file
+from flask import Flask, render_template, request, jsonify, Response, abort, json as flask_json, make_response, send_file, stream_with_context
 import os
+import subprocess
+import shutil
 import gzip as _gzip
 import mimetypes
 import uuid
@@ -30,6 +32,12 @@ import functools
 import ssl
 import tempfile
 import socket
+import smtplib
+import poplib
+import imaplib
+import ipaddress
+from email.message import EmailMessage
+from email.utils import formatdate, make_msgid
 import requests
 import re
 import json
@@ -338,6 +346,7 @@ def _scan_ssl_catalog(base_dir: str) -> List[dict]:
             "cert": _read_text_file(os.path.join(root, cert_name)) if cert_name else '',
             "bundle": _read_text_file(os.path.join(root, bundle_name)) if bundle_name else '',
         }
+        entry['domains'], entry['not_after'] = _ssl_cert_domains(entry['cert'])
         results.append(entry)
     results.sort(key=lambda item: item['name'].lower())
     return results
@@ -615,6 +624,202 @@ def api_ssl_upload():
         logger.exception('Error in /api/ssl-upload')
         return jsonify({"error": str(exc)}), 500
 
+
+
+# ==== SSL helpers: decode cert -> domains + API /api/ssl-cert-domains ====
+def _ssl_cert_domains(cert_text: str):
+    """Decode certificate đầu tiên trong text -> (domain SAN/CN, ngày hết hạn).
+    Dùng cho: hiển thị 'SSL trong cert: ...' ngay dưới ô domain và catalog."""
+    blocks = _PEM_CERT_BLOCK_RE.findall(cert_text or '')
+    if not blocks:
+        return [], ''
+    try:
+        cert = x509.load_pem_x509_certificate(
+            (_canonical_cert_block(blocks[0]) + '\n').encode('utf-8'), default_backend())
+    except Exception:
+        return [], ''
+    domains = _cert_dns_entries(cert)
+    expiry = ''
+    for attr in ('not_valid_after_utc', 'not_valid_after'):
+        val = getattr(cert, attr, None)
+        if val is None:
+            continue
+        try:
+            expiry = val.strftime('%d/%m/%Y %H:%M UTC')
+            break
+        except Exception:
+            continue
+    return domains, expiry
+
+
+@app.route('/api/ssl-cert-domains', methods=['POST'])
+def api_ssl_cert_domains():
+    data = request.get_json(silent=True) or {}
+    domains, expiry = _ssl_cert_domains(data.get('cert', ''))
+    return jsonify({'domains': domains, 'not_after': expiry})
+
+
+# ==== SSL helpers: PEM/key/cert-domain checks ====
+
+_PEM_CERT_BLOCK_RE = re.compile(
+    r'-----BEGIN (?:(?:TRUSTED |X509 )?)CERTIFICATE-----.*?-----END (?:(?:TRUSTED |X509 )?)CERTIFICATE-----',
+    re.DOTALL)
+
+
+def _canonical_cert_block(block: str) -> str:
+    """Đưa khối certificate về marker chuẩn 'CERTIFICATE' (openssl/pyca đọc được)."""
+    block = block.strip()
+    block = re.sub(r'^-----BEGIN (?:TRUSTED |X509 )?CERTIFICATE-----$', '-----BEGIN CERTIFICATE-----', block)
+    block = re.sub(r'-----END (?:TRUSTED |X509 )?CERTIFICATE-----$', '-----END CERTIFICATE-----', block)
+    return block
+
+
+def _normalize_pem_text(text: str) -> str:
+    """LF\n + mỗi khối PEM luôn kết thúc bằng newline — chống dính marker."""
+    return (text or '').replace('\r\n', '\n').replace('\r', '\n').strip() + '\n'
+
+
+def _check_key_matches_cert(key_text: str, leaf_block: str) -> None:
+    """So public key của private key với public key của certificate (leaf).
+    Báo lỗi rõ cho: key có passphrase, key OpenSSH, key sai định dạng."""
+    if not (key_text or '').strip():
+        raise ValueError('Private Key: bị trống')
+    if not (leaf_block or '').strip():
+        raise ValueError('Certificate (leaf): bị trống')
+    try:
+        key_obj = serialization.load_pem_private_key(
+            (key_text.strip() + '\n').encode('utf-8'), password=None)
+    except TypeError:
+        raise ValueError('Private Key có passphrase; hãy xuất key không passphrase '
+                         '(-----BEGIN PRIVATE KEY-----) rồi thử lại')
+    except Exception as exc:
+        raise ValueError(f'Private Key không đọc được [{type(exc).__name__}]: '
+                         f'{str(exc)[:200]} — kiểm tra định dạng key '
+                         '(chấp nhận BEGIN PRIVATE KEY / RSA PRIVATE KEY / EC PRIVATE KEY)')
+    try:
+        cert_obj = x509.load_pem_x509_certificate(
+            (leaf_block.strip() + '\n').encode('utf-8'), default_backend())
+    except Exception as exc:
+        raise ValueError(f'Certificate (leaf) không đọc được [{type(exc).__name__}]: {str(exc)[:200]}')
+    key_pub = key_obj.public_key().public_bytes(
+        serialization.Encoding.DER, serialization.PublicFormat.SubjectPublicKeyInfo)
+    cert_pub = cert_obj.public_key().public_bytes(
+        serialization.Encoding.DER, serialization.PublicFormat.SubjectPublicKeyInfo)
+    if key_pub != cert_pub:
+        raise ValueError('Private key không khớp certificate (leaf). '
+                         'Kiểm tra lại bộ key/cert — ngưỡng chặn này bảo vệ cả mail lẫn webserver.')
+
+
+def _host_to_ascii(host: str) -> str:
+    """Chuẩn hoá domain: lowercase + unicode IDN → punycode (so SAN chính xác)."""
+    host = (host or '').strip().lower()
+    if not host:
+        return ''
+    try:
+        return host.encode('idna').decode('ascii').lower()
+    except (UnicodeError, UnicodeDecodeError):
+        return host
+
+
+def _cert_dns_entries(cert_obj) -> list:
+    """Hostname trong certificate: SAN DNS, fallback CN khi cert không có SAN."""
+    names = []
+    try:
+        san = cert_obj.extensions.get_extension_for_class(x509.SubjectAlternativeName)
+        names = [str(n).strip() for n in san.value.get_values_for_type(x509.DNSName)]
+    except x509.ExtensionNotFound:
+        pass
+    if not names:
+        for attr in cert_obj.subject.get_attributes_for_oid(NameOID.COMMON_NAME):
+            val = str(attr.value).strip()
+            if val:
+                names.append(val)
+    return names
+
+
+def _wildcard_covered(pattern: str, host: str) -> bool:
+    """RFC 6125: wildcard '*.example.com' chỉ thay đúng 1 label trái nhất —
+    phủ foo.example.com (1 cấp), KHÔNG phủ domain gốc, KHÔNG phủ a.b.example.com."""
+    if not pattern.startswith('*.') or '.' not in pattern[2:]:
+        return False
+    rest = pattern[2:]
+    if host == rest:
+        return False
+    return host.endswith('.' + rest) and host.count('.') == rest.count('.') + 1
+
+
+def _check_cert_covers_domain(cert_obj, domain: str) -> None:
+    """Cert (leaf) phải phủ đúng domain như trình duyệt kiểm (RFC 6125):
+    match exact SAN/CN, hoặc wildcard '*.example.com' thay đúng 1 label trái
+    (phủ cả mail.example.com lẫn subdomain 1 cấp). Wildcard KHÔNG phủ domain
+    gốc — cần SAN riêng chứa domain gốc."""
+    host = _host_to_ascii(domain)
+    if not host:
+        raise ValueError('Thiếu domain để kiểm tra cert↔domain')
+    entries = [_host_to_ascii(e) for e in _cert_dns_entries(cert_obj)]
+    if not entries:
+        raise ValueError('Certificate không có SAN DNS/CN để xác minh domain ' + host)
+
+    # 1) Quét match trước — cert có thể có vừa wildcard vừa exact SAN.
+    for entry in entries:
+        if entry == host:
+            return
+        if _wildcard_covered(entry, host):
+            return
+
+    # 2) Không match nào — chẩn đoán lý do rõ nhất để báo lỗi.
+    for entry in entries:
+        if entry.startswith('*.') and entry[2:] == host:
+            raise ValueError('Wildcard ' + entry + ' KHÔNG bao phủ domain gốc ' + host +
+                             ' (wildcard chỉ phủ subdomain 1 cấp). '
+                             'Cần SAN riêng chứa ' + host + ', hoặc nhập subdomain.')
+
+    raise ValueError('Certificate KHÔNG phủ domain ' + host +
+                     ' — SAN hiện có: ' + ', '.join(entries[:5]) + (', ...' if len(entries) > 5 else ''))
+
+
+def _pem_format_issues(text: str, context: str, require_content: bool = True) -> str:
+    """Kiểm tra chặt cấu trúc PEM của nội dung/file đã ghi.
+
+    Trả về chuỗi rỗng khi hợp lệ, ngược lại là mô tả lỗi. Chặn đặc biệt các
+    trường hợp từng làm sập web server: marker BEGIN/END dính vào nhau
+    (thiếu newline khi gộp cert + CA bundle) và cặp marker không cân bằng.
+    """
+    if require_content and not (text or '').strip():
+        return f'{context}: bị trống'
+    if not (text or '').strip():
+        return ''  # rỗng được phép (caller tự quyết)
+    if '-----BEGIN' not in text:
+        return f'{context}: không có PEM header -----BEGIN -----'
+    if '-----END' not in text:
+        return f'{context}: PEM thiếu footer -----END -----'
+
+    begins: Dict[str, int] = {}
+    for m in re.finditer(r'-----BEGIN ([A-Z0-9 ]+?)-----', text):
+        begins[m.group(1)] = begins.get(m.group(1), 0) + 1
+    ends: Dict[str, int] = {}
+    for m in re.finditer(r'-----END ([A-Z0-9 ]+?)-----', text):
+        ends[m.group(1)] = ends.get(m.group(1), 0) + 1
+    if begins != ends:
+        return (f'{context}: PEM BEGIN/END không cân bằng (BEGIN={begins}, END={ends}) '
+                '— đầu vào có thể bị cắt khối')
+
+    for m in re.finditer(r'-----END [A-Z0-9 ]+-----', text):
+        nxt = text[m.end():m.end() + 1]
+        if nxt == '':
+            break
+        if nxt == '\r' and text[m.end() + 1:m.end() + 2] == '\n':
+            continue
+        if nxt != '\n':
+            return (f'{context}: footer "-----END ---" không kết thúc bằng newline — '
+                    'khối cert dính vào nhau (nguyên nhân từng làm sập web server)')
+    for m in re.finditer(r'-----BEGIN [A-Z0-9 ]+-----', text):
+        nxt = text[m.end():m.end() + 1]
+        if nxt and nxt != '\n':
+            if nxt == '\r' and text[m.end() + 1:m.end() + 2] == '\n':
+                continue
+            return f'{context}: header "-----BEGIN ---" không kết thúc bằng newline'
+    return ''
 
 
 @app.route('/api/check-cert-file', methods=['POST'])
@@ -2146,8 +2351,793 @@ def api_check_email_auth():
         return jsonify({'error': str(exc)}), 500
 
 
+# ==== [MAIL TEST] SMTP / POP3 / IMAP connection + auth test ====
+MAIL_TEST_TIMEOUT = max(3, int(os.environ.get('MAIL_TEST_TIMEOUT_SECONDS', '12')))
+MAIL_TEST_DEFAULT_PORTS = {
+    'smtp': {'ssl': 465, 'starttls': 587, 'none': 25},
+    'pop': {'ssl': 995, 'starttls': 110, 'none': 110},
+    'imap': {'ssl': 993, 'starttls': 143, 'none': 143},
+}
+MAIL_TEST_SECURITY_LABELS = {
+    'ssl': 'SSL/TLS',
+    'starttls': 'STARTTLS',
+    'none': 'Không mã hóa',
+}
+
+
+class MailTestFailure(Exception):
+    """Lỗi có stage rõ ràng để frontend hiển thị đúng bước thất bại."""
+
+    def __init__(self, stage: str, message: str):
+        super().__init__(message)
+        self.stage = stage
+        self.message = message
+
+
+def _mail_test_text(value) -> str:
+    if isinstance(value, (bytes, bytearray)):
+        return bytes(value).decode('utf-8', errors='replace')
+    if isinstance(value, BaseException):
+        args = getattr(value, 'args', ())
+        if args:
+            return ' '.join(_mail_test_text(arg) for arg in args)
+        return str(value)
+    return str(value or '')
+
+
+def _mail_test_short(value, limit: int = 220) -> str:
+    text = _mail_test_text(value).replace('\r', ' ').replace('\n', ' ').strip()
+    if len(text) > limit:
+        return text[:limit] + '…'
+    return text
+
+
+def _mail_test_redact(value, password: str):
+    """Ẩn password trong message/details/logs nếu server echo lại."""
+    if isinstance(value, str):
+        return value.replace(password, '***')
+    if isinstance(value, list):
+        return [_mail_test_redact(item, password) for item in value]
+    if isinstance(value, dict):
+        return {key: _mail_test_redact(item, password) for key, item in value.items()}
+    return value
+
+
+def _mail_test_clean_header(value) -> str:
+    """Chặn header injection qua CR/LF trong From/To/Subject."""
+    return re.sub(r'[\r\n]+', ' ', str(value or '')).strip()
+
+
+def _mail_test_clean_server(value) -> str:
+    server = str(value or '').strip()
+    server = re.sub(r'^[a-z][a-z0-9+.-]*://', '', server, flags=re.IGNORECASE)
+    server = server.split('/')[0].strip()
+    if server.startswith('[') and ']' in server:
+        server = server[1:server.index(']')]
+    elif server.count(':') == 1:
+        host, maybe_port = server.rsplit(':', 1)
+        if maybe_port.isdigit():
+            server = host
+    return server.strip()
+
+
+def _mail_test_tls_context():
+    return ssl.create_default_context()
+
+
+def _mail_test_socket_error(exc, server: str, port: int) -> str:
+    if isinstance(exc, socket.gaierror):
+        return f'Không phân giải được server "{server}". Kiểm tra lại server name.'
+    if isinstance(exc, (socket.timeout, TimeoutError)):
+        return f'Quá thời gian kết nối tới {server}:{port} sau {MAIL_TEST_TIMEOUT}s.'
+    if isinstance(exc, ConnectionRefusedError):
+        return f'Server từ chối kết nối tại {server}:{port} (port có thể đóng hoặc sai).'
+    return f'Không kết nối được tới {server}:{port}: {_mail_test_text(exc)}'
+
+
+def _mail_test_tls_error(exc, security: str) -> str:
+    if isinstance(exc, ssl.SSLCertVerificationError):
+        reason = getattr(exc, 'verify_message', '') or _mail_test_text(exc)
+        return f'Chứng chỉ TLS không hợp lệ: {reason}'
+    label = MAIL_TEST_SECURITY_LABELS.get(security, 'TLS')
+    return f'Lỗi {label}: {_mail_test_text(exc)}'
+
+
+def _mail_test_log(details: dict, step: str, status: str, message: str,
+                   started: Optional[float] = None) -> None:
+    """Ghi một bước xử lý vào nhật ký chi tiết của từng giao thức."""
+    if not isinstance(details, dict):
+        return
+    logs = details.get('logs')
+    if not isinstance(logs, list):
+        logs = []
+        details['logs'] = logs
+    entry = {
+        'step': step,
+        'status': status if status in ('ok', 'fail', 'warn', 'info') else 'info',
+        'message': _mail_test_short(message, 500),
+    }
+    if started:
+        entry['duration_ms'] = max(0, int((time.perf_counter() - started) * 1000))
+    logs.append(entry)
+
+
+def _mail_test_ok(message: str, details: dict) -> dict:
+    _mail_test_log(details, 'done', 'ok', message)
+    return {'ok': True, 'stage': 'done', 'message': message, 'details': details}
+
+
+def _mail_test_fail(stage: str, message: str, details: dict) -> dict:
+    _mail_test_log(details, stage, 'fail', message)
+    return {'ok': False, 'stage': stage, 'message': message, 'details': details}
+
+
+def _mail_test_smtp_auth_error(exc) -> str:
+    code = getattr(exc, 'smtp_code', '')
+    text = _mail_test_text(getattr(exc, 'smtp_error', exc))
+    prefix = f'Đăng nhập SMTP thất bại ({code})' if code else 'Đăng nhập SMTP thất bại'
+    return f'{prefix}: {text}'
+
+
+def _mail_test_smtp(server: str, port: int, security: str, username: str,
+                    password: str, send_mail: bool, to_addr: str) -> dict:
+    details = {
+        'port': port,
+        'security': security,
+        'from': username,
+        'send_mail': bool(send_mail),
+        'logs': [],
+    }
+    stage = 'connect'
+    step_started = time.perf_counter()
+    client = None
+    _mail_test_log(
+        details, 'start', 'info',
+        f'Bắt đầu SMTP tới {server}:{port} · '
+        f'{MAIL_TEST_SECURITY_LABELS.get(security, security)}.',
+        0,
+    )
+    try:
+        context = _mail_test_tls_context() if security in ('ssl', 'starttls') else None
+        if security == 'ssl':
+            step_started = time.perf_counter()
+            client = smtplib.SMTP_SSL(server, port, timeout=MAIL_TEST_TIMEOUT, context=context)
+            details['tls'] = 'SSL/TLS'
+            _mail_test_log(
+                details, 'connect', 'ok',
+                f'Đã kết nối TCP và hoàn tất SSL/TLS tới {server}:{port}.',
+                step_started,
+            )
+            _mail_test_log(details, 'tls', 'ok', 'SSL/TLS handshake thành công.', step_started)
+        else:
+            step_started = time.perf_counter()
+            client = smtplib.SMTP(server, port, timeout=MAIL_TEST_TIMEOUT)
+            _mail_test_log(
+                details, 'connect', 'ok',
+                f'Đã kết nối TCP tới {server}:{port}.',
+                step_started,
+            )
+
+        stage = 'greeting'
+        step_started = time.perf_counter()
+        try:
+            _code, banner = client.ehlo()
+            details['banner'] = _mail_test_short(banner)
+            _mail_test_log(
+                details, 'greeting', 'ok',
+                f'EHLO OK: {details["banner"]}',
+                step_started,
+            )
+        except smtplib.SMTPException as exc:
+            # Một số server không trả EHLO đẹp, vẫn có thể login bình thường.
+            _mail_test_log(
+                details, 'greeting', 'warn',
+                f'EHLO thất bại, tiếp tục thử đăng nhập: {_mail_test_text(exc)}',
+                step_started,
+            )
+
+        if security == 'starttls':
+            stage = 'tls'
+            step_started = time.perf_counter()
+            if not client.has_extn('starttls'):
+                raise MailTestFailure(
+                    'tls',
+                    'Server không hỗ trợ STARTTLS trên port này. Hãy thử SSL/TLS hoặc đổi port.',
+                )
+            _mail_test_log(
+                details, 'tls', 'info',
+                'Server hỗ trợ STARTTLS, bắt đầu nâng cấp kết nối TLS.',
+                0,
+            )
+            client.starttls(context=context)
+            details['tls'] = 'STARTTLS'
+            _code, banner = client.ehlo()
+            details['banner'] = _mail_test_short(banner)
+            _mail_test_log(
+                details, 'tls', 'ok',
+                'STARTTLS handshake thành công, đã gửi lại EHLO.',
+                step_started,
+            )
+        elif security == 'none':
+            details['tls'] = 'Không mã hóa'
+            _mail_test_log(
+                details, 'tls', 'info',
+                'Không dùng TLS theo cấu hình.',
+                0,
+            )
+
+        stage = 'auth'
+        step_started = time.perf_counter()
+        client.login(username, password)
+        details['auth'] = 'OK'
+        _mail_test_log(
+            details, 'auth', 'ok',
+            f'Đăng nhập thành công với username "{username}".',
+            step_started,
+        )
+
+        if send_mail:
+            stage = 'send'
+            step_started = time.perf_counter()
+            from_addr = _mail_test_clean_header(username)
+            recipient = _mail_test_clean_header(to_addr) or from_addr
+            message_id = make_msgid()
+            _mail_test_log(
+                details, 'send', 'info',
+                f'Chuẩn bị gửi email tới {recipient}.',
+                0,
+            )
+            msg = EmailMessage()
+            msg['Subject'] = _mail_test_clean_header('send email for check SMTP/POP/IMAP')
+            msg['From'] = from_addr
+            msg['To'] = recipient
+            msg['Date'] = formatdate(localtime=True)
+            msg['Message-ID'] = message_id
+            msg.set_content(
+                'send email for check SMTP/POP/IMAP\n\n'
+                f'Server: {server}:{port}\n'
+                f'Security: {MAIL_TEST_SECURITY_LABELS.get(security, security)}\n'
+                f'Username: {username}\n'
+                f'Time: {datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")}\n'
+            )
+            client.send_message(msg, from_addr=from_addr, to_addrs=[recipient])
+            details['sent_to'] = recipient
+            details['message_id'] = message_id
+            _mail_test_log(
+                details, 'send', 'ok',
+                f'Đã gửi email tới {recipient} · Message-ID: {message_id}',
+                step_started,
+            )
+            message = f'SMTP OK — đã gửi email test tới {recipient}.'
+        else:
+            _mail_test_log(
+                details, 'send', 'info',
+                'Bỏ qua gửi email SMTP theo cấu hình.',
+                0,
+            )
+            message = 'SMTP OK — kết nối và đăng nhập thành công (không gửi email test).'
+
+        stage = 'done'
+        return _mail_test_ok(message, details)
+    except MailTestFailure as exc:
+        return _mail_test_fail(exc.stage, exc.message, details)
+    except smtplib.SMTPAuthenticationError as exc:
+        return _mail_test_fail('auth', _mail_test_smtp_auth_error(exc), details)
+    except smtplib.SMTPSenderRefused as exc:
+        return _mail_test_fail(
+            'send',
+            f'Server từ chối địa chỉ gửi "{exc.sender}": {_mail_test_text(exc.smtp_error)}',
+            details,
+        )
+    except smtplib.SMTPRecipientsRefused as exc:
+        recipients = ', '.join(exc.recipients.keys()) if isinstance(exc.recipients, dict) else _mail_test_text(exc.recipients)
+        return _mail_test_fail('send', f'Server từ chối người nhận ({recipients}).', details)
+    except smtplib.SMTPDataError as exc:
+        return _mail_test_fail(
+            'send',
+            f'Server từ chối nội dung mail ({exc.smtp_code}): {_mail_test_text(exc.smtp_error)}',
+            details,
+        )
+    except smtplib.SMTPResponseException as exc:
+        return _mail_test_fail(
+            stage,
+            f'SMTP trả về lỗi {exc.smtp_code}: {_mail_test_text(exc.smtp_error)}',
+            details,
+        )
+    except smtplib.SMTPException as exc:
+        return _mail_test_fail(stage, f'Lỗi SMTP: {_mail_test_text(exc)}', details)
+    except ssl.SSLError as exc:
+        return _mail_test_fail('tls', _mail_test_tls_error(exc, security), details)
+    except (socket.timeout, TimeoutError) as exc:
+        return _mail_test_fail(stage, _mail_test_socket_error(exc, server, port), details)
+    except socket.gaierror as exc:
+        return _mail_test_fail('connect', _mail_test_socket_error(exc, server, port), details)
+    except OSError as exc:
+        return _mail_test_fail(stage, _mail_test_socket_error(exc, server, port), details)
+    except Exception as exc:
+        return _mail_test_fail(stage, f'Lỗi SMTP: {type(exc).__name__}: {_mail_test_text(exc)}', details)
+    finally:
+        if client is not None:
+            try:
+                client.quit()
+            except Exception:
+                try:
+                    client.close()
+                except Exception:
+                    pass
+
+
+def _mail_test_pop(server: str, port: int, security: str,
+                   username: str, password: str) -> dict:
+    details = {'port': port, 'security': security, 'logs': []}
+    stage = 'connect'
+    step_started = time.perf_counter()
+    connection = None
+    _mail_test_log(
+        details, 'start', 'info',
+        f'Bắt đầu POP3 tới {server}:{port} · '
+        f'{MAIL_TEST_SECURITY_LABELS.get(security, security)}.',
+        0,
+    )
+    try:
+        context = _mail_test_tls_context() if security in ('ssl', 'starttls') else None
+        if security == 'ssl':
+            step_started = time.perf_counter()
+            connection = poplib.POP3_SSL(server, port, timeout=MAIL_TEST_TIMEOUT, context=context)
+            details['tls'] = 'SSL/TLS'
+            _mail_test_log(
+                details, 'connect', 'ok',
+                f'Đã kết nối TCP và hoàn tất SSL/TLS tới {server}:{port}.',
+                step_started,
+            )
+            _mail_test_log(details, 'tls', 'ok', 'SSL/TLS handshake thành công.', step_started)
+        else:
+            step_started = time.perf_counter()
+            connection = poplib.POP3(server, port, timeout=MAIL_TEST_TIMEOUT)
+            _mail_test_log(
+                details, 'connect', 'ok',
+                f'Đã kết nối TCP tới {server}:{port}.',
+                step_started,
+            )
+
+        stage = 'greeting'
+        step_started = time.perf_counter()
+        banner = connection.getwelcome()
+        details['banner'] = _mail_test_short(banner)
+        _mail_test_log(
+            details, 'greeting', 'ok',
+            f'Banner: {details["banner"]}',
+            step_started,
+        )
+
+        if security == 'starttls':
+            stage = 'tls'
+            step_started = time.perf_counter()
+            _mail_test_log(
+                details, 'tls', 'info',
+                'Kiểm tra CAPA và bắt đầu nâng cấp STARTTLS.',
+                0,
+            )
+            connection.stls(context=context)
+            details['tls'] = 'STARTTLS'
+            _mail_test_log(
+                details, 'tls', 'ok',
+                'STARTTLS handshake thành công.',
+                step_started,
+            )
+        elif security == 'none':
+            details['tls'] = 'Không mã hóa'
+            _mail_test_log(
+                details, 'tls', 'info',
+                'Không dùng TLS theo cấu hình.',
+                0,
+            )
+
+        stage = 'auth'
+        step_started = time.perf_counter()
+        connection.user(username)
+        connection.pass_(password)
+        details['auth'] = 'OK'
+        _mail_test_log(
+            details, 'auth', 'ok',
+            f'Đăng nhập thành công với username "{username}".',
+            step_started,
+        )
+
+        stage = 'mailbox'
+        step_started = time.perf_counter()
+        count, size = connection.stat()
+        details['messages'] = int(count)
+        details['size_bytes'] = int(size)
+        _mail_test_log(
+            details, 'mailbox', 'ok',
+            f'STAT OK: {int(count)} thư · {int(size)} bytes.',
+            step_started,
+        )
+        stage = 'done'
+        return _mail_test_ok(
+            f'POP3 OK — đăng nhập thành công, hộp thư có {int(count)} thư.',
+            details,
+        )
+    except MailTestFailure as exc:
+        return _mail_test_fail(exc.stage, exc.message, details)
+    except poplib.error_proto as exc:
+        message = _mail_test_text(exc)
+        upper = message.upper()
+        if stage == 'auth' or '-ERR [AUTH]' in upper or 'AUTHENTICATION' in upper or 'AUTH ' in upper:
+            return _mail_test_fail('auth', f'Đăng nhập POP3 thất bại: {message}', details)
+        return _mail_test_fail(stage, f'POP3 trả về lỗi: {message}', details)
+    except ssl.SSLError as exc:
+        return _mail_test_fail('tls', _mail_test_tls_error(exc, security), details)
+    except (socket.timeout, TimeoutError) as exc:
+        return _mail_test_fail(stage, _mail_test_socket_error(exc, server, port), details)
+    except socket.gaierror as exc:
+        return _mail_test_fail('connect', _mail_test_socket_error(exc, server, port), details)
+    except OSError as exc:
+        return _mail_test_fail(stage, _mail_test_socket_error(exc, server, port), details)
+    except Exception as exc:
+        return _mail_test_fail(stage, f'Lỗi POP3: {type(exc).__name__}: {_mail_test_text(exc)}', details)
+    finally:
+        if connection is not None:
+            try:
+                connection.quit()
+            except Exception:
+                try:
+                    connection.close()
+                except Exception:
+                    pass
+
+
+def _mail_test_imap(server: str, port: int, security: str,
+                    username: str, password: str) -> dict:
+    details = {'port': port, 'security': security, 'logs': []}
+    stage = 'connect'
+    step_started = time.perf_counter()
+    connection = None
+    _mail_test_log(
+        details, 'start', 'info',
+        f'Bắt đầu IMAP tới {server}:{port} · '
+        f'{MAIL_TEST_SECURITY_LABELS.get(security, security)}.',
+        0,
+    )
+    try:
+        context = _mail_test_tls_context() if security in ('ssl', 'starttls') else None
+        if security == 'ssl':
+            step_started = time.perf_counter()
+            connection = imaplib.IMAP4_SSL(
+                server, port, ssl_context=context, timeout=MAIL_TEST_TIMEOUT)
+            details['tls'] = 'SSL/TLS'
+            _mail_test_log(
+                details, 'connect', 'ok',
+                f'Đã kết nối TCP và hoàn tất SSL/TLS tới {server}:{port}.',
+                step_started,
+            )
+            _mail_test_log(details, 'tls', 'ok', 'SSL/TLS handshake thành công.', step_started)
+        else:
+            step_started = time.perf_counter()
+            connection = imaplib.IMAP4(server, port, timeout=MAIL_TEST_TIMEOUT)
+            _mail_test_log(
+                details, 'connect', 'ok',
+                f'Đã kết nối TCP tới {server}:{port}.',
+                step_started,
+            )
+
+        stage = 'greeting'
+        step_started = time.perf_counter()
+        welcome = getattr(connection, 'welcome', '')
+        details['banner'] = _mail_test_short(welcome)
+        _mail_test_log(
+            details, 'greeting', 'ok',
+            f'Banner: {details["banner"]}' if details['banner'] else 'Đã nhận greeting từ server.',
+            step_started,
+        )
+
+        if security == 'starttls':
+            stage = 'tls'
+            step_started = time.perf_counter()
+            _mail_test_log(
+                details, 'tls', 'info',
+                'Bắt đầu nâng cấp STARTTLS.',
+                0,
+            )
+            connection.starttls(ssl_context=context)
+            details['tls'] = 'STARTTLS'
+            _mail_test_log(
+                details, 'tls', 'ok',
+                'STARTTLS handshake thành công.',
+                step_started,
+            )
+        elif security == 'none':
+            details['tls'] = 'Không mã hóa'
+            _mail_test_log(
+                details, 'tls', 'info',
+                'Không dùng TLS theo cấu hình.',
+                0,
+            )
+
+        stage = 'auth'
+        step_started = time.perf_counter()
+        connection.login(username, password)
+        details['auth'] = 'OK'
+        _mail_test_log(
+            details, 'auth', 'ok',
+            f'Đăng nhập thành công với username "{username}".',
+            step_started,
+        )
+        details['mailbox'] = 'INBOX'
+
+        stage = 'mailbox'
+        step_started = time.perf_counter()
+        try:
+            _mail_test_log(
+                details, 'mailbox', 'info',
+                'Đọc INBOX ở chế độ chỉ đọc (EXAMINE).',
+                0,
+            )
+            status, data = connection.select('INBOX', readonly=True)
+            if status == 'OK' and data:
+                match = re.search(r'(\d+)\s*$', _mail_test_text(data[0]).strip())
+                if match:
+                    details['messages'] = int(match.group(1))
+                    _mail_test_log(
+                        details, 'mailbox', 'ok',
+                        f'EXAMINE INBOX OK: {details["messages"]} thư.',
+                        step_started,
+                    )
+                else:
+                    _mail_test_log(
+                        details, 'mailbox', 'warn',
+                        f'EXAMINE INBOX trả về dữ liệu không có số thư: {_mail_test_text(data[0])}',
+                        step_started,
+                    )
+            else:
+                _mail_test_log(
+                    details, 'mailbox', 'warn',
+                    f'EXAMINE INBOX không thành công (status={status}).',
+                    step_started,
+                )
+        except imaplib.IMAP4.error as exc:
+            # Login đã OK; lỗi INBOX chỉ là thông tin phụ, không đánh fail cả test.
+            details['mailbox_error'] = _mail_test_text(exc)
+            _mail_test_log(
+                details, 'mailbox', 'warn',
+                f'Không đọc được INBOX: {details["mailbox_error"]}',
+                step_started,
+            )
+
+        stage = 'done'
+        count = details.get('messages')
+        if count is None:
+            message = 'IMAP OK — đăng nhập thành công.'
+        else:
+            message = f'IMAP OK — đăng nhập thành công, INBOX có {count} thư.'
+        return _mail_test_ok(message, details)
+    except MailTestFailure as exc:
+        return _mail_test_fail(exc.stage, exc.message, details)
+    except imaplib.IMAP4.error as exc:
+        message = _mail_test_text(exc)
+        if stage == 'auth':
+            return _mail_test_fail('auth', f'Đăng nhập IMAP thất bại: {message}', details)
+        return _mail_test_fail(stage, f'IMAP trả về lỗi: {message}', details)
+    except ssl.SSLError as exc:
+        return _mail_test_fail('tls', _mail_test_tls_error(exc, security), details)
+    except (socket.timeout, TimeoutError) as exc:
+        return _mail_test_fail(stage, _mail_test_socket_error(exc, server, port), details)
+    except socket.gaierror as exc:
+        return _mail_test_fail('connect', _mail_test_socket_error(exc, server, port), details)
+    except OSError as exc:
+        return _mail_test_fail(stage, _mail_test_socket_error(exc, server, port), details)
+    except Exception as exc:
+        return _mail_test_fail(stage, f'Lỗi IMAP: {type(exc).__name__}: {_mail_test_text(exc)}', details)
+    finally:
+        if connection is not None:
+            try:
+                connection.logout()
+            except Exception:
+                try:
+                    connection.shutdown()
+                except Exception:
+                    pass
+
+
+def _mail_test_parse_protocol_config(protocol: str, raw_config) -> Optional[dict]:
+    if isinstance(raw_config, bool):
+        raw_config = {'enabled': raw_config}
+    if not isinstance(raw_config, dict) or not raw_config.get('enabled'):
+        return None
+
+    aliases = {
+        'ssl': 'ssl', 'ssl/tls': 'ssl', 'implicit': 'ssl',
+        'tls': 'starttls', 'starttls': 'starttls', 'start_tls': 'starttls',
+        'none': 'none', 'plain': 'none', 'no': 'none',
+    }
+    security = str(raw_config.get('security') or 'ssl').strip().lower()
+    security = aliases.get(security)
+    if security not in MAIL_TEST_DEFAULT_PORTS[protocol]:
+        raise ValueError(
+            f'Bảo mật của {protocol.upper()} không hợp lệ. '
+            'Chọn SSL/TLS, STARTTLS hoặc Không mã hóa.'
+        )
+
+    raw_port = raw_config.get('port')
+    if raw_port in (None, ''):
+        port = MAIL_TEST_DEFAULT_PORTS[protocol][security]
+    else:
+        try:
+            port = int(raw_port)
+        except (TypeError, ValueError):
+            raise ValueError(f'Port của {protocol.upper()} phải là số từ 1 đến 65535.')
+        if not 1 <= port <= 65535:
+            raise ValueError(f'Port của {protocol.upper()} phải nằm trong khoảng 1–65535.')
+
+    return {'port': port, 'security': security}
+
+
+def _mail_test_protocol(protocol: str, server: str, username: str, password: str,
+                        config: dict, smtp_send: bool, smtp_to: str) -> dict:
+    started = time.perf_counter()
+    try:
+        if protocol == 'smtp':
+            result = _mail_test_smtp(
+                server, config['port'], config['security'],
+                username, password, smtp_send, smtp_to)
+        elif protocol == 'pop':
+            result = _mail_test_pop(
+                server, config['port'], config['security'], username, password)
+        else:
+            result = _mail_test_imap(
+                server, config['port'], config['security'], username, password)
+    except Exception as exc:
+        result = _mail_test_fail(
+            'error',
+            f'Lỗi {protocol.upper()}: {type(exc).__name__}: {_mail_test_text(exc)}',
+            {'port': config['port'], 'security': config['security']},
+        )
+
+    result['protocol'] = protocol
+    result['server'] = server
+    result['port'] = config['port']
+    result['security'] = config['security']
+    result['duration_ms'] = max(0, int((time.perf_counter() - started) * 1000))
+
+    # Không trả password về client nếu server echo lại trong lỗi.
+    # Chỉ redact password đủ dài để tránh thay nhầm ký tự trong tên/địa chỉ ngắn.
+    if len(password) >= 4:
+        result['message'] = str(result.get('message') or '').replace(password, '***')
+        details = result.get('details')
+        if isinstance(details, dict):
+            result['details'] = _mail_test_redact(details, password)
+    return result
+
+
+@app.route('/api/mail-test', methods=['POST'])
+def api_mail_test():
+    """Test đồng thời SMTP/POP3/IMAP: kết nối, TLS, đăng nhập và gửi mail SMTP."""
+    try:
+        data = request.get_json(silent=True) or {}
+        server = _mail_test_clean_server(data.get('server'))
+        username = _mail_test_clean_header(data.get('username'))
+        password = str(data.get('password') or '')
+
+        if not server:
+            return jsonify({'error': 'Server name là bắt buộc.'}), 400
+        if not username:
+            return jsonify({'error': 'Username là bắt buộc.'}), 400
+        if not password:
+            return jsonify({'error': 'Password là bắt buộc.'}), 400
+
+        raw_protocols = data.get('protocols')
+        if not isinstance(raw_protocols, dict):
+            return jsonify({'error': 'Thiếu cấu hình protocols.'}), 400
+
+        tasks = []
+        for protocol in ('smtp', 'pop', 'imap'):
+            config = _mail_test_parse_protocol_config(protocol, raw_protocols.get(protocol))
+            if config:
+                tasks.append((protocol, config))
+        if not tasks:
+            return jsonify({'error': 'Chọn ít nhất một giao thức để test (SMTP, POP hoặc IMAP).'}), 400
+
+        smtp_options = data.get('smtp') if isinstance(data.get('smtp'), dict) else {}
+        smtp_send = bool(smtp_options.get('send', True))
+        smtp_to = _mail_test_clean_header(smtp_options.get('to')) or username
+
+        results = []
+        with ThreadPoolExecutor(max_workers=len(tasks)) as pool:
+            future_map = {
+                pool.submit(
+                    _mail_test_protocol,
+                    protocol, server, username, password, config,
+                    smtp_send if protocol == 'smtp' else False,
+                    smtp_to if protocol == 'smtp' else '',
+                ): protocol
+                for protocol, config in tasks
+            }
+            for future in as_completed(future_map):
+                results.append(future.result())
+
+        order = {'smtp': 0, 'pop': 1, 'imap': 2}
+        results.sort(key=lambda item: order.get(item.get('protocol'), 9))
+        ok_count = sum(1 for item in results if item.get('ok'))
+        return jsonify({
+            'server': server,
+            'username': username,
+            'ok_count': ok_count,
+            'total': len(results),
+            'results': results,
+            'timestamp': datetime.now(timezone.utc).isoformat(),
+        }), 200
+    except ValueError as exc:
+        return jsonify({'error': str(exc)}), 400
+    except Exception as exc:
+        logger.exception('Exception in /api/mail-test')
+        return jsonify({'error': f'Lỗi test mail: {type(exc).__name__}: {exc}'}), 500
+
+
+def _check_ssl_port(domain: str, port: int) -> dict:
+    """Kiểm tra nhanh certificate trên một port (không lấy chain/full details)."""
+    summary = {
+        'port': port,
+        'ok': False,
+        'valid': False,
+        'days_remaining': None,
+        'valid_to': None,
+        'issuer': None,
+        'subject': None,
+        'matched': False,
+        'error': None,
+    }
+    try:
+        context = ssl.create_default_context()
+        context.check_hostname = False
+        context.verify_mode = ssl.CERT_NONE
+        with socket.create_connection((domain, port), timeout=3) as sock:
+            with context.wrap_socket(sock, server_hostname=domain) as ssock:
+                cert_der = ssock.getpeercert(binary_form=True)
+        if not cert_der:
+            summary['error'] = 'Không lấy được certificate'
+            return summary
+        certificate = x509.load_der_x509_certificate(cert_der, default_backend())
+        valid_from = getattr(certificate, 'not_valid_before_utc',
+                             certificate.not_valid_before.replace(tzinfo=timezone.utc))
+        valid_to = getattr(certificate, 'not_valid_after_utc',
+                           certificate.not_valid_after.replace(tzinfo=timezone.utc))
+        now_utc = datetime.now(timezone.utc)
+        issuer_cn = certificate.issuer.get_attributes_for_oid(NameOID.COMMON_NAME)
+        issuer_org = certificate.issuer.get_attributes_for_oid(NameOID.ORGANIZATION_NAME)
+        subject_cn = certificate.subject.get_attributes_for_oid(NameOID.COMMON_NAME)
+        subject_org = certificate.subject.get_attributes_for_oid(NameOID.ORGANIZATION_NAME)
+        san_names = []
+        try:
+            san_ext = certificate.extensions.get_extension_for_class(x509.SubjectAlternativeName)
+            san_names = list(san_ext.value.get_values_for_type(x509.DNSName))
+        except x509.ExtensionNotFound:
+            san_names = []
+        candidate_names = san_names or ([subject_cn[0].value] if subject_cn else [])
+        matched = any(
+            (name or '').strip().lower() == domain.strip().lower() or
+            ((name or '').strip().lower().startswith('*.') and domain.strip().lower().endswith((name or '').strip().lower()[1:]))
+            for name in candidate_names
+        )
+        summary.update({
+            'ok': True,
+            'valid': valid_from <= now_utc <= valid_to,
+            'days_remaining': (valid_to - now_utc).days,
+            'valid_to': valid_to.isoformat(),
+            'issuer': issuer_cn[0].value if issuer_cn else (issuer_org[0].value if issuer_org else 'Unknown'),
+            'subject': subject_cn[0].value if subject_cn else (subject_org[0].value if subject_org else domain),
+            'matched': matched,
+        })
+    except socket.timeout:
+        summary['error'] = 'Timeout'
+    except ConnectionRefusedError:
+        summary['error'] = 'Connection refused'
+    except Exception as exc:
+        summary['error'] = str(exc)
+    return summary
+
+
 @app.route('/api/check-ssl', methods=['POST'])
-@_cached_post_api()
 def api_check_ssl():
     """Check SSL certificate for a domain"""
     try:
@@ -2328,14 +3318,45 @@ def api_check_ssl():
                     'valid': cert_valid_from <= now_utc <= cert_valid_to,
                 }
 
-            parsed_chain = []
-            seen_chain_serials = set()
-            for chain_index, chain_item in enumerate(chain_der):
+            def _fetch_ssl_chain_pems(host: str) -> list:
                 try:
-                    chain_certificate = x509.load_der_x509_certificate(chain_item, default_backend())
-                    if chain_certificate.serial_number in seen_chain_serials:
+                    proc = subprocess.run(
+                        ['openssl', 's_client', '-connect', f'{host}:443',
+                         '-servername', host, '-showcerts'],
+                        input=b'', stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+                        timeout=10,
+                    )
+                except (OSError, subprocess.TimeoutExpired):
+                    return []
+                text = proc.stdout.decode('ascii', errors='ignore')
+                return re.findall(
+                    r'-----BEGIN CERTIFICATE-----.*?-----END CERTIFICATE-----',
+                    text, re.S,
+                )
+
+            chain_cert_objects = []
+            seen_chain_serials = set()
+            for pem in _fetch_ssl_chain_pems(domain):
+                try:
+                    chain_certificate = x509.load_pem_x509_certificate(
+                        pem.encode('ascii'), default_backend())
+                except Exception:
+                    continue
+                if chain_certificate.serial_number in seen_chain_serials:
+                    continue
+                seen_chain_serials.add(chain_certificate.serial_number)
+                chain_cert_objects.append(chain_certificate)
+
+            if not chain_cert_objects:
+                chain_cert_objects = [cert_obj]
+
+            parsed_chain = []
+            seen_parsed_serials = set()
+            for chain_certificate in chain_cert_objects:
+                try:
+                    if chain_certificate.serial_number in seen_parsed_serials:
                         continue
-                    seen_chain_serials.add(chain_certificate.serial_number)
+                    seen_parsed_serials.add(chain_certificate.serial_number)
                     parsed_chain.append(_certificate_summary(chain_certificate, len(parsed_chain)))
                 except Exception:
                     continue
@@ -2416,9 +3437,20 @@ def api_check_ssl():
             result["error"] = "Connection refused (port 443)"
         except Exception as e:
             result["error"] = str(e)
-        
+
+        # Kiểm tra nhanh certificate trên nhiều port phổ biến.
+        ssl_ports = [443, 465, 993, 995, 1000, 2083, 2096]
+        try:
+            with ThreadPoolExecutor(max_workers=len(ssl_ports)) as pool:
+                futures = {pool.submit(_check_ssl_port, domain, port): port for port in ssl_ports}
+                port_results = [future.result() for future in futures]
+            port_results.sort(key=lambda item: item['port'])
+            result['port_checks'] = port_results
+        except Exception:
+            result['port_checks'] = []
+
         return jsonify(result), 200
-        
+
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -4220,6 +5252,113 @@ def api_ssl_free_delete_item(item_id):
         return jsonify({"message": "Deleted successfully"}), 200
     except Exception as e:
         logger.error(f"[ACME] delete-item error: {e}", exc_info=True)
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/ssl-free/save-to-catalog', methods=['POST'])
+def api_ssl_free_save_to_catalog():
+    """Lưu 3 file (private.key / cert.crt / cabundle.crt) của SSL miễn phí vào
+    ~/Desktop/ssl/<domain> — đúng chuẩn thư mục SSL khác để tab Cài SSL dùng ngay.
+    Ưu tiên dữ liệu trong store theo item_id; fallback payload client gửi lên."""
+    try:
+        data = request.get_json(silent=True) or {}
+        item_id = str(data.get('item_id') or '').strip()
+        domain = str(data.get('domain') or '').strip().lower().rstrip('.')
+        cert_text = str(data.get('certificate') or '')
+        key_text = str(data.get('private_key') or '')
+        bundle_text = str(data.get('ca_bundle') or '')
+
+        # Có item_id → lấy từ store (nguồn chuẩn); không có → dùng payload
+        if item_id:
+            with _issued_ssl_store_lock:
+                items = _load_issued_ssl_store()
+            item = next((x for x in items if str(x.get('id')) == item_id), None)
+            if not item:
+                return jsonify({"error": "Stored SSL item not found"}), 404
+            domain = str(item.get('domain') or '').strip().lower().rstrip('.') or domain
+            cert_text = item.get('certificate') or cert_text
+            key_text = item.get('private_key') or key_text
+            bundle_text = item.get('ca_bundle') or bundle_text
+
+        # Tên thư mục phải là hostname an toàn (chặn path traversal)
+        if not re.fullmatch(r'(?!-)[a-z0-9-]{1,63}(?:\.[a-z0-9-]{1,63})+', domain or ''):
+            return jsonify({"error": f"Domain không hợp lệ để đặt tên thư mục: {domain!r}"}), 400
+
+        cert_blocks = [_canonical_cert_block(m.group(0))
+                       for m in _PEM_CERT_BLOCK_RE.finditer(cert_text or '')]
+        if not cert_blocks:
+            return jsonify({"error": "Certificate không có khối PEM hợp lệ để lưu."}), 400
+        if not (key_text or '').strip():
+            return jsonify({"error": "Thiếu Private Key để lưu."}), 400
+        try:
+            _check_key_matches_cert(key_text, cert_blocks[0])
+        except ValueError as exc:
+            return jsonify({"error": str(exc)}), 400
+
+        # Cert phải phủ domain — cùng chuẩn kiểm tra như luồng cài SSL
+        leaf_obj = x509.load_pem_x509_certificate(
+            (cert_blocks[0] + '\n').encode('utf-8'), default_backend())
+        try:
+            _check_cert_covers_domain(leaf_obj, domain)
+        except ValueError as exc:
+            return jsonify({"error": str(exc)}), 400
+
+        # ca_bundle: bỏ khối trùng leaf / trùng nhau — mỗi thư mục SSL khác cũng chỉ chứa chain sạch
+        leaf_der = leaf_obj.public_bytes(serialization.Encoding.DER)
+        bundle_blocks, seen_der = [], set()
+        for match in _PEM_CERT_BLOCK_RE.finditer(bundle_text or ''):
+            block = _canonical_cert_block(match.group(0))
+            try:
+                der = x509.load_pem_x509_certificate(
+                    (block + '\n').encode('utf-8'), default_backend()
+                ).public_bytes(serialization.Encoding.DER)
+            except Exception:
+                continue
+            if der == leaf_der or der in seen_der:
+                continue
+            seen_der.add(der)
+            bundle_blocks.append(block)
+
+        base_dir = os.path.abspath(os.path.expanduser(SSL_CATALOG_DEFAULT_DIR))
+        folder = os.path.join(base_dir, domain)
+        overwritten = os.path.isdir(folder)
+
+        outgoing = (
+            ('private.key', _normalize_pem_text(key_text), 0o600),
+            ('cert.crt', '\n'.join(cert_blocks) + '\n', 0o644),
+            ('cabundle.crt', ('\n'.join(bundle_blocks) + '\n') if bundle_blocks else '', 0o644),
+        )
+        try:
+            os.makedirs(folder, exist_ok=True)
+            for name, content, mode in outgoing:
+                path = os.path.join(folder, name)
+                tmp_path = path + '.tmp-save'
+                with open(tmp_path, 'w', encoding='utf-8', newline='\n') as handle:
+                    handle.write(content)
+                os.chmod(tmp_path, mode)
+                os.replace(tmp_path, path)
+            # Đọc lại xác nhận ghi đúng + key khớp cert đã ghi (cùng chuẩn kiểm tra luồng cài SSL)
+            with open(os.path.join(folder, 'cert.crt'), 'r', encoding='utf-8') as handle:
+                wrote_cert = handle.read()
+            with open(os.path.join(folder, 'private.key'), 'r', encoding='utf-8') as handle:
+                wrote_key = handle.read()
+            _check_key_matches_cert(wrote_key, wrote_cert)
+        except Exception as exc:
+            return jsonify({"error": f"Không ghi được vào {folder}: {exc}"}), 500
+
+        domains, not_after = _ssl_cert_domains(cert_text)
+        logger.info(f"[ACME] save-to-catalog: {domain} -> {folder} (overwrite={overwritten})")
+        return jsonify({
+            "ok": True,
+            "folder": folder,
+            "domain": domain,
+            "files": [name for name, _, _ in outgoing],
+            "overwritten": overwritten,
+            "domains": domains,
+            "not_after": not_after,
+        }), 200
+    except Exception as e:
+        logger.error(f"[ACME] save-to-catalog error: {e}", exc_info=True)
         return jsonify({"error": str(e)}), 500
 
 

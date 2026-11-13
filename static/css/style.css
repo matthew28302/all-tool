@@ -2702,7 +2702,8 @@
             gap: 12px;
             flex-wrap: wrap;
         }
-        .btn-download-all {
+        .btn-download-all,
+        .btn-save-catalog {
             font-size: 0.85rem;
             padding: 8px 16px;
         }
@@ -3343,4 +3344,3 @@ button:hover,
 .tab-content {
     background: #ffffff;
 }
-

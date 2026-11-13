@@ -1,0 +1,575 @@
+/* ==== Mail Test tab ==== */
+.mailtest-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1.05fr) minmax(340px, 0.95fr);
+    gap: 20px;
+    align-items: start;
+}
+.mailtest-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    min-width: 0;
+    padding: 24px;
+    background: rgba(255, 255, 255, 0.96);
+    border: 1px solid rgba(148, 163, 184, 0.2);
+    border-radius: 24px;
+    box-shadow: 0 24px 50px rgba(15, 23, 42, 0.08);
+}
+.mailtest-panel.alt {
+    background: linear-gradient(180deg, rgba(248, 250, 252, 0.98), rgba(255, 255, 255, 0.9));
+    border-color: rgba(148, 163, 184, 0.24);
+}
+.mailtest-panel .dns-panel-header {
+    margin-bottom: 0;
+}
+.mailtest-panel .dns-panel-title {
+    font-size: 1.45rem;
+    color: #0f172a;
+}
+.mailtest-panel .dns-panel-subtitle {
+    color: #475569;
+    font-size: 0.92rem;
+    line-height: 1.6;
+}
+.mailtest-form {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+.mailtest-field-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    align-items: start;
+}
+.mailtest-field {
+    display: grid;
+    gap: 8px;
+    min-width: 0;
+}
+.mailtest-field.fullwidth,
+.mailtest-protocols.fullwidth {
+    grid-column: 1 / -1;
+}
+.mailtest-field .dns-input,
+.mailtest-smtp-options .dns-input,
+.mailtest-protocol-fields .dns-input {
+    width: 100%;
+    min-width: 0;
+}
+.mailtest-field .field-label {
+    margin: 0;
+}
+.mailtest-section-title {
+    grid-column: 1 / -1;
+    margin-top: 2px;
+    padding-bottom: 7px;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.25);
+    color: #64748b;
+    font-size: 0.78rem;
+    font-weight: 800;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+}
+.mailtest-hint {
+    color: #64748b;
+    font-size: 0.8rem;
+    line-height: 1.5;
+}
+.mailtest-password-row {
+    display: flex;
+    gap: 8px;
+    align-items: stretch;
+}
+.mailtest-password-row .dns-input {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+.mailtest-eye {
+    flex: 0 0 auto;
+    min-width: 64px;
+    padding: 8px 12px;
+    border-radius: 12px;
+    font-size: 0.82rem;
+    font-weight: 700;
+}
+.mailtest-protocols {
+    display: grid;
+    gap: 10px;
+}
+.mailtest-protocol {
+    min-width: 0;
+    padding: 13px 14px;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    transition: border-color 0.16s ease, background 0.16s ease, box-shadow 0.16s ease;
+}
+.mailtest-protocol.is-enabled {
+    background: #f0f9ff;
+    border-color: #7dd3fc;
+    box-shadow: 0 6px 18px rgba(2, 132, 199, 0.08);
+}
+.mailtest-protocol-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+.mailtest-check {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    color: #0f172a;
+    font-size: 0.95rem;
+    font-weight: 800;
+    cursor: pointer;
+}
+.mailtest-check input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    margin: 0;
+    accent-color: var(--ui-accent, #008080);
+    cursor: pointer;
+}
+.mailtest-badge {
+    padding: 3px 9px;
+    color: #0369a1;
+    background: #e0f2fe;
+    border: 1px solid #bae6fd;
+    border-radius: 999px;
+    font-size: 0.7rem;
+    font-weight: 800;
+    white-space: nowrap;
+}
+.mailtest-protocol-fields {
+    display: grid;
+    grid-template-columns: 38px minmax(0, 1fr);
+    gap: 8px 10px;
+    align-items: center;
+    margin-top: 11px;
+}
+.mailtest-protocol-fields .field-label {
+    margin: 0;
+    color: #475569;
+    font-size: 0.78rem;
+    font-weight: 700;
+}
+.mailtest-port-security {
+    display: grid;
+    grid-template-columns: 98px minmax(0, 1fr);
+    gap: 8px;
+    align-items: center;
+}
+.mailtest-protocol-fields .dns-input {
+    padding: 9px 11px;
+    font-size: 0.86rem;
+}
+.mailtest-protocol-fields select.dns-input {
+    cursor: pointer;
+}
+.mailtest-smtp-options {
+    display: grid;
+    gap: 11px;
+    margin-top: 13px;
+    padding-top: 13px;
+    border-top: 1px dashed #bae6fd;
+}
+.mailtest-smtp-options .field-label {
+    margin: 0;
+}
+.mailtest-smtp-options .dns-input {
+    padding: 10px 12px;
+}
+.mailtest-to-row {
+    display: flex;
+    gap: 8px;
+    align-items: stretch;
+    flex-wrap: wrap;
+}
+.mailtest-to-row .dns-input {
+    flex: 1 1 240px;
+}
+.mailtest-to-row .dns-input.is-disabled {
+    opacity: 0.55;
+    background: #f1f5f9;
+    cursor: not-allowed;
+}
+.mailtest-to-row .btn {
+    flex: 0 0 auto;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    font-weight: 700;
+}
+.mailtest-send-toggle {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    color: #475569;
+    font-size: 0.82rem;
+    line-height: 1.5;
+    cursor: pointer;
+}
+.mailtest-send-toggle input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    margin-top: 2px;
+    accent-color: var(--ui-accent, #008080);
+    cursor: pointer;
+    flex: 0 0 auto;
+}
+.mailtest-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 2px;
+}
+.mailtest-actions .btn {
+    min-height: 44px;
+    border-radius: 14px;
+}
+.mailtest-message:empty {
+    display: none;
+}
+.mailtest-results {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    min-width: 0;
+}
+.mailtest-empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 160px;
+    padding: 26px 18px;
+    color: #64748b;
+    background: #f8fafc;
+    border: 1px dashed #cbd5e1;
+    border-radius: 18px;
+    text-align: center;
+}
+.mailtest-empty-state svg {
+    width: 30px;
+    height: 30px;
+    color: #94a3b8;
+}
+.mailtest-empty-state p {
+    margin: 0;
+    font-size: 0.86rem;
+    line-height: 1.55;
+}
+.mailtest-loading {
+    padding: 28px 12px;
+    color: #64748b;
+    text-align: center;
+}
+.mailtest-loading .spinner {
+    width: 42px;
+    height: 42px;
+    margin-bottom: 12px;
+}
+.mailtest-loading p {
+    margin: 0;
+    font-size: 0.86rem;
+}
+.mailtest-summary-card {
+    padding: 16px;
+    background: linear-gradient(135deg, #f0f9ff, #ffffff);
+    border: 1px solid #bae6fd;
+    border-radius: 18px;
+}
+.mailtest-summary-card.is-ok {
+    background: linear-gradient(135deg, #f0fdf4, #ffffff);
+    border-color: #86efac;
+}
+.mailtest-summary-card.is-warn {
+    background: linear-gradient(135deg, #fffbeb, #ffffff);
+    border-color: #fde68a;
+}
+.mailtest-summary-card.is-fail {
+    background: linear-gradient(135deg, #fffafa, #ffffff);
+    border-color: #fecaca;
+}
+.mailtest-summary-title {
+    color: #64748b;
+    font-size: 0.74rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+.mailtest-summary-score {
+    margin-top: 4px;
+    color: #0f172a;
+    font-size: 2rem;
+    font-weight: 800;
+    line-height: 1.1;
+}
+.mailtest-summary-sub {
+    margin-top: 4px;
+    color: #475569;
+    font-size: 0.8rem;
+    overflow-wrap: anywhere;
+}
+.mailtest-result-grid {
+    display: grid;
+    gap: 10px;
+}
+.mailtest-result-card {
+    min-width: 0;
+    padding: 14px;
+    background: #ffffff;
+    border: 1px solid #dbe4ee;
+    border-radius: 16px;
+}
+.mailtest-result-card.is-ok {
+    background: #f0fdf4;
+    border-color: #86efac;
+}
+.mailtest-result-card.is-fail {
+    background: #fffafa;
+    border-color: #fecaca;
+}
+.mailtest-result-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 10px;
+}
+.mailtest-result-name {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+.mailtest-proto {
+    color: #0f172a;
+    font-size: 1rem;
+    font-weight: 800;
+}
+.mailtest-endpoint {
+    color: #64748b;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    overflow-wrap: anywhere;
+}
+.mailtest-status {
+    flex: 0 0 auto;
+    padding: 3px 9px;
+    border-radius: 999px;
+    font-size: 0.7rem;
+    font-weight: 800;
+    white-space: nowrap;
+}
+.mailtest-status.ok {
+    color: #15803d;
+    background: #dcfce7;
+}
+.mailtest-status.fail {
+    color: #b91c1c;
+    background: #fee2e2;
+}
+.mailtest-result-meta {
+    margin-top: 7px;
+    color: #64748b;
+    font-size: 0.75rem;
+}
+.mailtest-result-message {
+    margin-top: 8px;
+    color: #334155;
+    font-size: 0.88rem;
+    line-height: 1.55;
+    overflow-wrap: anywhere;
+}
+.mailtest-result-details {
+    display: grid;
+    gap: 5px;
+    margin-top: 10px;
+    padding-top: 8px;
+    border-top: 1px solid #e2e8f0;
+}
+.mailtest-detail-row {
+    display: grid;
+    grid-template-columns: 102px minmax(0, 1fr);
+    gap: 8px;
+    font-size: 0.77rem;
+}
+.mailtest-detail-row span {
+    color: #64748b;
+    font-weight: 700;
+}
+.mailtest-detail-row code {
+    color: #334155;
+    font-family: 'JetBrains Mono', monospace;
+    overflow-wrap: anywhere;
+}
+.mailtest-log {
+    margin-top: 10px;
+    padding-top: 8px;
+    border-top: 1px solid #e2e8f0;
+}
+.mailtest-log summary {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    color: #475569;
+    font-size: 0.76rem;
+    font-weight: 800;
+    line-height: 1.4;
+    cursor: pointer;
+    list-style-position: inside;
+}
+.mailtest-log[open] summary {
+    margin-bottom: 8px;
+}
+.mailtest-log-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 6px;
+    color: #0369a1;
+    background: #e0f2fe;
+    border: 1px solid #bae6fd;
+    border-radius: 999px;
+    font-size: 0.68rem;
+    font-weight: 800;
+}
+.mailtest-log-has-fail {
+    padding: 2px 7px;
+    color: #b91c1c;
+    background: #fee2e2;
+    border-radius: 999px;
+    font-size: 0.66rem;
+    font-weight: 800;
+}
+.mailtest-log-list {
+    display: grid;
+    gap: 5px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+.mailtest-log-item {
+    display: grid;
+    grid-template-columns: 18px minmax(0, 1fr);
+    gap: 7px;
+    padding: 6px 8px;
+    background: #f8fafc;
+    border: 1px solid transparent;
+    border-radius: 9px;
+}
+.mailtest-log-item.is-ok {
+    background: #f0fdf4;
+    border-color: #dcfce7;
+}
+.mailtest-log-item.is-fail {
+    background: #fef2f2;
+    border-color: #fecaca;
+}
+.mailtest-log-item.is-warn {
+    background: #fffbeb;
+    border-color: #fde68a;
+}
+.mailtest-log-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    margin-top: 1px;
+    color: #64748b;
+    background: #e2e8f0;
+    border-radius: 999px;
+    font-size: 0.66rem;
+    font-weight: 900;
+}
+.mailtest-log-item.is-ok .mailtest-log-icon {
+    color: #15803d;
+    background: #dcfce7;
+}
+.mailtest-log-item.is-fail .mailtest-log-icon {
+    color: #b91c1c;
+    background: #fee2e2;
+}
+.mailtest-log-item.is-warn .mailtest-log-icon {
+    color: #92400e;
+    background: #fef3c7;
+}
+.mailtest-log-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+}
+.mailtest-log-step {
+    color: #334155;
+    font-size: 0.73rem;
+    font-weight: 800;
+}
+.mailtest-log-ms {
+    flex: 0 0 auto;
+    color: #94a3b8;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.67rem;
+}
+.mailtest-log-text {
+    margin-top: 2px;
+    color: #475569;
+    font-size: 0.74rem;
+    line-height: 1.45;
+    overflow-wrap: anywhere;
+}
+.mailtest-log-item.is-fail .mailtest-log-text {
+    color: #991b1b;
+}
+.mailtest-log-item.is-fail .mailtest-log-step {
+    color: #b91c1c;
+}
+.mailtest-error-state {
+    padding: 20px 16px;
+    color: #991b1b;
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    border-radius: 16px;
+    font-size: 0.86rem;
+    line-height: 1.55;
+}
+
+@media (max-width: 960px) {
+    .mailtest-layout {
+        grid-template-columns: 1fr;
+    }
+    .mailtest-field-grid {
+        grid-template-columns: 1fr;
+    }
+    .mailtest-field.fullwidth,
+    .mailtest-protocols.fullwidth {
+        grid-column: auto;
+    }
+}
+
+@media (max-width: 520px) {
+    .mailtest-panel {
+        padding: 18px;
+    }
+    .mailtest-protocol-fields {
+        grid-template-columns: 1fr;
+    }
+    .mailtest-port-security {
+        grid-template-columns: 90px minmax(0, 1fr);
+    }
+    .mailtest-password-row {
+        flex-wrap: wrap;
+    }
+    .mailtest-result-head {
+        flex-direction: column;
+    }
+    .mailtest-detail-row {
+        grid-template-columns: 82px minmax(0, 1fr);
+    }
+}

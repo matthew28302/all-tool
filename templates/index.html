@@ -12,7 +12,8 @@
 <noscript>
 <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@500;600;700;800&amp;family=JetBrains+Mono:wght@400;600&amp;display=swap" rel="stylesheet"/>
 </noscript>
-<link href="{{ url_for('static', filename='css/style.min.css') }}?v=1791998661" rel="stylesheet"/>
+<link href="{{ url_for('static', filename='css/style.min.css') }}?v=1792375351" rel="stylesheet"/>
+<link href="{{ url_for('static', filename='css/mailtest.css') }}?v=1792490002" rel="stylesheet"/>
 </head>
 <body>
 <div class="container">
@@ -33,6 +34,9 @@
             </button>
 <button aria-controls="tab-emailauth" aria-selected="false" class="tab-btn" data-tab="emailauth" id="tabbtn-emailauth" onclick="switchTab('emailauth')" role="tab" tabindex="-1">
 <span class="icon" data-lucide="mail-check"></span> Email Auth
+            </button>
+<button aria-controls="tab-mailtest" aria-selected="false" class="tab-btn" data-tab="mailtest" id="tabbtn-mailtest" onclick="switchTab('mailtest')" role="tab" tabindex="-1">
+<span class="icon" data-lucide="mail"></span> Mail Test
             </button>
 <div class="nav-divider"></div>
 <div class="nav-group-header">Công Cụ SSL</div>
@@ -64,6 +68,7 @@
 <!-- Host Check Tab -->
 {% include 'tabs/tab_hostcheck.html' %}
 {% include 'tabs/tab_emailauth.html' %}
+{% include 'tabs/tab_mailtest.html' %}
 <!-- SSL Decoder Tab -->
 {% include 'tabs/tab_ssldecoder.html' %}
 <!-- SSL Bundle Tool Tab -->
@@ -72,7 +77,9 @@
 {% include 'tabs/tab_freessl.html' %}
  
 </div>
-<script defer src="{{ url_for('static', filename='js/main.min.js') }}?v=1791998661"></script>
+<script defer src="{{ url_for('static', filename='js/main.min.js') }}?v=1792490006"></script>
+<script defer src="{{ url_for('static', filename='js/sslportcheck.js') }}?v=1792490005"></script>
+<script defer src="{{ url_for('static', filename='js/mailtest.js') }}?v=1792490002"></script>
 <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <script defer src="https://cdn.jsdelivr.net/npm/lucide@1.55.0/dist/umd/lucide.min.js" onload="lucide&&lucide.createIcons&&lucide.createIcons()"></script>
