@@ -1960,6 +1960,11 @@ def api_check_dns_history():
         return jsonify({"error": str(exc)}), 500
 
 
+@app.context_processor
+def inject_asset_version():
+    return {'asset_version': int(time.time())}
+
+
 @app.route('/')
 def index():
     # HTML luôn phải lấy bản mới nhất (static assets đã có ?v= cache-busting)

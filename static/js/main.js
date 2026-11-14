@@ -2793,10 +2793,10 @@
         // ========== Free SSL (ACME Providers) ==========
 
         // Safe fetch helper — trả về {ok, data, errorText}
-        async function freeSslFetch(url, body = null, method = 'POST') {
+        async function freeSslFetch(url, body = null, method = 'POST', silent = false) {
             const reqSummary = method + ' ' + url + (body && body.domain ? ` (domain: ${body.domain})` : '') + (body && body.session_id ? ` (sid: ${body.session_id.slice(0, 8)}...)` : '');
-            if (typeof freeSslAppendTerminal === 'function') {
-                freeSslAppendTerminal(`[REQ] ${reqSummary}`, 'req');
+            if (!silent && typeof window.freeSslAppendTerminal === 'function') {
+                window.freeSslAppendTerminal(`[REQ] ${reqSummary}`, 'req');
             }
             let resp;
             try {
@@ -2838,8 +2838,8 @@
                 }
                 return { ok: false, data, status, errorText: errText };
             }
-            if (typeof freeSslAppendTerminal === 'function') {
-                freeSslAppendTerminal(`[RES] ${method} ${url} -> HTTP ${status} OK`, 'req');
+            if (!silent && typeof window.freeSslAppendTerminal === 'function') {
+                window.freeSslAppendTerminal(`[RES] ${method} ${url} -> HTTP ${status} OK`, 'req');
             }
             return { ok: true, data, status, errorText: null };
         }
@@ -2901,14 +2901,14 @@
                 let data = null;
                 let isSessionLost = false;
                 if (freeSslSessionId) {
-                    const sessionResp = await freeSslFetch('/api/ssl-free/session/' + encodeURIComponent(freeSslSessionId) + '/status', null, 'GET');
+                    const sessionResp = await freeSslFetch('/api/ssl-free/session/' + encodeURIComponent(freeSslSessionId) + '/status', null, 'GET', true);
                     ok = sessionResp.ok;
                     data = sessionResp.data;
                     if (sessionResp.status === 404) isSessionLost = true;
                 }
 
                 if (!ok && freeSslStorageId) {
-                    const itemResp = await freeSslFetch('/api/ssl-free/item/' + encodeURIComponent(freeSslStorageId), null, 'GET');
+                    const itemResp = await freeSslFetch('/api/ssl-free/item/' + encodeURIComponent(freeSslStorageId), null, 'GET', true);
                     ok = itemResp.ok;
                     data = itemResp.data;
                 }
@@ -2968,7 +2968,7 @@
             freeSslStatusMonitorTimer = setInterval(doPoll, 2000);
         }
 
-        function freeSslAppendTerminal(message, type = 'info', timeStr = null) {
+        window.freeSslAppendTerminal = function(message, type = 'info', timeStr = null) {
             const termBody = document.getElementById('freesslTerminalBody');
             if (!termBody) return;
             const hint = termBody.querySelector('.empty-terminal-hint');
@@ -3014,7 +3014,7 @@
 
             const msgSpan = document.createElement('span');
             msgSpan.style.cssText = 'color: #f1f5f9; flex-grow: 1;';
-            msgSpan.textContent = message.replace(/^\[(REQ|RES|ERR|INFO|SUCCESS|WARN)\]\s*/i, '');
+            msgSpan.textContent = (message || '').replace(/^(\[(REQ|RES|ERR|INFO|SUCCESS|WARN|WAIT)\]\s*)+/gi, '');
 
             line.appendChild(timeSpan);
             line.appendChild(tagSpan);
@@ -3025,7 +3025,8 @@
                 termBody.removeChild(termBody.firstChild);
             }
             termBody.scrollTop = termBody.scrollHeight;
-        }
+        };
+        const freeSslAppendTerminal = window.freeSslAppendTerminal;
 
         window.freeSslCopyTerminalLogs = function() {
             const termBody = document.getElementById('freesslTerminalBody');
@@ -3654,9 +3655,12 @@
                 freeSslApplyProgressLogs(data.progress_logs || [], freeSslCurrentRunId);
 
                 if (Array.isArray(data.dns_cache_clear) && data.dns_cache_clear.length > 0) {
-                    data.dns_cache_clear.forEach(target => {
-                        const statusText = target.ok ? 'Đã xóa cache thành công' : 'Chưa cập nhật';
-                        freeSslAppendTerminal(`[INFO] DNS Resolver [${target.provider}]: ${statusText}`, target.ok ? 'info' : 'warn');
+                    data.dns_cache_clear.forEach(group => {
+                        const targets = Array.isArray(group.targets) ? group.targets : (group.provider ? [group] : []);
+                        targets.forEach(target => {
+                            const statusText = target.ok ? 'Đã làm mới (200 OK)' : 'Chưa cập nhật';
+                            window.freeSslAppendTerminal(`[INFO] Public DNS [${target.label || target.provider || 'DNS'}]: ${statusText}`, target.ok ? 'info' : 'warn');
+                        });
                     });
                 }
 
