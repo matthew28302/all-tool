@@ -3781,9 +3781,20 @@ def _get_acme_client(email: str, provider: str = 'letsencrypt') -> tuple:
             )
             new_reg_kwargs['external_account_binding'] = eab
 
-        regr = client.new_account(
-            acme_messages.NewRegistration.from_data(**new_reg_kwargs)
-        )
+        try:
+            regr = client.new_account(
+                acme_messages.NewRegistration.from_data(**new_reg_kwargs)
+            )
+        except acme_messages.Error as reg_err:
+            err_str = str(reg_err).lower()
+            if 'invalidcontact' in err_str or 'forbidden' in err_str or 'contact email' in err_str:
+                logger.warning(f"ACME email bị từ chối ({reg_err}), tự động fallback đăng ký tài khoản không kèm email.")
+                new_reg_kwargs.pop('email', None)
+                regr = client.new_account(
+                    acme_messages.NewRegistration.from_data(**new_reg_kwargs)
+                )
+            else:
+                raise
         _ACME_CACHED_ACCOUNTS[provider] = (account_key_pem_bytes, regr)
         return client, account_key_pem_bytes
 
@@ -5053,13 +5064,22 @@ def api_ssl_free_check_challenge():
             return jsonify({"error": "Session not found or expired"}), 404
 
         if sess.get('status') in ('processing', 'finalizing'):
-            return jsonify({
-                "status": sess.get('status'),
-                "message": "Session đang xử lý ở background.",
-                "domains": sess.get('domains', []),
-                "progress_logs": sess.get('progress_logs', []),
-                "current_run_id": sess.get('current_run_id'),
-            }), 200
+            now_ts = time.time()
+            last_ts = float(sess.get('last_check_start_ts', 0) or 0)
+            # Tự động mở khóa nếu kẹt processing quá 75 giây
+            if last_ts > 0 and (now_ts - last_ts > 75):
+                logger.warning(f"Session {session_id} kẹt processing quá 75s, tự động mở khóa về pending.")
+                _set_session_status(session_id, 'pending')
+                sess['status'] = 'pending'
+            else:
+                return jsonify({
+                    "status": sess.get('status'),
+                    "message": "Session đang xử lý ở background. Vui lòng chờ vài giây...",
+                    "results": [],
+                    "domains": sess.get('domains', []),
+                    "progress_logs": sess.get('progress_logs', []),
+                    "current_run_id": sess.get('current_run_id'),
+                }), 200
 
         new_run_id = _gen_run_id('verify')
         with _ssl_sessions_lock:
@@ -5071,6 +5091,9 @@ def api_ssl_free_check_challenge():
         results = []
         dns_cache_clear_results = []
 
+        with _ssl_sessions_lock:
+            if session_id in _ssl_sessions:
+                _ssl_sessions[session_id]['last_check_start_ts'] = time.time()
         _set_session_status(session_id, 'processing')
         _append_session_log(session_id, 'Đang pre-check bản ghi xác thực...', 'loading')
         _patch_issued_ssl_record_by_session(session_id, {

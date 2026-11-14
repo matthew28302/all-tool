@@ -148,6 +148,27 @@
 <p id="freesslLoadingText">Đang xử lý...</p>
 </div>
 <div class="message" id="freesslMessage"></div>
+<!-- Live Terminal Console -->
+<div class="freessl-terminal-container" id="freesslTerminalContainer">
+    <div class="freessl-terminal-header">
+        <div class="terminal-dots">
+            <span class="dot dot-red"></span>
+            <span class="dot dot-yellow"></span>
+            <span class="dot dot-green"></span>
+        </div>
+        <div class="terminal-title">
+            <span class="icon" data-lucide="terminal"></span> Live ACME Terminal &amp; Request Logs
+        </div>
+        <div class="terminal-actions">
+            <button class="terminal-btn" onclick="freeSslCopyTerminalLogs()" title="Copy toàn bộ log">📋 Copy Log</button>
+            <button class="terminal-btn" onclick="freeSslClearTerminalLogs()" title="Xóa màn hình log">🧹 Clear</button>
+        </div>
+    </div>
+    <div class="freessl-terminal-body" id="freesslTerminalBody">
+        <div class="terminal-line"><span class="t-time">--:--:--</span><span class="t-tag tag-info">[SYS]</span><span class="t-msg">ACME Live Terminal sẵn sàng. Các request HTTP, DNS pre-check và phản hồi từ Let's Encrypt / ZeroSSL sẽ hiển thị tại đây.</span></div>
+    </div>
+</div>
+
 <!-- Step 5: Result -->
 <div class="freessl-result-area" id="freesslResultArea">
 <div class="freessl-cert-box">

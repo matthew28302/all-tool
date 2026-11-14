@@ -2794,6 +2794,10 @@
 
         // Safe fetch helper — trả về {ok, data, errorText}
         async function freeSslFetch(url, body = null, method = 'POST') {
+            const reqSummary = method + ' ' + url + (body && body.domain ? ` (domain: ${body.domain})` : '') + (body && body.session_id ? ` (sid: ${body.session_id.slice(0, 8)}...)` : '');
+            if (typeof freeSslAppendTerminal === 'function') {
+                freeSslAppendTerminal(`[REQ] ${reqSummary}`, 'req');
+            }
             let resp;
             try {
                 const options = { method, headers: {} };
@@ -2803,23 +2807,39 @@
                 }
                 resp = await fetch(url, options);
             } catch (networkErr) {
-                return { ok: false, data: null, status: 0, errorText: 'Không kết nối được tới server. Hãy đảm bảo server đang chạy. (' + networkErr.message + ')' };
+                const errMsg = 'Không kết nối được tới server. Hãy đảm bảo server đang chạy. (' + networkErr.message + ')';
+                if (typeof freeSslAppendTerminal === 'function') {
+                    freeSslAppendTerminal(`[ERR] ${method} ${url} -> Network Failure: ${networkErr.message}`, 'error');
+                }
+                return { ok: false, data: null, status: 0, errorText: errMsg };
             }
             const status = resp.status || 0;
             const text = await resp.text();
             if (!text || !text.trim().startsWith('{')) {
-                // Server trả về HTML thay vì JSON — thường do server chưa restart
                 const hint = !resp.ok
                     ? `Server trả về HTTP ${resp.status}. Hãy restart server Flask rồi thử lại.`
                     : 'Server trả về nội dung không hợp lệ. Hãy restart server Flask.';
+                if (typeof freeSslAppendTerminal === 'function') {
+                    freeSslAppendTerminal(`[ERR] ${method} ${url} -> HTTP ${status} (Non-JSON response)`, 'error');
+                }
                 return { ok: false, data: null, status, errorText: hint };
             }
             let data;
             try { data = JSON.parse(text); } catch (e) {
+                if (typeof freeSslAppendTerminal === 'function') {
+                    freeSslAppendTerminal(`[ERR] ${method} ${url} -> JSON parse error: ${e.message}`, 'error');
+                }
                 return { ok: false, data: null, status, errorText: 'JSON parse error: ' + e.message };
             }
             if (!resp.ok || data.error) {
-                return { ok: false, data, status, errorText: data.error || `HTTP ${resp.status}` };
+                const errText = data.error || `HTTP ${resp.status}`;
+                if (typeof freeSslAppendTerminal === 'function') {
+                    freeSslAppendTerminal(`[ERR] ${method} ${url} -> HTTP ${status}: ${errText}`, 'error');
+                }
+                return { ok: false, data, status, errorText: errText };
+            }
+            if (typeof freeSslAppendTerminal === 'function') {
+                freeSslAppendTerminal(`[RES] ${method} ${url} -> HTTP ${status} OK`, 'req');
             }
             return { ok: true, data, status, errorText: null };
         }
@@ -2954,15 +2974,101 @@
             freeSslStatusMonitorTimer = setInterval(doPoll, 2000);
         }
 
+        function freeSslAppendTerminal(message, type = 'info', timeStr = null) {
+            const termBody = document.getElementById('freesslTerminalBody');
+            if (!termBody) return;
+            const now = new Date();
+            const time = timeStr || now.toTimeString().split(' ')[0];
+            const line = document.createElement('div');
+            line.className = 'terminal-line';
+
+            let tagClass = 'tag-info';
+            let tagText = '[INFO]';
+            const lower = (type || '').toLowerCase();
+            const msgLower = (message || '').toLowerCase();
+
+            if (lower === 'error' || msgLower.includes('lỗi') || msgLower.includes('fail') || msgLower.includes('error')) {
+                tagClass = 'tag-error';
+                tagText = '[ERROR]';
+            } else if (lower === 'success' || msgLower.includes('thành công') || msgLower.includes('passed') || msgLower.includes('cấp cert') || msgLower.includes('hợp lệ')) {
+                tagClass = 'tag-success';
+                tagText = '[SUCCESS]';
+            } else if (lower === 'loading' || lower === 'warn' || msgLower.includes('đang') || msgLower.includes('chờ') || msgLower.includes('retry')) {
+                tagClass = 'tag-warning';
+                tagText = '[WAIT]';
+            } else if (lower === 'req' || msgLower.startsWith('[req]') || msgLower.startsWith('[res]')) {
+                tagClass = 'tag-req';
+                tagText = msgLower.startsWith('[res]') ? '[RES]' : '[REQ]';
+            }
+
+            const timeSpan = document.createElement('span');
+            timeSpan.className = 't-time';
+            timeSpan.textContent = time;
+
+            const tagSpan = document.createElement('span');
+            tagSpan.className = 't-tag ' + tagClass;
+            tagSpan.textContent = tagText;
+
+            const msgSpan = document.createElement('span');
+            msgSpan.className = 't-msg';
+            msgSpan.textContent = message.replace(/^\[(REQ|RES|ERR|INFO|SUCCESS|WARN)\]\s*/i, '');
+
+            line.appendChild(timeSpan);
+            line.appendChild(tagSpan);
+            line.appendChild(msgSpan);
+
+            termBody.appendChild(line);
+            while (termBody.children.length > 500) {
+                termBody.removeChild(termBody.firstChild);
+            }
+            termBody.scrollTop = termBody.scrollHeight;
+        }
+
+        window.freeSslCopyTerminalLogs = function() {
+            const termBody = document.getElementById('freesslTerminalBody');
+            if (!termBody) return;
+            const lines = Array.from(termBody.querySelectorAll('.terminal-line')).map(l => l.textContent.trim());
+            const text = lines.join('\n');
+            if (!text) return;
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text).then(() => {
+                    freeSslShowMessage('Đã copy toàn bộ Live Terminal Log!', 'info');
+                }).catch(() => {
+                    alert('Đã copy: \n' + text);
+                });
+            } else {
+                const ta = document.createElement('textarea');
+                ta.value = text;
+                document.body.appendChild(ta);
+                ta.select();
+                document.execCommand('copy');
+                document.body.removeChild(ta);
+                freeSslShowMessage('Đã copy toàn bộ Live Terminal Log!', 'info');
+            }
+        };
+
+        window.freeSslClearTerminalLogs = function() {
+            const termBody = document.getElementById('freesslTerminalBody');
+            if (!termBody) return;
+            termBody.innerHTML = '';
+            freeSslAppendTerminal('ACME Live Terminal đã được dọn sạch.', 'info');
+        };
+
         function freeSslClearLog() {
             const box = document.getElementById('freesslLogBox');
-            if (!box) return;
-            box.style.display = 'none';
-            box.innerHTML = '';
+            if (box) {
+                box.style.display = 'none';
+                box.innerHTML = '';
+            }
             freeSslLogCursor = 0;
+            const termBody = document.getElementById('freesslTerminalBody');
+            if (termBody && termBody.children.length > 200) {
+                freeSslClearTerminalLogs();
+            }
         }
 
         function freeSslLog(message, type = 'info') {
+            freeSslAppendTerminal(message, type);
             const box = document.getElementById('freesslLogBox');
             if (!box) return;
             box.style.display = 'block';
@@ -2970,12 +3076,9 @@
             row.className = 'freessl-log-row ' + type;
             row.textContent = message;
             box.appendChild(row);
-            // Giữ tối đa 300 dòng để DOM không phình khi order chạy lâu
             while (box.children.length > 300) {
                 box.removeChild(box.firstChild);
             }
-            // Chỉ cuộn hộp log bên trong; KHÔNG scrollIntoView toàn trang
-            // (scroll mượt mỗi dòng log sẽ giật/giành cuộn với tay người dùng)
             box.scrollTop = box.scrollHeight;
         }
 
@@ -3495,16 +3598,23 @@
             container.innerHTML = html;
         }
 
-        async function freeSslCheck() {
+        async function freeSslCheck(isForce = false) {
             if (!freeSslSessionId) {
                 freeSslLog('Chưa có session. Hãy bắt đầu lại.', 'error');
                 freeSslShowMessage('Chưa có session. Hãy bắt đầu lại.', 'error');
                 return;
             }
-            if (freeSslStatus === 'processing' || freeSslStatus === 'finalizing' || freeSslStatus === 'issued') {
-                freeSslLog('Session đang xử lý, vui lòng chờ...', 'info');
-                return;
+            const now = Date.now();
+            if (!isForce && (freeSslStatus === 'processing' || freeSslStatus === 'finalizing' || freeSslStatus === 'issued')) {
+                if (!window._freeSslLastCheckClick || (now - window._freeSslLastCheckClick > 8000)) {
+                    window._freeSslLastCheckClick = now;
+                    freeSslLog('Đang thử kiểm tra lại trạng thái xác thực...', 'loading');
+                } else {
+                    freeSslLog('Session đang xử lý, vui lòng chờ thêm ít giây trước khi bấm lại...', 'info');
+                    return;
+                }
             }
+            window._freeSslLastCheckClick = now;
             freeSslClearLog();
             freeSslLog('Đang refresh DNS cache công cộng và kiểm tra DNS pre-check...', 'loading');
             freeSslSetStep(3);
@@ -3526,17 +3636,22 @@
                     freeSslLog('Đã gửi yêu cầu refresh DNS cache tới Google/Cloudflare/OpenDNS/Quad9', 'success');
                 }
 
+                const results = Array.isArray(data.results) ? data.results : [];
                 let html = '';
                 let okCount = 0;
-                data.results.forEach(r => {
+                results.forEach(r => {
                     if (r.ok) okCount += 1;
                     html += `<div class="check-result-row ${r.ok ? 'ok' : 'fail'}">
                         <div><strong>${escapeHtml(r.domain || '')}</strong><br><span class="small-line">${escapeHtml(r.detail || '')}</span></div>
                     </div>`;
                 });
-                document.getElementById('freesslCheckResults').innerHTML = html;
-                freeSslDomainProgressHtml = html;
-                freeSslLog(`Kết quả pre-check: ${okCount}/${data.results.length} bản ghi hợp lệ`, data.all_ok ? 'success' : 'info');
+                if (results.length > 0) {
+                    document.getElementById('freesslCheckResults').innerHTML = html;
+                    freeSslDomainProgressHtml = html;
+                    freeSslLog(`Kết quả pre-check: ${okCount}/${results.length} bản ghi hợp lệ`, data.all_ok ? 'success' : 'info');
+                } else if (data.message) {
+                    freeSslLog(data.message, 'info');
+                }
 
                 if (data.status === 'invalid') {
                     freeSslSetActionState('invalid');
