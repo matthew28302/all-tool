@@ -3713,8 +3713,8 @@ def _pg_set(key: str, value: str) -> bool:
 
 # In-memory session store  { session_id -> {...} }
 _ssl_sessions: Dict[str, dict] = {}
-_ssl_sessions_lock = threading.Lock()
-_issued_ssl_store_lock = threading.Lock()
+_ssl_sessions_lock = threading.RLock()
+_issued_ssl_store_lock = threading.RLock()
 _acme_worker_pool = ThreadPoolExecutor(max_workers=10)
 
 SSL_SESSION_TTL_SECONDS = 7 * 24 * 60 * 60  # 7 ngày (thời hạn tối đa của ACME Order RFC 8555)

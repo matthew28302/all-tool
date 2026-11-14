@@ -2874,21 +2874,15 @@
 
         function freeSslApplyProgressLogs(logs, runId = null) {
             if (!Array.isArray(logs)) return;
-            if (runId && runId !== freeSslCurrentRunId) {
-                freeSslCurrentRunId = runId;
-                freeSslClearLog();
-            }
-            const targetRunId = freeSslCurrentRunId || runId;
-            const filtered = targetRunId ? logs.filter(x => (x && x.run_id) === targetRunId) : logs;
-            if (filtered.length < freeSslLogCursor) freeSslLogCursor = 0;
-            for (let i = freeSslLogCursor; i < filtered.length; i++) {
-                const entry = filtered[i] || {};
+            if (logs.length < freeSslLogCursor) freeSslLogCursor = 0;
+            for (let i = freeSslLogCursor; i < logs.length; i++) {
+                const entry = logs[i] || {};
                 const lv = (entry.level || 'info').toLowerCase();
                 const type = lv === 'error' ? 'error' : (lv === 'success' ? 'success' : (lv === 'loading' ? 'loading' : 'info'));
-                const line = `[${entry.time || '...'}] ${entry.message || ''}`;
-                freeSslLog(line, type);
+                const timeStr = entry.time ? (entry.time.split(' ')[1] || entry.time) : null;
+                freeSslAppendTerminal(entry.message || '', type, timeStr);
             }
-            freeSslLogCursor = filtered.length;
+            freeSslLogCursor = logs.length;
         }
 
         function freeSslStopStatusMonitor() {
@@ -3157,6 +3151,12 @@
             freeSslApplyStoredItem(data);
             const statusText = data.status === 'issued' ? 'đã cấp' : 'đang xử lý';
             freeSslShowMessage('Đã khôi phục SSL ' + statusText + ' sau khi tải lại trang.', 'info');
+            freeSslAppendTerminal(`[INFO] Đã khôi phục phiên SSL: ${data.domain || ''} (Trạng thái: ${data.status || 'pending'})`, 'info');
+            if (Array.isArray(data.challenges) && data.challenges.length > 0) {
+                data.challenges.forEach((ch, idx) => {
+                    freeSslAppendTerminal(`[INFO] Bản ghi DNS TXT [${idx + 1}]: ${ch.dns_name} = "${ch.dns_value}"`, 'info');
+                });
+            }
         }
 
         function freeSslGetFocusableElements(container) {
@@ -3506,8 +3506,9 @@
             }
 
             freeSslShowMessage('', '');
-            freeSslClearLog();
-            freeSslLog('Đang tạo order ACME...', 'loading');
+            freeSslAppendTerminal(`[REQ] Bắt đầu khởi tạo đơn hàng SSL cho: ${domain}`, 'req');
+            freeSslAppendTerminal(`[INFO] Nhà cung cấp: ${freeSslProvider} | Thử thách: ${freeSslChallengeType}`, 'info');
+            freeSslAppendTerminal(`[WAIT] Đang sinh cặp khóa riêng RSA 2048-bit và gửi ACME Order...`, 'loading');
             freeSslSetLoading(true, '⏳ Đang tạo RSA Key + CSR và gửi ACME Order...');
             document.getElementById('freesslStartBtn').disabled = true;
             document.getElementById('freesslChallengeCard').style.display = 'none';
@@ -3533,8 +3534,12 @@
                 document.getElementById('freesslFinalizeCard').style.display = 'none';
                 freeSslSetStep(2);
                 freeSslSetActionState('pending');
-                freeSslLog('Đơn hàng ACME đã được tạo thành công trên ' + freeSslProvider, 'success');
-                freeSslLog('Vui lòng thêm các bản ghi DNS TXT vào trang quản lý DNS của tên miền.', 'info');
+                freeSslAppendTerminal(`[SUCCESS] Đơn hàng ACME đã được tạo thành công trên ${freeSslProvider}!`, 'success');
+                (data.challenges || []).forEach((ch, idx) => {
+                    freeSslAppendTerminal(`[INFO] Thử thách [${idx + 1}]: ${ch.domain} -> Cần bản ghi TXT: ${ch.dns_name}`, 'info');
+                    freeSslAppendTerminal(`[INFO] Giá trị TXT: "${ch.dns_value}"`, 'info');
+                });
+                freeSslAppendTerminal(`[WAIT] Vui lòng cập nhật DNS với giá trị trên và bấm 'Kiểm tra xác thực (Pre-check)'`, 'loading');
                 freeSslShowMessage('Order đã tạo! Hãy thực hiện cấu hình xác thực bên dưới.', 'success');
             } catch (err) {
                 freeSslLog(err.message, 'error');
@@ -3631,8 +3636,8 @@
                 }
             }
             window._freeSslLastCheckClick = now;
-            freeSslClearLog();
-            freeSslLog('Đang refresh DNS cache công cộng và kiểm tra DNS pre-check...', 'loading');
+            freeSslAppendTerminal(`[REQ] Bắt đầu bước 3: Kiểm tra xác thực (Pre-check) DNS...`, 'req');
+            freeSslAppendTerminal(`[INFO] Đang gửi yêu cầu làm mới DNS Cache tới Google (8.8.8.8) và Cloudflare (1.1.1.1)...`, 'info');
             freeSslSetStep(3);
             freeSslSetActionState('processing');
 
@@ -3649,7 +3654,10 @@
                 freeSslApplyProgressLogs(data.progress_logs || [], freeSslCurrentRunId);
 
                 if (Array.isArray(data.dns_cache_clear) && data.dns_cache_clear.length > 0) {
-                    freeSslLog('Đã gửi yêu cầu refresh DNS cache tới Google/Cloudflare/OpenDNS/Quad9', 'success');
+                    data.dns_cache_clear.forEach(target => {
+                        const statusText = target.ok ? 'Đã xóa cache thành công' : 'Chưa cập nhật';
+                        freeSslAppendTerminal(`[INFO] DNS Resolver [${target.provider}]: ${statusText}`, target.ok ? 'info' : 'warn');
+                    });
                 }
 
                 const results = Array.isArray(data.results) ? data.results : [];
@@ -3664,9 +3672,18 @@
                 if (results.length > 0) {
                     document.getElementById('freesslCheckResults').innerHTML = html;
                     freeSslDomainProgressHtml = html;
-                    freeSslLog(`Kết quả pre-check: ${okCount}/${results.length} bản ghi hợp lệ`, data.all_ok ? 'success' : 'info');
+                    results.forEach(r => {
+                        const tag = r.ok ? 'success' : 'error';
+                        freeSslAppendTerminal(`[${r.ok ? 'SUCCESS' : 'WAIT'}] ${r.domain}: ${r.detail}`, tag);
+                    });
+                    if (data.all_ok) {
+                        freeSslAppendTerminal(`[SUCCESS] Tất cả bản ghi DNS TXT đã khớp! Đang gửi tín hiệu Answer Challenge tới ACME Server...`, 'success');
+                        freeSslAppendTerminal(`[WAIT] Đang chờ ACME Server xác nhận Authorization...`, 'loading');
+                    } else {
+                        freeSslAppendTerminal(`[WAIT] Còn bản ghi chưa lan truyền tới DNS công cộng (${okCount}/${results.length}). Vui lòng chờ 1-2 phút rồi bấm lại Pre-check.`, 'warning');
+                    }
                 } else if (data.message) {
-                    freeSslLog(data.message, 'info');
+                    freeSslAppendTerminal(`[INFO] ${data.message}`, 'info');
                 }
 
                 if (data.status === 'invalid') {
@@ -3723,8 +3740,8 @@
                 freeSslLog('Chưa có session để finalize', 'error');
                 return;
             }
-            freeSslClearLog();
-            freeSslLog('Đang finalize order...', 'loading');
+            freeSslAppendTerminal(`[REQ] Bước 4: Gửi yêu cầu ký và phát hành chứng chỉ (Finalize Order)...`, 'req');
+            freeSslAppendTerminal(`[WAIT] Đang chờ CA phát hành chứng chỉ và thu thập Certificate Bundle...`, 'loading');
             freeSslSetLoading(true, '🔐 Đang yêu cầu Let\'s Encrypt xác thực & cấp chứng chỉ...');
             document.getElementById('freesslFinalizeBtn').disabled = true;
             freeSslSetStep(4);
@@ -3754,7 +3771,9 @@
                 document.getElementById('freesslFinalizeCard').style.display = 'none';
                 freeSslSetStep(5);
                 freeSslSetActionState('issued');
-                freeSslLog('Finalize thành công và đã tải cert', 'success');
+                freeSslAppendTerminal(`[SUCCESS] 🎉 CHỨNG CHỈ SSL ĐÃ ĐƯỢC CẤP THÀNH CÔNG! Hạn dùng 90 ngày.`, 'success');
+                freeSslAppendTerminal(`[INFO] Đã sẵn sàng: Certificate (CRT), Private Key (KEY), CA Bundle và Full Chain.`, 'success');
+                freeSslAppendTerminal(`[INFO] Bạn có thể bấm 'Tải Tất Cả (ZIP)' hoặc 'Lưu vào Desktop/ssl'.`, 'info');
                 freeSslShowMessage('Chứng chỉ SSL đã được cấp thành công! Có hiệu lực 90 ngày.', 'success');
                 await freeSslLoadStoredList();
             } catch (err) {
