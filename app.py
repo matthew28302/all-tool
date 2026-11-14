@@ -3741,22 +3741,61 @@ _ACME_ACCOUNT_LOCK = threading.RLock()
 _ACME_ACCOUNTS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'acme', 'acme_accounts.json')
 
 
-def _load_persisted_acme_accounts():
-    if not os.path.exists(_ACME_ACCOUNTS_FILE):
-        return
-    try:
-        with open(_ACME_ACCOUNTS_FILE, 'r', encoding='utf-8') as f:
-            data = json.load(f)
-        with _ACME_ACCOUNT_LOCK:
-            for prov, acc_info in data.items():
-                if prov not in _ACME_CACHED_ACCOUNTS and isinstance(acc_info, dict):
-                    k_pem = acc_info.get('account_key_pem', '').encode('utf-8')
-                    regr_data = acc_info.get('regr')
-                    if k_pem and regr_data:
+_ACME_DIRECTORY_CACHE: Dict[str, tuple] = {}
+_ACME_DIRECTORY_TTL = 3600 * 12
+
+def _get_cached_directory(net, directory_url: str, provider: str):
+    now = time.time()
+    with _ACME_ACCOUNT_LOCK:
+        if provider in _ACME_DIRECTORY_CACHE:
+            d_obj, ts = _ACME_DIRECTORY_CACHE[provider]
+            if now - ts < _ACME_DIRECTORY_TTL:
+                return d_obj
+    d_json = net.get(directory_url).json()
+    d_obj = acme_messages.Directory.from_json(d_json)
+    with _ACME_ACCOUNT_LOCK:
+        _ACME_DIRECTORY_CACHE[provider] = (d_obj, now)
+    return d_obj
+
+def _apply_acme_accounts_dict(data: dict):
+    with _ACME_ACCOUNT_LOCK:
+        for prov, acc_info in data.items():
+            if prov not in _ACME_CACHED_ACCOUNTS and isinstance(acc_info, dict):
+                k_pem = acc_info.get('account_key_pem', '').encode('utf-8')
+                regr_data = acc_info.get('regr')
+                if k_pem and regr_data:
+                    try:
                         regr = acme_messages.RegistrationResource.from_json(regr_data)
                         _ACME_CACHED_ACCOUNTS[prov] = (k_pem, regr)
-    except Exception as e:
-        logger.warning(f"Không thể đọc {_ACME_ACCOUNTS_FILE}: {e}")
+                    except Exception as err:
+                        logger.warning(f"Lỗi parse regr {prov}: {err}")
+
+def _load_persisted_acme_accounts():
+    loaded = False
+    if os.path.exists(_ACME_ACCOUNTS_FILE):
+        try:
+            with open(_ACME_ACCOUNTS_FILE, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            _apply_acme_accounts_dict(data)
+            loaded = True
+        except Exception as e:
+            logger.warning(f"Không thể đọc {_ACME_ACCOUNTS_FILE}: {e}")
+
+    # Fallback đọc từ Postgres (Render cloud / ephemeral container)
+    if not loaded and DATABASE_URL:
+        try:
+            raw = _pg_get('acme_accounts_v1')
+            if raw and raw.strip():
+                data = json.loads(raw)
+                _apply_acme_accounts_dict(data)
+                try:
+                    os.makedirs(os.path.dirname(_ACME_ACCOUNTS_FILE), exist_ok=True)
+                    with open(_ACME_ACCOUNTS_FILE, 'w', encoding='utf-8') as f:
+                        f.write(raw)
+                except Exception:
+                    pass
+        except Exception as e:
+            logger.warning(f"Không thể tải acme_accounts từ Postgres: {e}")
 
 
 def _save_persisted_acme_accounts():
@@ -3769,8 +3808,16 @@ def _save_persisted_acme_accounts():
                     "account_key_pem": k_pem.decode('utf-8') if isinstance(k_pem, bytes) else str(k_pem),
                     "regr": regr.to_json(),
                 }
+        raw_json = json.dumps(dump_data, indent=2)
         with open(_ACME_ACCOUNTS_FILE, 'w', encoding='utf-8') as f:
-            json.dump(dump_data, f, indent=2)
+            f.write(raw_json)
+
+        # Lưu đồng bộ vào Postgres nếu đang chạy trên cloud (Render/Heroku)
+        if DATABASE_URL:
+            try:
+                _pg_set('acme_accounts_v1', raw_json)
+            except Exception as e:
+                logger.warning(f"Không thể lưu acme_accounts vào Postgres: {e}")
     except Exception as e:
         logger.warning(f"Không thể ghi {_ACME_ACCOUNTS_FILE}: {e}")
 
@@ -3789,14 +3836,14 @@ def _get_acme_client(email: str, provider: str = 'letsencrypt') -> tuple:
             account_key = jose.JWKRSA.load(account_key_pem_bytes)
             net = acme_client.ClientNetwork(account_key, user_agent="SSLTool/1.0", verify_ssl=True)
             net.account = cached_regr
-            directory = acme_messages.Directory.from_json(net.get(directory_url).json())
+            directory = _get_cached_directory(net, directory_url, provider)
             client = acme_client.ClientV2(directory, net)
             return client, account_key_pem_bytes
 
         account_key_pem_bytes = _generate_rsa_private_key_pem(2048)
         account_key = jose.JWKRSA.load(account_key_pem_bytes)
         net = acme_client.ClientNetwork(account_key, user_agent="SSLTool/1.0", verify_ssl=True)
-        directory = acme_messages.Directory.from_json(net.get(directory_url).json())
+        directory = _get_cached_directory(net, directory_url, provider)
         client = acme_client.ClientV2(directory, net)
 
         # Build registration kwargs
@@ -3847,7 +3894,19 @@ def _get_acme_client(email: str, provider: str = 'letsencrypt') -> tuple:
         return client, account_key_pem_bytes
 
 
-def _generate_rsa_private_key_pem(key_size: int = 2048) -> bytes:
+import queue
+
+_PREWARMED_RSA_KEYS = queue.Queue(maxsize=3)
+
+def _prewarm_key_worker():
+    while _PREWARMED_RSA_KEYS.qsize() < 2:
+        try:
+            k = _raw_generate_rsa_private_key_pem(2048)
+            _PREWARMED_RSA_KEYS.put_nowait(k)
+        except Exception:
+            break
+
+def _raw_generate_rsa_private_key_pem(key_size: int = 2048) -> bytes:
     private_key = rsa.generate_private_key(
         public_exponent=65537,
         key_size=key_size,
@@ -3858,6 +3917,25 @@ def _generate_rsa_private_key_pem(key_size: int = 2048) -> bytes:
         format=serialization.PrivateFormat.TraditionalOpenSSL,
         encryption_algorithm=serialization.NoEncryption()
     )
+
+try:
+    _acme_worker_pool.submit(_prewarm_key_worker)
+except Exception:
+    pass
+
+
+def _generate_rsa_private_key_pem(key_size: int = 2048) -> bytes:
+    """Trả về RSA Private Key PEM siêu tốc nhờ hàng đợi pre-warmed keys."""
+    if key_size == 2048:
+        try:
+            key = _PREWARMED_RSA_KEYS.get_nowait()
+            if '_acme_worker_pool' in globals():
+                _acme_worker_pool.submit(_prewarm_key_worker)
+            return key
+        except queue.Empty:
+            if '_acme_worker_pool' in globals():
+                _acme_worker_pool.submit(_prewarm_key_worker)
+    return _raw_generate_rsa_private_key_pem(key_size)
 
 
 def _generate_csr_pem(domain: str, sans: list, private_key_pem: bytes) -> bytes:
@@ -4360,21 +4438,53 @@ def _map_acme_error_message(acme_error: dict) -> str:
 
 def _resolve_caa_records(domain: str) -> List[str]:
     records: List[str] = []
-    for resolver_ip in ('8.8.8.8', '1.1.1.1'):
-        try:
-            resolver = dns.resolver.Resolver(configure=False)
-            resolver.cache = None
-            resolver.nameservers = [resolver_ip]
-            resolver.timeout = 1.2
-            resolver.lifetime = 1.2
-            answers = resolver.resolve(domain, 'CAA')
-            for rdata in answers:
-                records.append(str(rdata))
-            break
-        except (dns.resolver.NoAnswer, dns.resolver.NXDOMAIN):
-            break
-        except Exception:
-            continue
+    # 1. Thử local resolver trước (cực nhanh nếu có DNS cục bộ)
+    try:
+        resolver = dns.resolver.Resolver()
+        resolver.timeout = 0.3
+        resolver.lifetime = 0.4
+        answers = resolver.resolve(domain, 'CAA')
+        for rdata in answers:
+            records.append(str(rdata))
+        if records:
+            return list(dict.fromkeys(records))
+    except (dns.resolver.NoAnswer, dns.resolver.NXDOMAIN):
+        return []
+    except Exception:
+        pass
+
+    # 2. DoH qua Google DNS (HTTPS port 443 — 100% không bị chặn port 53 UDP trên cloud/Render)
+    try:
+        resp = _DOH_HTTP.get(
+            "https://dns.google/resolve",
+            params={"name": domain, "type": "CAA"},
+            timeout=0.6
+        )
+        if resp.status_code == 200:
+            data = resp.json()
+            for ans in data.get("Answer", []):
+                if ans.get("type") == 257 or ans.get("name"):
+                    data_val = str(ans.get("data", ""))
+                    if data_val:
+                        records.append(data_val)
+            if records:
+                return list(dict.fromkeys(records))
+    except Exception:
+        pass
+
+    # 3. Fallback UDP 8.8.8.8 với timeout 0.3s
+    try:
+        resolver = dns.resolver.Resolver(configure=False)
+        resolver.cache = None
+        resolver.nameservers = ['8.8.8.8']
+        resolver.timeout = 0.3
+        resolver.lifetime = 0.4
+        answers = resolver.resolve(domain, 'CAA')
+        for rdata in answers:
+            records.append(str(rdata))
+    except Exception:
+        pass
+
     return list(dict.fromkeys(records))
 
 
@@ -4461,7 +4571,7 @@ def _get_or_restore_ssl_session(session_id: str) -> Optional[dict]:
             cached = _ACME_CACHED_ACCOUNTS.get(provider)
             if cached:
                 net.account = cached[1]
-        directory = acme_messages.Directory.from_json(net.get(directory_url).json())
+        directory = _get_cached_directory(net, directory_url, provider)
         acme_cl = acme_client.ClientV2(directory, net)
 
         order = None
@@ -5057,16 +5167,17 @@ def api_ssl_free_start():
                 "current_run_id": _gen_run_id('init'),
             }
 
-        with _ssl_sessions_lock:
-            pending_sess = _ssl_sessions.get(session_id)
-
-        _append_session_log(session_id, 'Order ACME đã tạo. Vui lòng thêm bản ghi xác thực.', 'success', force_sync=True)
-
-        pending_record = _upsert_issued_ssl_record(_build_pending_ssl_record(pending_sess, session_id))
-
+        storage_id = _gen_session_id()
         with _ssl_sessions_lock:
             if session_id in _ssl_sessions:
-                _ssl_sessions[session_id]['storage_id'] = pending_record.get('id')
+                _ssl_sessions[session_id]['storage_id'] = storage_id
+            pending_sess = _ssl_sessions.get(session_id)
+
+        pending_record = _build_pending_ssl_record(pending_sess, session_id)
+        pending_record['id'] = storage_id
+        _acme_worker_pool.submit(_upsert_issued_ssl_record, pending_record)
+
+        _append_session_log(session_id, 'Order ACME đã tạo. Vui lòng thêm bản ghi xác thực.', 'success', force_sync=False)
 
         return jsonify({
             "session_id": session_id,

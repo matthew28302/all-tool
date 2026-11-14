@@ -1,0 +1,18 @@
+{
+  "letsencrypt": {
+    "account_key_pem": "-----BEGIN RSA PRIVATE KEY-----\nMIIEowIBAAKCAQEAxH7iCGRpmb4N1T8l3V0irhvE8TZf7NvgusgZ0g50e1nWk9kZ\nj4jei7VhWUcbltPIPCwK0U1FmUNWTz083OXb8hlgVQSINpsdK/6WS3Q9ThCKjJGN\n9hMpggrvMYwI2cWwI8whbLB0ZWHnrsU0xnK1INeCpZSAjDDbG4AIUkvwWy32ABdn\nBK/o3hY7K+aPO1X7X7zX4wAXj34vIjtSxSoyCWirOp6Fqi6EXZcFFS8pEeLZ+DKc\nUQXYRdL626XJx7g0Rvwk1tNKrA4nj+B+6s1YxQtgI5KOHB6FAo2ciCfBFxamqb+l\nm3sSp38g+TmJdntmdQ08d6Q+Bf4JNNzwO5llSQIDAQABAoIBACPq249UJ3dqZaXq\ntpWpnhq8SbobydoGcSRDSnD6onEfwVjiMMlrZ96ax5IlrNXbnXjeRhXvLX8v71lp\npLPuMk+lMtYnj2yH2wO9NCTTuRcJcAH040GtTAOQ0xs38TA5chKBEEUJViVoCY0J\nUDXMJu67Zg61P/AgSBTVSPAeIG/R+rh3QGz5sHMNhEObn9catT32L/OgXAapRJGK\nUi1PVllGXNFJTtygz/y+OPD9WMPh7cOmMLstODBTUSIjL+h2wNrAI6e46jU7U989\n5WA4foGZrj8AAgpAwIRVaG49eOfbZBLOZQLXfWvsBqdKS4PShQNtZ483dtQnVdll\nH23NZdkCgYEA/6Rbx1wn37b7B46/yQfW/r/6+BGiQII8BgPJ5Ck3BLfDgRJ/yPNV\nNW8TGNhVnYB5S8cXt+M7wXNIBFCOr3oK6mtoGcOhaNHgFImEw25wLmq1dsesuhSh\nrdhk4VUrey4Uajr70/hOqPw7TOLOVAfon37qhEWWoerj66/nehXyzaUCgYEAxMVS\nZqDISSkzg4NWzdYDPMMSjtc/T1pVStr1ocbGVvdimHxr4Q4WZvi5wprOi4J7OaPv\n1apHHcREhKzTjTzl7CahGiz8m9SypozPx11sVUsl+LsQG4xsVlL3Z20dDSJZLkVc\njZSAyTRq7wR62wj1gmXAhn9TdMWsLZhidk8XL9UCgYEAqSqyMTKikEAdzdqAvx8Y\n/ms8QHwqylVkMva+2uULK2wPS5JaTTf44usl0AMYZKlnmuWcpGsSV+lZdsF4Klaw\ncn+w25vBbAO2LODzof+q7IxgmMF5Y4nTk57m4tXheBn+GG3/xz1BkEGZXD+aGbFC\nFol91xnVnEA7ovM8UmXDzqECgYBE+yPjBJSSSVZc0WtZ55/k6kIUP1Nbf0CNaGta\nFnQrwrgW2u96y1SBLsr4dQrZj5mhYF5Q2kvqHIckt+3GAsZb3kL2CTVZb9xdVNn2\ne0LiN+EM7I8+CSFltdozsOXRV+xJs1k57QilALJILprfNKnU19UBkZtxQWcV6OkD\nrsBjLQKBgHJSJd1hdCOrdNO/Sp/K8rniTe31LKNSGcv1n2cb3G5sjRiB5Bij6dMu\n7vvpnHpEaRK34kZMHK6MC8QwjRGL2V2RzuFKsPw23USxUQ5sTUPYJaqynrALcpjt\ntX+4WXzxwHiNHglBjc4Wf4lwsXuy8zG4YN6+Czgf9X9ipIsGTkqz\n-----END RSA PRIVATE KEY-----\n",
+    "regr": {
+      "body": {
+        "key": {
+          "n": "xH7iCGRpmb4N1T8l3V0irhvE8TZf7NvgusgZ0g50e1nWk9kZj4jei7VhWUcbltPIPCwK0U1FmUNWTz083OXb8hlgVQSINpsdK_6WS3Q9ThCKjJGN9hMpggrvMYwI2cWwI8whbLB0ZWHnrsU0xnK1INeCpZSAjDDbG4AIUkvwWy32ABdnBK_o3hY7K-aPO1X7X7zX4wAXj34vIjtSxSoyCWirOp6Fqi6EXZcFFS8pEeLZ-DKcUQXYRdL626XJx7g0Rvwk1tNKrA4nj-B-6s1YxQtgI5KOHB6FAo2ciCfBFxamqb-lm3sSp38g-TmJdntmdQ08d6Q-Bf4JNNzwO5llSQ",
+          "e": "AQAB",
+          "kty": "RSA"
+        },
+        "status": "valid",
+        "contact": []
+      },
+      "uri": "https://acme-v02.api.letsencrypt.org/acme/acct/3997313792",
+      "terms_of_service": "https://letsencrypt.org/documents/LE-SA-v1.8-July-06-2026.pdf"
+    }
+  }
+}

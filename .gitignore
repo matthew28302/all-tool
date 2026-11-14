@@ -5,7 +5,8 @@ local_secrets.json
 # Sensitive files / tabs to hide before pushing to GitHub
 # Install SSL UI and related data (REMOVED - legacy)
 templates/tabs/tab_installssl.html
-acme/
+acme/store_backups/
+acme/*.bak
 pass.csv
 # Credential files of the install-ssl port (local only)
 pass*.csv
