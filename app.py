@@ -3717,8 +3717,8 @@ _ssl_sessions_lock = threading.Lock()
 _issued_ssl_store_lock = threading.Lock()
 _acme_worker_pool = ThreadPoolExecutor(max_workers=10)
 
-SSL_SESSION_TTL_SECONDS = 2 * 60 * 60
-SSL_SESSION_MAX_COUNT = 300
+SSL_SESSION_TTL_SECONDS = 7 * 24 * 60 * 60  # 7 ngày (thời hạn tối đa của ACME Order RFC 8555)
+SSL_SESSION_MAX_COUNT = 1000
 SSL_STORE_SYNC_MIN_INTERVAL_SECONDS = 1.5
 
 
@@ -4355,9 +4355,106 @@ def _check_caa_policy(domains: List[str], provider: str) -> dict:
     return {"ok": True, "message": "CAA check passed"}
 
 
-def _set_session_status(session_id: str, status: str, extra: Optional[dict] = None) -> Optional[dict]:
+def _get_or_restore_ssl_session(session_id: str) -> Optional[dict]:
+    if not session_id:
+        return None
     with _ssl_sessions_lock:
         sess = _ssl_sessions.get(session_id)
+        if sess:
+            return sess
+
+    # Khôi phục từ persistent store
+    record = None
+    for item in _current_store_items():
+        if isinstance(item, dict) and (item.get('session_id') == session_id or item.get('id') == session_id):
+            record = item
+            break
+
+    if not record or record.get('status') in ('issued', 'cancelled'):
+        return None
+
+    # Kiểm tra hạn 7 ngày
+    created_at_val = time.time()
+    created_str = record.get('created_at')
+    if created_str:
+        try:
+            created_at_val = datetime.strptime(created_str, '%Y-%m-%d %H:%M:%S').timestamp()
+        except Exception:
+            pass
+    if (time.time() - created_at_val) > SSL_SESSION_TTL_SECONDS:
+        return None
+
+    account_key_pem = record.get('account_key_pem')
+    provider = record.get('provider', 'letsencrypt')
+    order_url = record.get('order_url')
+
+    try:
+        if account_key_pem:
+            key_bytes = account_key_pem.encode('utf-8') if isinstance(account_key_pem, str) else account_key_pem
+            account_key = jose.JWKRSA.load(key_bytes)
+        else:
+            key_bytes = _generate_rsa_private_key_pem(2048)
+            account_key = jose.JWKRSA.load(key_bytes)
+
+        directory_url = ACME_PROVIDER_DIRECTORIES.get(provider, LETSENCRYPT_DIRECTORY)
+        net = acme_client.ClientNetwork(account_key, user_agent="SSLTool/1.0", verify_ssl=True)
+        with _ACME_ACCOUNT_LOCK:
+            cached = _ACME_CACHED_ACCOUNTS.get(provider)
+            if cached:
+                net.account = cached[1]
+        directory = acme_messages.Directory.from_json(net.get(directory_url).json())
+        acme_cl = acme_client.ClientV2(directory, net)
+
+        order = None
+        if order_url:
+            order = acme_messages.OrderResource(uri=order_url)
+
+        auth_urls = record.get('auth_urls') or []
+        authz_list = [acme_messages.AuthorizationResource(uri=u) for u in auth_urls if u]
+
+        restored_session = {
+            "session_id": record.get('session_id') or session_id,
+            "storage_id": record.get('id'),
+            "domain": record.get('domain'),
+            "sans": record.get('sans', []),
+            "email": record.get('email'),
+            "provider": provider,
+            "challenge_type": record.get('challenge_type', 'dns-01'),
+            "domain_key_pem": record.get('domain_key_pem', ''),
+            "csr_pem": record.get('csr_pem', ''),
+            "account_key_pem": account_key_pem or '',
+            "order_url": order_url,
+            "order_uri": order_url,
+            "finalize_url": record.get('finalize_url', ''),
+            "auth_urls": auth_urls,
+            "authz_list": authz_list,
+            "acme_client": acme_cl,
+            "order": order,
+            "domains": record.get('domains', []),
+            "challenges": record.get('challenges', []),
+            "created_at": created_at_val,
+            "status": record.get('status', 'pending'),
+            "worker_running": False,
+            "progress_logs": record.get('progress_logs', []),
+            "progress_text": record.get('progress_text', 'Đã khôi phục phiên'),
+            "current_run_id": record.get('current_run_id') or _gen_run_id('restore'),
+        }
+
+        with _ssl_sessions_lock:
+            _ssl_sessions[session_id] = restored_session
+            if record.get('session_id') and record.get('session_id') != session_id:
+                _ssl_sessions[record['session_id']] = restored_session
+            if record.get('id'):
+                _ssl_sessions[record['id']] = restored_session
+        logger.info(f"Khôi phục thành công SSL session {session_id} từ persistent store")
+        return restored_session
+    except Exception as e:
+        logger.warning(f"Không thể khôi phục SSL session {session_id}: {e}")
+        return None
+
+def _set_session_status(session_id: str, status: str, extra: Optional[dict] = None) -> Optional[dict]:
+    with _ssl_sessions_lock:
+        sess = _get_or_restore_ssl_session(session_id)
         if not sess:
             return None
         sess['status'] = status
@@ -4631,7 +4728,7 @@ def _patch_issued_ssl_record_by_session(session_id: str, updates: dict) -> Optio
 
 def _sync_session_to_store(session_id: str, force: bool = False) -> None:
     with _ssl_sessions_lock:
-        sess = _ssl_sessions.get(session_id)
+        sess = _get_or_restore_ssl_session(session_id)
         if not sess:
             return
         now = time.time()
@@ -4657,7 +4754,7 @@ def _append_session_log(session_id: str, message: str, level: str = "info", forc
         "message": message,
     }
     with _ssl_sessions_lock:
-        sess = _ssl_sessions.get(session_id)
+        sess = _get_or_restore_ssl_session(session_id)
         if not sess:
             return
         active_run_id = run_id or sess.get("current_run_id") or "default"
@@ -4690,6 +4787,9 @@ def _build_pending_ssl_record(sess: dict, session_id: str) -> dict:
         "serial_number": None,
         "provider": sess.get('provider', 'letsencrypt'),
         "email": sess.get('email'),
+        "domain_key_pem": sess.get('domain_key_pem'),
+        "csr_pem": sess.get('csr_pem'),
+        "account_key_pem": sess.get('account_key_pem'),
         "challenges": sess.get('challenges', []),
         "order_url": sess.get('order_url') or sess.get('order_uri'),
         "finalize_url": sess.get('finalize_url'),
@@ -4948,8 +5048,7 @@ def api_ssl_free_check_challenge():
         data = request.get_json(silent=True) or {}
         session_id = data.get('session_id', '')
 
-        with _ssl_sessions_lock:
-            sess = _ssl_sessions.get(session_id)
+        sess = _get_or_restore_ssl_session(session_id)
         if not sess:
             return jsonify({"error": "Session not found or expired"}), 404
 
@@ -5138,8 +5237,7 @@ def api_ssl_free_clear_dns_cache():
         data = request.get_json(silent=True) or {}
         session_id = data.get('session_id', '')
 
-        with _ssl_sessions_lock:
-            sess = _ssl_sessions.get(session_id)
+        sess = _get_or_restore_ssl_session(session_id)
         if not sess:
             return jsonify({"error": "Session not found or expired"}), 404
 
@@ -5182,8 +5280,7 @@ def api_ssl_free_finalize():
         data = request.get_json(silent=True) or {}
         session_id = data.get('session_id', '')
 
-        with _ssl_sessions_lock:
-            sess = _ssl_sessions.get(session_id)
+        sess = _get_or_restore_ssl_session(session_id)
         if not sess:
             return jsonify({"error": "Session not found or expired"}), 404
 
@@ -5392,8 +5489,7 @@ def api_ssl_free_save_to_catalog():
 def api_ssl_free_session_status(session_id):
     try:
         _cleanup_expired_ssl_sessions()
-        with _ssl_sessions_lock:
-            sess = _ssl_sessions.get(session_id)
+        sess = _get_or_restore_ssl_session(session_id)
         if not sess:
             return jsonify({"error": "Session not found or expired"}), 404
 
