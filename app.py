@@ -3731,7 +3731,44 @@ def _gen_run_id(prefix: str = 'run') -> str:
 
 
 _ACME_CACHED_ACCOUNTS: Dict[str, tuple] = {}
-_ACME_ACCOUNT_LOCK = threading.Lock()
+_ACME_ACCOUNT_LOCK = threading.RLock()
+
+_ACME_ACCOUNTS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'acme', 'acme_accounts.json')
+
+
+def _load_persisted_acme_accounts():
+    if not os.path.exists(_ACME_ACCOUNTS_FILE):
+        return
+    try:
+        with open(_ACME_ACCOUNTS_FILE, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        with _ACME_ACCOUNT_LOCK:
+            for prov, acc_info in data.items():
+                if prov not in _ACME_CACHED_ACCOUNTS and isinstance(acc_info, dict):
+                    k_pem = acc_info.get('account_key_pem', '').encode('utf-8')
+                    regr_data = acc_info.get('regr')
+                    if k_pem and regr_data:
+                        regr = acme_messages.RegistrationResource.from_json(regr_data)
+                        _ACME_CACHED_ACCOUNTS[prov] = (k_pem, regr)
+    except Exception as e:
+        logger.warning(f"Không thể đọc {_ACME_ACCOUNTS_FILE}: {e}")
+
+
+def _save_persisted_acme_accounts():
+    try:
+        os.makedirs(os.path.dirname(_ACME_ACCOUNTS_FILE), exist_ok=True)
+        dump_data = {}
+        with _ACME_ACCOUNT_LOCK:
+            for prov, (k_pem, regr) in _ACME_CACHED_ACCOUNTS.items():
+                dump_data[prov] = {
+                    "account_key_pem": k_pem.decode('utf-8') if isinstance(k_pem, bytes) else str(k_pem),
+                    "regr": regr.to_json(),
+                }
+        with open(_ACME_ACCOUNTS_FILE, 'w', encoding='utf-8') as f:
+            json.dump(dump_data, f, indent=2)
+    except Exception as e:
+        logger.warning(f"Không thể ghi {_ACME_ACCOUNTS_FILE}: {e}")
+
 
 
 def _get_acme_client(email: str, provider: str = 'letsencrypt') -> tuple:
@@ -3739,6 +3776,7 @@ def _get_acme_client(email: str, provider: str = 'letsencrypt') -> tuple:
     Supports: letsencrypt, zerossl (EAB), sslcom (EAB).
     """
     directory_url = ACME_PROVIDER_DIRECTORIES.get(provider, LETSENCRYPT_DIRECTORY)
+    _load_persisted_acme_accounts()
     with _ACME_ACCOUNT_LOCK:
         cached = _ACME_CACHED_ACCOUNTS.get(provider)
         if cached:
@@ -3788,14 +3826,19 @@ def _get_acme_client(email: str, provider: str = 'letsencrypt') -> tuple:
         except acme_messages.Error as reg_err:
             err_str = str(reg_err).lower()
             if 'invalidcontact' in err_str or 'forbidden' in err_str or 'contact email' in err_str:
-                logger.warning(f"ACME email bị từ chối ({reg_err}), tự động fallback đăng ký tài khoản không kèm email.")
+                logger.warning(f"ACME email bị từ chối ({reg_err}), sinh key mới đăng ký không kèm email.")
                 new_reg_kwargs.pop('email', None)
+                account_key_pem_bytes = _generate_rsa_private_key_pem(2048)
+                account_key = jose.JWKRSA.load(account_key_pem_bytes)
+                net = acme_client.ClientNetwork(account_key, user_agent="SSLTool/1.0", verify_ssl=True)
+                client = acme_client.ClientV2(directory, net)
                 regr = client.new_account(
                     acme_messages.NewRegistration.from_data(**new_reg_kwargs)
                 )
             else:
                 raise
         _ACME_CACHED_ACCOUNTS[provider] = (account_key_pem_bytes, regr)
+        _save_persisted_acme_accounts()
         return client, account_key_pem_bytes
 
 
