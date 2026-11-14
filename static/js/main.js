@@ -2977,40 +2977,49 @@
         function freeSslAppendTerminal(message, type = 'info', timeStr = null) {
             const termBody = document.getElementById('freesslTerminalBody');
             if (!termBody) return;
+            const hint = termBody.querySelector('.empty-terminal-hint');
+            if (hint) hint.remove();
+
             const now = new Date();
             const time = timeStr || now.toTimeString().split(' ')[0];
             const line = document.createElement('div');
             line.className = 'terminal-line';
+            line.style.cssText = 'margin-bottom: 4px; display: flex; gap: 8px; align-items: flex-start; word-break: break-all;';
 
-            let tagClass = 'tag-info';
+            let tagColor = '#38bdf8';
+            let tagBg = 'rgba(56, 189, 248, 0.15)';
             let tagText = '[INFO]';
             const lower = (type || '').toLowerCase();
             const msgLower = (message || '').toLowerCase();
 
             if (lower === 'error' || msgLower.includes('lỗi') || msgLower.includes('fail') || msgLower.includes('error')) {
-                tagClass = 'tag-error';
+                tagColor = '#f87171';
+                tagBg = 'rgba(248, 113, 113, 0.2)';
                 tagText = '[ERROR]';
             } else if (lower === 'success' || msgLower.includes('thành công') || msgLower.includes('passed') || msgLower.includes('cấp cert') || msgLower.includes('hợp lệ')) {
-                tagClass = 'tag-success';
+                tagColor = '#4ade80';
+                tagBg = 'rgba(74, 222, 128, 0.15)';
                 tagText = '[SUCCESS]';
             } else if (lower === 'loading' || lower === 'warn' || msgLower.includes('đang') || msgLower.includes('chờ') || msgLower.includes('retry')) {
-                tagClass = 'tag-warning';
+                tagColor = '#fbbf24';
+                tagBg = 'rgba(251, 191, 36, 0.15)';
                 tagText = '[WAIT]';
             } else if (lower === 'req' || msgLower.startsWith('[req]') || msgLower.startsWith('[res]')) {
-                tagClass = 'tag-req';
-                tagText = msgLower.startsWith('[res]') ? '[RES]' : '[REQ]';
+                tagColor = msgLower.startsWith('[res]') ? '#38bdf8' : '#c084fc';
+                tagBg = 'rgba(192, 132, 252, 0.15)';
+                tagText = msgLower.startsWith('[res]') ? '[HTTP RES]' : '[HTTP REQ]';
             }
 
             const timeSpan = document.createElement('span');
-            timeSpan.className = 't-time';
+            timeSpan.style.cssText = 'color: #64748b; flex-shrink: 0; font-size: 0.76rem; user-select: none;';
             timeSpan.textContent = time;
 
             const tagSpan = document.createElement('span');
-            tagSpan.className = 't-tag ' + tagClass;
+            tagSpan.style.cssText = `color: ${tagColor}; background: ${tagBg}; font-weight: 600; flex-shrink: 0; font-size: 0.74rem; padding: 0 5px; border-radius: 4px; user-select: none;`;
             tagSpan.textContent = tagText;
 
             const msgSpan = document.createElement('span');
-            msgSpan.className = 't-msg';
+            msgSpan.style.cssText = 'color: #f1f5f9; flex-grow: 1;';
             msgSpan.textContent = message.replace(/^\[(REQ|RES|ERR|INFO|SUCCESS|WARN)\]\s*/i, '');
 
             line.appendChild(timeSpan);
@@ -3029,12 +3038,15 @@
             if (!termBody) return;
             const lines = Array.from(termBody.querySelectorAll('.terminal-line')).map(l => l.textContent.trim());
             const text = lines.join('\n');
-            if (!text) return;
+            if (!text) {
+                freeSslShowMessage('Chưa có nội dung nhật ký để copy.', 'info');
+                return;
+            }
             if (navigator.clipboard && navigator.clipboard.writeText) {
                 navigator.clipboard.writeText(text).then(() => {
-                    freeSslShowMessage('Đã copy toàn bộ Live Terminal Log!', 'info');
+                    freeSslShowMessage('Đã sao chép toàn bộ nhật ký vào Clipboard!', 'success');
                 }).catch(() => {
-                    alert('Đã copy: \n' + text);
+                    prompt('Nhấn Ctrl+C để copy nhật ký:', text);
                 });
             } else {
                 const ta = document.createElement('textarea');
@@ -3043,15 +3055,14 @@
                 ta.select();
                 document.execCommand('copy');
                 document.body.removeChild(ta);
-                freeSslShowMessage('Đã copy toàn bộ Live Terminal Log!', 'info');
+                freeSslShowMessage('Đã sao chép toàn bộ nhật ký vào Clipboard!', 'success');
             }
         };
 
         window.freeSslClearTerminalLogs = function() {
             const termBody = document.getElementById('freesslTerminalBody');
             if (!termBody) return;
-            termBody.innerHTML = '';
-            freeSslAppendTerminal('ACME Live Terminal đã được dọn sạch.', 'info');
+            termBody.innerHTML = '<div class="empty-terminal-hint" style="color: #64748b; font-style: italic;">Nhật ký đã được dọn sạch.</div>';
         };
 
         function freeSslClearLog() {

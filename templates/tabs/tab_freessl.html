@@ -148,22 +148,25 @@
 <p id="freesslLoadingText">Đang xử lý...</p>
 </div>
 <div class="message" id="freesslMessage"></div>
-<!-- Live Terminal Console -->
-<div class="freessl-terminal-container" id="freesslTerminalContainer">
-    <div class="freessl-terminal-header">
-        <div class="terminal-dots">
-            <span class="dot dot-red"></span>
-            <span class="dot dot-yellow"></span>
-            <span class="dot dot-green"></span>
-        </div>
-        <div class="terminal-title">
-            <span class="icon" data-lucide="terminal"></span> Live ACME Terminal &amp; Request Logs
-        </div>
-        <div class="terminal-actions">
-            <button class="terminal-btn" onclick="freeSslCopyTerminalLogs()" title="Copy toàn bộ log">📋 Copy Log</button>
-            <button class="terminal-btn" onclick="freeSslClearTerminalLogs()" title="Xóa màn hình log">🧹 Clear</button>
+<!-- Live Logs Card -->
+<div class="freessl-card" id="freesslLogCard" style="margin-top: 20px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+        <h3 style="margin: 0; font-size: 0.95rem; font-weight: 600; color: #1e293b; display: flex; align-items: center; gap: 8px;">
+            <span class="icon" data-lucide="terminal"></span> Nhật ký xác thực &amp; Lỗi chi tiết
+        </h3>
+        <div style="display: flex; gap: 8px;">
+            <button class="btn btn-secondary btn-compact" type="button" onclick="freeSslCopyTerminalLogs()" title="Sao chép toàn bộ nhật ký">
+                <span class="icon" data-lucide="clipboard"></span> Copy Log
+            </button>
+            <button class="btn btn-secondary btn-compact" type="button" onclick="freeSslClearTerminalLogs()" title="Xóa nhật ký">
+                <span class="icon" data-lucide="trash-2"></span> Xóa
+            </button>
         </div>
     </div>
+    <div id="freesslTerminalBody" style="background: #0f172a; color: #f8fafc; border-radius: 10px; padding: 14px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 0.82rem; line-height: 1.6; min-height: 80px; max-height: 280px; overflow-y: auto; border: 1px solid #334155;">
+        <div class="empty-terminal-hint" style="color: #64748b; font-style: italic;">Chưa có log. Khi bạn bấm bắt đầu hoặc kiểm tra xác thực, toàn bộ request và phản hồi lỗi cụ thể sẽ ghi nhận tại đây.</div>
+    </div>
+</div>
     <div class="freessl-terminal-body" id="freesslTerminalBody">
         <div class="terminal-line"><span class="t-time">--:--:--</span><span class="t-tag tag-info">[SYS]</span><span class="t-msg">ACME Live Terminal sẵn sàng. Các request HTTP, DNS pre-check và phản hồi từ Let's Encrypt / ZeroSSL sẽ hiển thị tại đây.</span></div>
     </div>
