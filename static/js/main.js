@@ -2881,7 +2881,8 @@
         function freeSslStartStatusMonitor() {
             if (!freeSslSessionId && !freeSslStorageId) return;
             freeSslStopStatusMonitor();
-            freeSslStatusMonitorTimer = setInterval(async () => {
+
+            const doPoll = async () => {
                 let ok = false;
                 let data = null;
                 let isSessionLost = false;
@@ -2947,7 +2948,10 @@
                     freeSslLog('Trạng thái ACME: invalid', 'error');
                     await freeSslLoadStoredList();
                 }
-            }, 3000);
+            };
+
+            setTimeout(doPoll, 400);
+            freeSslStatusMonitorTimer = setInterval(doPoll, 2000);
         }
 
         function freeSslClearLog() {

@@ -3600,13 +3600,13 @@ DNS_CACHE_CLEAR_TARGETS = [
         "provider": "OpenDNS (Cisco)",
         "label": "208.67.222.222",
         "resolver_ip": "208.67.222.222",
-        "doh_url": "https://doh.opendns.com/dns-query",
+        "doh_url": None,
     },
     {
         "provider": "Quad9",
         "label": "9.9.9.9",
         "resolver_ip": "9.9.9.9",
-        "doh_url": "https://dns.quad9.net/dns-query",
+        "doh_url": None,
     },
 ]
 
@@ -3730,44 +3730,62 @@ def _gen_run_id(prefix: str = 'run') -> str:
     return f"{prefix}-{int(time.time() * 1000)}"
 
 
+_ACME_CACHED_ACCOUNTS: Dict[str, tuple] = {}
+_ACME_ACCOUNT_LOCK = threading.Lock()
+
+
 def _get_acme_client(email: str, provider: str = 'letsencrypt') -> tuple:
-    """Create an ACME client with a fresh RSA account key.
+    """Create or reuse an ACME client with cached account key and registration per provider.
     Supports: letsencrypt, zerossl (EAB), sslcom (EAB).
     """
     directory_url = ACME_PROVIDER_DIRECTORIES.get(provider, LETSENCRYPT_DIRECTORY)
-    account_key_pem_bytes = _generate_rsa_private_key_pem(2048)
-    account_key = jose.JWKRSA.load(account_key_pem_bytes)
-    net = acme_client.ClientNetwork(account_key, user_agent="SSLTool/1.0", verify_ssl=True)
-    directory = acme_messages.Directory.from_json(net.get(directory_url).json())
-    client = acme_client.ClientV2(directory, net)
-    # Build registration kwargs
-    new_reg_kwargs: dict = dict(email=email, terms_of_service_agreed=True)
-    # ZeroSSL requires External Account Binding (EAB)
-    if provider == 'zerossl':
-        if not (ZEROSSL_EAB_KID and ZEROSSL_EAB_HMAC_KEY):
-            raise ValueError("Thiếu ZEROSSL_EAB_KID / ZEROSSL_EAB_HMAC_KEY (env hoặc local_secrets.json)")
-        eab = acme_messages.ExternalAccountBinding.from_data(
-            account_public_key=account_key.public_key(),
-            kid=ZEROSSL_EAB_KID,
-            hmac_key=ZEROSSL_EAB_HMAC_KEY,
-            directory=directory,
+    with _ACME_ACCOUNT_LOCK:
+        cached = _ACME_CACHED_ACCOUNTS.get(provider)
+        if cached:
+            account_key_pem_bytes, cached_regr = cached
+            account_key = jose.JWKRSA.load(account_key_pem_bytes)
+            net = acme_client.ClientNetwork(account_key, user_agent="SSLTool/1.0", verify_ssl=True)
+            net.account = cached_regr
+            directory = acme_messages.Directory.from_json(net.get(directory_url).json())
+            client = acme_client.ClientV2(directory, net)
+            return client, account_key_pem_bytes
+
+        account_key_pem_bytes = _generate_rsa_private_key_pem(2048)
+        account_key = jose.JWKRSA.load(account_key_pem_bytes)
+        net = acme_client.ClientNetwork(account_key, user_agent="SSLTool/1.0", verify_ssl=True)
+        directory = acme_messages.Directory.from_json(net.get(directory_url).json())
+        client = acme_client.ClientV2(directory, net)
+
+        # Build registration kwargs
+        new_reg_kwargs: dict = dict(email=email, terms_of_service_agreed=True)
+        # ZeroSSL requires External Account Binding (EAB)
+        if provider == 'zerossl':
+            if not (ZEROSSL_EAB_KID and ZEROSSL_EAB_HMAC_KEY):
+                raise ValueError("Thiếu ZEROSSL_EAB_KID / ZEROSSL_EAB_HMAC_KEY (env hoặc local_secrets.json)")
+            eab = acme_messages.ExternalAccountBinding.from_data(
+                account_public_key=account_key.public_key(),
+                kid=ZEROSSL_EAB_KID,
+                hmac_key=ZEROSSL_EAB_HMAC_KEY,
+                directory=directory,
+            )
+            new_reg_kwargs['external_account_binding'] = eab
+        # SSL.com also requires External Account Binding (EAB)
+        elif provider == 'sslcom':
+            if not SSLCOM_EAB_KID or not SSLCOM_EAB_HMAC_KEY or '...' in SSLCOM_EAB_HMAC_KEY:
+                raise ValueError("SSL.com EAB chưa đầy đủ. Cập nhật SSLCOM_EAB_KID và SSLCOM_EAB_HMAC_KEY (env hoặc local_secrets.json).")
+            eab = acme_messages.ExternalAccountBinding.from_data(
+                account_public_key=account_key.public_key(),
+                kid=SSLCOM_EAB_KID,
+                hmac_key=SSLCOM_EAB_HMAC_KEY,
+                directory=directory,
+            )
+            new_reg_kwargs['external_account_binding'] = eab
+
+        regr = client.new_account(
+            acme_messages.NewRegistration.from_data(**new_reg_kwargs)
         )
-        new_reg_kwargs['external_account_binding'] = eab
-    # SSL.com also requires External Account Binding (EAB)
-    elif provider == 'sslcom':
-        if not SSLCOM_EAB_KID or not SSLCOM_EAB_HMAC_KEY or '...' in SSLCOM_EAB_HMAC_KEY:
-            raise ValueError("SSL.com EAB chưa đầy đủ. Cập nhật SSLCOM_EAB_KID và SSLCOM_EAB_HMAC_KEY (env hoặc local_secrets.json).")
-        eab = acme_messages.ExternalAccountBinding.from_data(
-            account_public_key=account_key.public_key(),
-            kid=SSLCOM_EAB_KID,
-            hmac_key=SSLCOM_EAB_HMAC_KEY,
-            directory=directory,
-        )
-        new_reg_kwargs['external_account_binding'] = eab
-    client.new_account(
-        acme_messages.NewRegistration.from_data(**new_reg_kwargs)
-    )
-    return client, account_key_pem_bytes
+        _ACME_CACHED_ACCOUNTS[provider] = (account_key_pem_bytes, regr)
+        return client, account_key_pem_bytes
 
 
 def _generate_rsa_private_key_pem(key_size: int = 2048) -> bytes:
@@ -4102,9 +4120,8 @@ def _save_issued_ssl_store(
     tmp_path = f"{ISSUED_SSL_STORE_PATH}.tmp"
     try:
         with open(tmp_path, 'w', encoding='utf-8') as f:
-            json.dump(items, f, ensure_ascii=False, indent=2)
+            json.dump(items, f, ensure_ascii=False, separators=(',', ':'))
             f.flush()
-            os.fsync(f.fileno())
         os.replace(tmp_path, ISSUED_SSL_STORE_PATH)
     finally:
         if os.path.exists(tmp_path):
@@ -4179,12 +4196,9 @@ def _extract_cert_summary(cert_pem: str) -> dict:
 
 def _request_public_dns_cache_clear(dns_name: str) -> List[dict]:
     """
-    Best-effort refresh request to public DNS resolvers.
-    Public resolvers generally do not expose hard cache purge APIs,
-    so we trigger fresh TXT lookups via DNS + DoH endpoints.
+    Best-effort refresh request to public DNS resolvers (parallelized).
     """
-    results: List[dict] = []
-    for target in DNS_CACHE_CLEAR_TARGETS:
+    def _query_single_target(target: dict) -> dict:
         provider = target.get("provider")
         label = target.get("label")
         resolver_ip = target.get("resolver_ip")
@@ -4205,16 +4219,16 @@ def _request_public_dns_cache_clear(dns_name: str) -> List[dict]:
             resolver = dns.resolver.Resolver(configure=False)
             resolver.cache = None
             resolver.nameservers = [resolver_ip]
-            resolver.timeout = 3
-            resolver.lifetime = 3
+            resolver.timeout = 1.2
+            resolver.lifetime = 1.2
             resolver.resolve(dns_name, 'TXT', raise_on_no_answer=False)
             entry["dns_query"] = "ok"
         except Exception as e:
             entry["dns_query"] = f"fail: {str(e)}"
 
         # 2) DoH query (where available)
-        try:
-            if doh_url:
+        if doh_url:
+            try:
                 params = {
                     "name": dns_name,
                     "type": "TXT",
@@ -4225,17 +4239,19 @@ def _request_public_dns_cache_clear(dns_name: str) -> List[dict]:
                 headers = {
                     "accept": "application/dns-json"
                 }
-                resp = _DOH_HTTP.get(doh_url, params=params, headers=headers, timeout=5)
+                resp = _DOH_HTTP.get(doh_url, params=params, headers=headers, timeout=1.8)
                 if resp.status_code < 400:
                     entry["doh_query"] = "ok"
                 else:
                     entry["doh_query"] = f"fail: HTTP {resp.status_code}"
-        except Exception as e:
-            entry["doh_query"] = f"fail: {str(e)}"
+            except Exception as e:
+                entry["doh_query"] = f"fail: {str(e)}"
 
         entry["ok"] = entry["dns_query"] == "ok" or entry["doh_query"] == "ok"
-        results.append(entry)
-    return results
+        return entry
+
+    with ThreadPoolExecutor(max_workers=len(DNS_CACHE_CLEAR_TARGETS)) as pool:
+        return list(pool.map(_query_single_target, DNS_CACHE_CLEAR_TARGETS))
 
 
 def _extract_acme_error_payload(err: Exception) -> dict:
@@ -4290,13 +4306,14 @@ def _resolve_caa_records(domain: str) -> List[str]:
             resolver = dns.resolver.Resolver(configure=False)
             resolver.cache = None
             resolver.nameservers = [resolver_ip]
-            resolver.timeout = 3
-            resolver.lifetime = 3
+            resolver.timeout = 1.2
+            resolver.lifetime = 1.2
             answers = resolver.resolve(domain, 'CAA')
             for rdata in answers:
                 records.append(str(rdata))
-            if records:
-                break
+            break
+        except (dns.resolver.NoAnswer, dns.resolver.NXDOMAIN):
+            break
         except Exception:
             continue
     return list(dict.fromkeys(records))
@@ -4316,9 +4333,12 @@ def _check_caa_policy(domains: List[str], provider: str) -> dict:
         if not host:
             continue
         checked_domains.append(host)
+    unique_hosts = list(dict.fromkeys(checked_domains))
 
-    for host in list(dict.fromkeys(checked_domains)):
-        caa_records = _resolve_caa_records(host)
+    with ThreadPoolExecutor(max_workers=min(4, len(unique_hosts) or 1)) as pool:
+        host_to_caa = dict(zip(unique_hosts, pool.map(_resolve_caa_records, unique_hosts)))
+
+    for host, caa_records in host_to_caa.items():
         if not caa_records:
             continue
 
@@ -4379,15 +4399,14 @@ def _query_txt_values(dns_name: str, resolvers: Optional[List[str]] = None) -> L
             resolver = dns.resolver.Resolver(configure=False)
             resolver.cache = None
             resolver.nameservers = [resolver_ip]
-            resolver.timeout = 5
-            resolver.lifetime = 5
+            resolver.timeout = 1.5
+            resolver.lifetime = 2.0
             answers = resolver.resolve(dns_name, 'TXT')
             for rdata in answers:
                 for s in rdata.strings:
                     values.append(s.decode() if isinstance(s, bytes) else str(s))
         except Exception:
             continue
-        # Đã có kết quả thì khỏi hỏi resolver tiếp theo (đỡ ~5s mỗi lần verify)
         if values:
             break
     return list(dict.fromkeys(values))
@@ -4962,12 +4981,19 @@ def api_ssl_free_check_challenge():
         dns_lookup_cache: Dict[str, List[str]] = {}
         if challenge_type == 'dns-01':
             dns_names = sorted(set(ch.get('dns_name') for ch in challenges if ch.get('dns_name')))
-            for dns_name in dns_names:
-                dns_cache_clear_results.append({
-                    "dns_name": dns_name,
-                    "targets": _request_public_dns_cache_clear(dns_name),
-                })
-                dns_lookup_cache[dns_name] = _query_txt_values(dns_name)
+
+            def _check_single_challenge(dname: str):
+                targets = _request_public_dns_cache_clear(dname)
+                txt_vals = _query_txt_values(dname)
+                return dname, targets, txt_vals
+
+            with ThreadPoolExecutor(max_workers=max(1, len(dns_names))) as pool:
+                for dname, targets, txt_vals in pool.map(_check_single_challenge, dns_names):
+                    dns_cache_clear_results.append({
+                        "dns_name": dname,
+                        "targets": targets,
+                    })
+                    dns_lookup_cache[dname] = txt_vals
 
         for ch in challenges:
             ch_domain = ch['domain']
