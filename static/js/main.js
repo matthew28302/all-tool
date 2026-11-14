@@ -3518,7 +3518,11 @@
                 const { ok, data, errorText } = await freeSslFetch('/api/ssl-free/start', {
                     domain, sans: freeSslSans, challenge_type: freeSslChallengeType, email, provider: freeSslProvider
                 });
-                if (!ok) { freeSslShowMessage('❌ ' + errorText, 'error'); return; }
+                if (!ok) {
+                    freeSslShowMessage('❌ ' + errorText, 'error');
+                    freeSslLog('Tạo đơn hàng thất bại: ' + errorText, 'error');
+                    return;
+                }
 
                 freeSslSessionId = data.session_id;
                 freeSslRememberActiveStorageId(data.storage_id || null);
@@ -3529,7 +3533,8 @@
                 document.getElementById('freesslFinalizeCard').style.display = 'none';
                 freeSslSetStep(2);
                 freeSslSetActionState('pending');
-                freeSslLog('Order tạo thành công, vui lòng thêm record xác thực', 'success');
+                freeSslLog('Đơn hàng ACME đã được tạo thành công trên ' + freeSslProvider, 'success');
+                freeSslLog('Vui lòng thêm các bản ghi DNS TXT vào trang quản lý DNS của tên miền.', 'info');
                 freeSslShowMessage('Order đã tạo! Hãy thực hiện cấu hình xác thực bên dưới.', 'success');
             } catch (err) {
                 freeSslLog(err.message, 'error');
